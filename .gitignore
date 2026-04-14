@@ -1,4 +1,10 @@
-# 现有内容保持不变...
+# Docs (personal documentation)
+docs/
+
+# Personal files in public
+public/gzh.jpg
+public/xhs.png
+public/gzhLogo.png
 
 # Tauri specific
 src-tauri/target/
