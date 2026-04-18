@@ -1,10 +1,8 @@
-# Docs (personal documentation)
-docs/
+# Dependencies
+node_modules/
 
-# Personal files in public
-public/gzh.jpg
-public/xhs.png
-public/gzhLogo.png
+# Build output
+dist/
 
 # Tauri specific
 src-tauri/target/
@@ -15,12 +13,18 @@ release/
 .vercel/
 .netlify/
 
-# Personal/Development files
+# Personal files
 *.exe
 *.pptx
 *.docx
 start.txt
 CLAUDE.md
+docs/
+public/gzh.jpg
+public/xhs.png
+public/gzhLogo.png
+public/wxdashang.jpg
+public/zfbdashang.jpg
 
 # OS generated files
 .DS_Store
@@ -31,7 +35,7 @@ CLAUDE.md
 ehthumbs.db
 Thumbs.db
 
-# User data (如果有的话)
+# User data
 user-data/
 *.db
 *.sqlite
