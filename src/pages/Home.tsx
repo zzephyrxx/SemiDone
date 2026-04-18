@@ -1,31 +1,46 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, CheckCircle, Clock, AlertTriangle, Calendar, TrendingUp, Settings, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { TaskFilter as TaskFilterType } from '../types';
 import TaskItem from '../components/TaskItem';
-import TaskStats from '../components/TaskStats';
+import TaskStats, { StatsCollapsedButton } from '../components/TaskStats';
 import TaskFilter from '../components/TaskFilter';
 import QuickAddTask from '../components/QuickAddTask';
-import UserProfile from '../components/UserProfile';
 import CelebrationAnimation from '../components/CelebrationAnimation';
 import UsageButton from '../components/UsageButton';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { 
-    filteredTasks, 
-    loading, 
-    filter, 
+  const {
+    filteredTasks,
+    loading,
+    filter,
     searchQuery,
     loadTasks,
     celebration,
-    hideCelebration
-  } = useTaskStore();
-  
+    hideCelebration,
+    statsBarCollapsed,
+    setStatsBarCollapsed
+  } = useTaskStore(
+    useShallow((state) => ({
+      filteredTasks: state.filteredTasks,
+      loading: state.loading,
+      filter: state.filter,
+      searchQuery: state.searchQuery,
+      loadTasks: state.loadTasks,
+      celebration: state.celebration,
+      hideCelebration: state.hideCelebration,
+      statsBarCollapsed: state.statsBarCollapsed,
+      setStatsBarCollapsed: state.setStatsBarCollapsed,
+    }))
+  );
+
   const { settings, loadSettings } = useSettingsStore();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadSettings();
@@ -68,15 +83,26 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-full p-2 bg-transparent text-foreground">
-      {/* Stats */}
-      <div className="flex-shrink-0 mb-2">
-        <TaskStats />
-      </div>
-
-      {/* Usage Button */}
-      <div className="flex-shrink-0 mb-2">
-        <UsageButton />
-      </div>
+      {/* Stats Section */}
+      {statsBarCollapsed ? (
+        // 折叠状态：UsageButton 和 折叠按钮在同一行
+        <div className="flex-shrink-0 mb-2 flex items-center gap-2">
+          <div className="flex-1">
+            <UsageButton />
+          </div>
+          <StatsCollapsedButton collapsed={statsBarCollapsed} onCollapsedChange={setStatsBarCollapsed} />
+        </div>
+      ) : (
+        // 展开状态：TaskStats 独占一行，UsageButton 在下面
+        <>
+          <div className="flex-shrink-0 mb-2">
+            <TaskStats collapsed={statsBarCollapsed} onCollapsedChange={setStatsBarCollapsed} />
+          </div>
+          <div className="flex-shrink-0 mb-2">
+            <UsageButton />
+          </div>
+        </>
+      )}
 
       {/* Search and Add Task Row */}
       <div className="flex-shrink-0 flex gap-2 mb-2">
@@ -115,7 +141,7 @@ export default function Home() {
       </div>
 
       {/* Task List */}
-      <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/30 pr-1">
+      <div className="flex-grow overflow-y-auto pr-1">
         {filteredTasks.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-4xl mb-3">{getEmptyStateIcon()}</div>
@@ -132,9 +158,11 @@ export default function Home() {
             )}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div ref={listContainerRef} className="space-y-1">
             {filteredTasks.map((task) => (
-              <TaskItem key={task.id} task={task} />
+              <div key={task.id} className="pr-1 pb-1">
+                <TaskItem task={task} />
+              </div>
             ))}
           </div>
         )}

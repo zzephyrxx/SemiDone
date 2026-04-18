@@ -13,13 +13,30 @@ export type TaskFilter = 'all' | 'pending' | 'completed' | 'overdue' | 'today';
 // 待办筛选类型（用于组件）
 export type TaskFilterType = TaskFilter;
 
+// 循环周期类型
+export type RecurrenceType = 'day' | 'week' | 'month';
+
+// 循环规则
+export interface RecurrenceRule {
+  type: RecurrenceType;
+  interval: number; // 每隔 N 个 type
+  // 按周重复时，指定周几（0=周日，1=周一...6=周六）
+  daysOfWeek?: number[];
+  // 按月重复时，指定几号（1-31），支持多天
+  daysOfMonth?: number[];
+}
+
+// 周几的名称
+export const DAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
 // 附件数据结构
 export interface Attachment {
   id: string;
   name: string;
   size: number;
   type: string;
-  data: string; // Base64 encoded file data
+  data?: string; // Base64 encoded file data (legacy, for small files)
+  path?: string; // File path relative to attachments directory (new)
   createdAt: string;
 }
 
@@ -34,6 +51,9 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   attachments?: Attachment[];
+  recurrence?: RecurrenceRule;  // 循环规则
+  isRecurrenceChild?: boolean; // 是否是循环任务的子任务
+  parentTaskId?: string;        // 父任务ID（用于标识循环任务的子任务）
 }
 
 // 设置数据结构
@@ -51,6 +71,8 @@ export interface Settings {
   transparentLevel?: number;     // 透明度级别 0-100 (100为完全不透明)
   isEdgeSnapped?: boolean;       // 是否吸附到边缘
   edgePosition?: 'left' | 'right'; // 吸附边缘位置
+  autoStart?: boolean;            // 开机自启动
+  dataDir?: string;              // 自定义数据目录
 }
 
 // 创建待办的请求参数
@@ -60,6 +82,7 @@ export interface CreateTaskRequest {
   priority?: Priority;
   dueDate?: string;
   attachments?: Attachment[];
+  recurrence?: RecurrenceRule;
 }
 
 // 更新待办的请求参数
@@ -70,6 +93,9 @@ export interface UpdateTaskRequest {
   priority?: Priority;
   dueDate?: string;
   attachments?: Attachment[];
+  recurrence?: RecurrenceRule;
+  isRecurrenceChild?: boolean;
+  parentTaskId?: string;
 }
 
 // 待办统计信息
@@ -130,6 +156,18 @@ export interface PomodoroState {
   breakDuration: number; // 短休息时长（分钟）
   longBreakDuration: number; // 长休息时长（分钟）
   cyclesBeforeLongBreak: number; // 长休息前的循环次数
+}
+
+// 排序字段
+export type SortField = 'dueDate' | 'priority' | 'createdAt';
+
+// 排序方向
+export type SortOrder = 'asc' | 'desc';
+
+// 排序配置
+export interface SortConfig {
+  field: SortField;
+  order: SortOrder;
 }
 
 // Tauri命令响应类型

@@ -28,7 +28,7 @@ export default function UsageChart({
   const baseWidth = period === 'month' ? 900 : 600; // 月视图更宽
   const chartWidth = Math.max(baseWidth, data.length * (period === 'month' ? 25 : 60)); // 月视图每天25px，周视图每天60px
   const chartHeight = 240; // 稍微增高
-  const padding = { top: 20, right: 15, bottom: 25, left: 35 }; // 增加边距
+  const padding = { top: 20, right: 15, bottom: 25, left: 45 }; // 增加左边距给Y轴刻度
   const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
@@ -67,14 +67,26 @@ export default function UsageChart({
     return `${date.getDate()}`;
   };
 
-  // Y轴刻度
+  // Y轴刻度 - 根据最大值选择合适单位
   const getYAxisTicks = () => {
     const tickCount = 4;
     const ticks = [];
-    for (let i = 0; i <= tickCount; i++) {
-      const value = (maxMinutes / tickCount) * i;
-      const y = innerHeight - (i / tickCount) * innerHeight;
-      ticks.push({ value: Math.round(value), y });
+    const maxHours = maxMinutes / 60; // 转换为小时
+
+    if (maxMinutes < 60) {
+      // 低于1小时，使用分钟
+      for (let i = 0; i <= tickCount; i++) {
+        const value = (maxMinutes / tickCount) * i;
+        const y = innerHeight - (i / tickCount) * innerHeight;
+        ticks.push({ value: Math.round(value), y, unit: '分' });
+      }
+    } else {
+      // 1小时及以上，使用小时
+      for (let i = 0; i <= tickCount; i++) {
+        const value = (maxHours / tickCount) * i;
+        const y = innerHeight - (i / tickCount) * innerHeight;
+        ticks.push({ value: Math.round(value * 10) / 10, y, unit: '时' });
+      }
     }
     return ticks;
   };
@@ -123,13 +135,14 @@ export default function UsageChart({
           <p>暂无使用数据</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <svg 
-            width={chartWidth} 
-            height={chartHeight}
-            className="w-full h-auto"
-            style={{ minWidth: period === 'month' ? '900px' : '600px' }}
-          >
+        <>
+          <div className="overflow-x-auto">
+            <svg
+              width={chartWidth}
+              height={chartHeight}
+              className="w-full h-auto"
+              style={{ minWidth: period === 'month' ? '900px' : '600px' }}
+            >
             {/* 背景网格 */}
             <defs>
               <pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse">
@@ -175,13 +188,13 @@ export default function UsageChart({
                   stroke="#9ca3af" 
                   strokeWidth="1"
                 />
-                <text 
-                  x={padding.left - 10} 
-                  y={padding.top + tick.y + 4} 
-                  textAnchor="end" 
+                <text
+                  x={padding.left - 10}
+                  y={padding.top + tick.y + 4}
+                  textAnchor="end"
                   className="fill-muted-foreground text-xs"
                 >
-                  {tick.value}分
+                  {tick.value}{tick.unit}
                 </text>
                 {/* 水平网格线 */}
                 <line 
@@ -224,7 +237,7 @@ export default function UsageChart({
                           textAnchor="middle" 
                           className="fill-foreground text-xs font-medium"
                         >
-                          {point.minutes}
+                          {point.minutes >= 60 ? `${(point.minutes / 60).toFixed(1)}时` : point.minutes}
                         </text>
                       )}
                     </g>
@@ -270,7 +283,7 @@ export default function UsageChart({
                             textAnchor="middle" 
                             className="fill-foreground text-xs font-medium"
                           >
-                            {point.minutes}
+                            {point.minutes >= 60 ? `${(point.minutes / 60).toFixed(1)}时` : point.minutes}
                           </text>
                         )}
                       </g>
@@ -293,26 +306,27 @@ export default function UsageChart({
               </text>
             ))}
           </svg>
+        </div>
 
-          {/* 图例和统计 */}
+          {/* 图例和统计 - 固定不滚动 */}
           <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded ${chartType === 'bar' ? 'bg-green-500' : 'bg-blue-500'}`} />
+                <div className="w-3 h-3 rounded bg-blue-500" />
                 <span>使用时长</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-red-500" />
+                <div className="w-3 h-3 rounded bg-green-500" />
                 <span>今日</span>
               </div>
             </div>
-            
+
             <div className="text-right">
               <div>平均: {formatMinutes(Math.round(data.reduce((sum, d) => sum + d.minutes, 0) / data.length))}</div>
               <div>最高: {formatMinutes(Math.max(...data.map(d => d.minutes)))}</div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

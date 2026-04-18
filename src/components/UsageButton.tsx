@@ -107,7 +107,7 @@ export default function UsageButton() {
           今日: {formatMinutes(stats.today)}
         </div>
         <div className="text-xs text-muted-foreground">
-          {isTrackingEnabled ? '正在记录' : '未启动'} | 点击查看详情
+          {isTrackingEnabled ? '正在记录' : '还未启动记录'} | 点击查看详情...
         </div>
       </div>
       

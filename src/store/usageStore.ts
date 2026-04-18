@@ -37,6 +37,9 @@ interface UsageStore {
   switchPomodoroMode: () => void;
   updatePomodoroSettings: (settings: Partial<Pick<PomodoroState, 'workDuration' | 'breakDuration' | 'longBreakDuration' | 'cyclesBeforeLongBreak'>>) => void;
   
+  // 清空所有数据
+  clearAllData: () => void;
+
   // 工具方法
   formatTime: (seconds: number) => string;
   formatMinutes: (minutes: number) => string;
@@ -463,6 +466,46 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
         return `${hours} 小时 ${remainingMinutes} 分钟`;
       }
     }
+  },
+
+  clearAllData: () => {
+    // 停止追踪和番茄钟
+    const state = get();
+    if (state.pomodoroInterval) {
+      clearInterval(state.pomodoroInterval);
+    }
+    if ((window as any).usageTrackingInterval) {
+      clearInterval((window as any).usageTrackingInterval);
+      (window as any).usageTrackingInterval = null;
+    }
+
+    // 清除所有 localStorage 中的使用数据
+    localStorage.removeItem('usage_records');
+    localStorage.removeItem('weekly_usage');
+    localStorage.removeItem('monthly_usage');
+    localStorage.removeItem('daily_start_date');
+    localStorage.removeItem('daily_start_time');
+    localStorage.removeItem('pomodoro_current_state');
+    localStorage.removeItem('pomodoro_settings');
+
+    // 重置内存状态
+    set({
+      usageRecords: [],
+      currentSession: null,
+      stats: {
+        today: 0,
+        thisWeek: 0,
+        thisMonth: 0,
+        averageDaily: 0,
+        totalSessions: 0,
+        longestSession: 0
+      },
+      pomodoro: DEFAULT_POMODORO,
+      pomodoroInterval: null,
+      isTrackingEnabled: false,
+      sessionStartTime: 0,
+      dailyStartTime: 0
+    });
   }
 }));
 

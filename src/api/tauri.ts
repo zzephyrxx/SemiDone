@@ -1,18 +1,9 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import type { Task, Settings, CreateTaskRequest, UpdateTaskRequest, TaskStats, ApiResponse } from '../types';
 import * as localStorageApi from './localStorage';
 
 // 检测Tauri是否可用
-let isTauriAvailable = false;
-
-try {
-  // 尝试检测Tauri环境
-  if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-    isTauriAvailable = true;
-  }
-} catch {
-  isTauriAvailable = false;
-}
+const isTauriAvailable = isTauri();
 
 // 如果Tauri不可用，使用localStorage API
 if (!isTauriAvailable) {
@@ -135,7 +126,7 @@ export const dataApi = {
   async importData(jsonData: string): Promise<ApiResponse<boolean>> {
     if (isTauriAvailable) {
       try {
-        return await invoke('import_data', { jsonData });
+        return await invoke('import_data', { jsonData: jsonData });
       } catch (error) {
         console.warn('Tauri API调用失败，使用localStorage fallback:', error);
         return await localStorageApi.dataApi.importData(jsonData);
@@ -158,11 +149,176 @@ export const dataApi = {
   },
 };
 
+// 自启动API
+export const autostartApi = {
+  // 获取自启动状态
+  async getAutostartEnabled(): Promise<ApiResponse<boolean>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('get_autostart_enabled');
+      } catch (error) {
+        console.warn('获取自启动状态失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+
+  // 设置自启动状态
+  async setAutostartEnabled(enabled: boolean): Promise<ApiResponse<boolean>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('set_autostart_enabled', { enabled });
+      } catch (error) {
+        console.warn('设置自启动状态失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+};
+
+// 附件API
+export const attachmentApi = {
+  // 保存附件到文件系统
+  async saveAttachment(
+    taskId: string,
+    attachmentId: string,
+    fileName: string,
+    fileData: string // Base64 encoded
+  ): Promise<ApiResponse<string>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('save_attachment', {
+          taskId,
+          attachmentId,
+          fileName,
+          fileData,
+        });
+      } catch (error) {
+        console.warn('保存附件失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+
+  // 获取附件路径
+  async getAttachmentPath(relativePath: string): Promise<ApiResponse<string>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('get_attachment_path', { relativePath: relativePath });
+      } catch (error) {
+        console.warn('获取附件路径失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+
+  // 获取附件 Base64 数据（用于预览）
+  async getAttachmentAsBase64(relativePath: string): Promise<ApiResponse<string>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('get_attachment_as_base64', { relativePath: relativePath });
+      } catch (error) {
+        console.warn('获取附件数据失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+
+  // 删除附件
+  async deleteAttachment(relativePath: string): Promise<ApiResponse<boolean>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('delete_attachment', { relativePath: relativePath });
+      } catch (error) {
+        console.warn('删除附件失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+
+  // 删除任务的所有附件
+  async deleteTaskAttachments(taskId: string): Promise<ApiResponse<boolean>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('delete_task_attachments', { taskId: taskId });
+      } catch (error) {
+        console.warn('删除任务附件失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+
+  // 通过文件路径打开文件
+  async openFileByPath(filePath: string): Promise<ApiResponse<boolean>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('open_file_by_path', { filePath: filePath });
+      } catch (error) {
+        console.warn('打开文件失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+
+  // 在文件管理器中打开文件夹
+  async openFolderInExplorer(folderPath: string): Promise<ApiResponse<boolean>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('open_folder_in_explorer', { folderPath: folderPath });
+      } catch (error) {
+        console.warn('打开文件夹失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+};
+
+// 数据目录API
+export const dataDirApi = {
+  // 获取当前数据目录
+  async getDataDir(): Promise<ApiResponse<string>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('get_data_dir_path');
+      } catch (error) {
+        console.warn('获取数据目录失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+
+  // 设置数据目录
+  async setDataDir(path: string): Promise<ApiResponse<boolean>> {
+    if (isTauriAvailable) {
+      try {
+        return await invoke('set_data_dir', { path });
+      } catch (error) {
+        console.warn('设置数据目录失败:', error);
+        return { success: false, error: String(error) };
+      }
+    }
+    return { success: false, error: 'Tauri不可用' };
+  },
+};
+
 // 统一的API对象
 export const api = {
   tasks: taskApi,
   settings: settingsApi,
   data: dataApi,
+  autostart: autostartApi,
+  attachment: attachmentApi,
+  dataDir: dataDirApi,
 };
 
 export default api;

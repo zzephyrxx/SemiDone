@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "identifier": "com.tauri.windows-todo",
   "productName": "事半·SemiDone",
-  "version": "3.0.0",
+  "version": "4.0.13",
   "build": {
     "beforeDevCommand": "vite",
     "beforeBuildCommand": "npm run build",
@@ -42,10 +42,12 @@
             "core:resources:default",
             "core:menu:default",
             "core:tray:default",
+            "dialog:default",
             "fs:read-all",
             "fs:write-all",
             "fs:allow-mkdir",
-            "fs:allow-remove"
+            "fs:allow-remove",
+            "autostart:default"
           ]
         }
       ]

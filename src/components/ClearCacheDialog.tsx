@@ -77,7 +77,7 @@ export default function ClearCacheDialog({ isOpen, onClose, onConfirm }: ClearCa
                 <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-red-900 mb-1">
-                    ⚠️ 危险操作警告
+                    危险操作警告
                   </h3>
                   <p className="text-sm text-red-800">
                     此操作将<strong>永久删除</strong>所有待办待办、设置和数据，且<strong>无法恢复</strong>！

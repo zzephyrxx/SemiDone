@@ -14,6 +14,8 @@ const DEFAULT_SETTINGS: Settings = {
   autoSave: true,
   isPinned: false,
   isCollapsed: false,
+  collapseMode: 'expanded',
+  useCapsuleMode: false,
 };
 
 // 辅助函数：安全的JSON解析

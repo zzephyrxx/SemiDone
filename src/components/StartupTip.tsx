@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { X, Sparkles, BarChart3, Timer, TrendingUp, Zap, Pin, ChevronsUpDown, Settings, Target } from 'lucide-react';
+import { X, Sparkles, Repeat, Paperclip, Rocket, TrendingUp, ArrowUpDown, FolderOpen, FileSearch } from 'lucide-react';
 
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '4.0.13';
 
 const StartupTip: React.FC = () => {
   const [show, setShow] = useState(false);
@@ -33,9 +33,30 @@ const StartupTip: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <style>{`
+        .startup-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .startup-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .startup-scroll::-webkit-scrollbar-thumb {
+          background: rgba(156, 163, 175, 0.3);
+          border-radius: 4px;
+        }
+        .startup-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(156, 163, 175, 0.5);
+        }
+        .dark .startup-scroll::-webkit-scrollbar-thumb {
+          background: rgba(156, 163, 175, 0.2);
+        }
+        .dark .startup-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(156, 163, 175, 0.4);
+        }
+      `}</style>
       <div className="relative w-[460px] max-h-[85vh] rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in flex flex-col">
         {/* 头部 */}
-        <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 px-6 py-5 flex items-center justify-between flex-shrink-0">
+        <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 px-6 py-5 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <Sparkles className="w-7 h-7 text-white" />
@@ -54,72 +75,73 @@ const StartupTip: React.FC = () => {
         </div>
 
         {/* 内容区域 - 可滚动 */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1">
-          {/* 新版本更新 */}
-          <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
-            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-              <span className="text-lg">🎉</span> v{APP_VERSION} 更新内容
-            </h4>
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 startup-scroll">
+          {/* 新功能 */}
+          <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">v{APP_VERSION} 新功能</h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <BarChart3 className="w-4 h-4 text-emerald-500" />
-                <span>独立统计页面</span>
+                <Rocket className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <span>开机自启动</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Timer className="w-4 h-4 text-teal-500" />
-                <span>番茄钟聚焦模式</span>
+                <TrendingUp className="w-4 h-4 text-teal-500 flex-shrink-0" />
+                <span>统计面板折叠</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <TrendingUp className="w-4 h-4 text-cyan-500" />
-                <span>图表趋势分析</span>
+                <Repeat className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <span>周期循环任务</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Zap className="w-4 h-4 text-yellow-500" />
-                <span>状态持久化</span>
+                <ArrowUpDown className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                <span>任务排序</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Target className="w-4 h-4 text-blue-500" />
-                <span>月视图优化</span>
+                <Paperclip className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                <span>支持更多类型附件</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>界面体验升级</span>
+                <FolderOpen className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <span>自定义数据存储路径</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                <FileSearch className="w-4 h-4 text-cyan-500 flex-shrink-0" />
+                <span>附件可快捷打开</span>
               </div>
             </div>
           </div>
 
-          {/* 使用说明 */}
+          {/* 功能优化 */}
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">📖 使用说明</h4>
-            <div className="space-y-2.5 text-sm text-gray-700 dark:text-gray-300">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
-                  <X className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
-                </div>
-                <span>完全关闭应用</span>
-              </div>           
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                  <Pin className="w-3.5 h-3.5 text-amber-500" />
-                </div>
-                <span>窗口置顶：保持在最前端</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                  <ChevronsUpDown className="w-3.5 h-3.5 text-blue-500" />
-                </div>
-                <span>窗口折叠：只显示标题栏</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
-                  <Settings className="w-3.5 h-3.5 text-purple-500" />
-                </div>
-                <span>设置页面：主题/透明/缓存</span>
-              </div>
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">功能优化</h4>
+            <div className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+              <p>- 优化了待办数量增多时的页面卡顿问题</p>
+              <p>- 优化了折叠状态下的显示效果</p>
+              <p>- 任务进展面板展示内容优化</p>
+              <p>- 使用时长统计图标UI优化</p>
+              <p>- 移除了无效的自动保存开关</p>
             </div>
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              💡 个人制作水平有限，如果遇到问题欢迎留言反馈!
-            </p>
+          </div>
+
+          {/* Bug修复 */}
+          <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Bug修复</h4>
+            <div className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+              <p>- 修复了自定义数据目录重启后路径丢失的问题</p>
+              <p>- 修复了附件无法预览/打开的问题</p>
+              <p>- 修复了周报/月报导出无法指定下载路径的问题</p>
+              <p>- 修复了清除数据无效的问题</p>
+              <p>- 修复了部分情况下UI显示遮挡的问题</p>
+              <p>- 修复了使用趋势图表纵轴刻度被遮挡的问题</p>
+              <p>- 修复了周/月视图下日期错误问题</p>
+              <p>- 修复了统计图表下方统计信息随图表滚动的问题</p>
+              <p>- 其他若干Bug修复</p>
+            </div>
+          </div>
+
+          {/* 提示 */}
+          <div className="px-4 py-2.5 text-xs text-gray-500 dark:text-gray-400 text-center">
+            博主水平有限，如果遇到问题欢迎反馈!
           </div>
         </div>
 
@@ -138,7 +160,7 @@ const StartupTip: React.FC = () => {
           </label>
           <button
             onClick={handleClose}
-            className="px-6 py-2 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-lg font-medium hover:opacity-90 transition-all shadow-lg hover:shadow-xl"
+            className="px-6 py-2 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white rounded-lg font-medium hover:opacity-90 transition-all shadow-lg hover:shadow-xl"
           >
             开始使用
           </button>

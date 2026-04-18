@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use storage::Storage;
 use single_instance::ensure_single_instance;
 use tauri::{Manager, menu::{Menu, MenuItem}, tray::{TrayIconBuilder, TrayIconEvent}, WindowEvent};
+use tauri_plugin_autostart::MacosLauncher;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -43,9 +44,23 @@ pub fn run() {
       commands::clear_all_data,
       commands::exit_app,
       commands::get_data_dir_path,
-      commands::open_file_with_system
+      commands::open_file_with_system,
+      commands::open_file_by_path,
+      commands::open_folder_in_explorer,
+      commands::get_autostart_enabled,
+      commands::set_autostart_enabled,
+      commands::save_attachment,
+      commands::get_attachment_path,
+      commands::get_attachment_as_base64,
+      commands::delete_attachment,
+      commands::delete_task_attachments,
+      commands::set_data_dir,
+      commands::migrate_data_dir
     ])
     .plugin(tauri_plugin_fs::init())
+    .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
+    .plugin(tauri_plugin_notification::init())
     .setup(|app| {
       // 创建托盘右键菜单
       let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
@@ -188,7 +203,7 @@ pub fn run() {
       
       // 关键修复：将托盘对象保存到应用状态中，防止被释放
       app.manage(tray);
-      println!("✅ 托盘对象已保存到应用状态，生命周期已绑定到应用\n");
+      println!("托盘对象已保存到应用状态，生命周期已绑定到应用\n");
       
       if cfg!(debug_assertions) {
         app.handle().plugin(
