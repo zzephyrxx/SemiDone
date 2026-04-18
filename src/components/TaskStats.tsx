@@ -1,17 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Circle, AlertTriangle, Clock, TrendingUp, Target } from 'lucide-react';
+import { CheckCircle, Circle, AlertTriangle, Clock, TrendingUp, Target, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
 
-export default function TaskStats() {
+interface TaskStatsProps {
+  collapsed?: boolean; // 由父组件控制折叠状态
+  onCollapsedChange?: (collapsed: boolean) => void;
+}
+
+// 折叠状态的小按钮（独立组件，方便在同一行渲染）
+export function StatsCollapsedButton({ collapsed, onCollapsedChange }: TaskStatsProps) {
+  const { stats } = useTaskStore();
+  const [isCollapsed, setIsCollapsed] = useState(collapsed ?? true);
+
+  useEffect(() => {
+    if (collapsed !== undefined) {
+      setIsCollapsed(collapsed);
+    }
+  }, [collapsed]);
+
+  const handleToggle = () => {
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    onCollapsedChange?.(newCollapsed);
+  };
+
+  return (
+    <button
+      onClick={handleToggle}
+      className="px-4 py-4 bg-background border border-border rounded-lg hover:bg-accent transition-colors flex items-center gap-2 shadow-sm flex-shrink-0"
+      title="展开统计面板"
+    >
+      <TrendingUp className="w-4 h-4 text-primary" />
+      <span className="text-sm font-medium text-foreground">
+        {stats.total > 0 ? `${stats.completed}/${stats.total}` : '0/0'}
+      </span>
+      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+    </button>
+  );
+}
+
+export default function TaskStats({ collapsed = false, onCollapsedChange }: TaskStatsProps) {
   const { stats } = useTaskStore();
   const { settings } = useSettingsStore();
   const [currentMotivationIndex, setCurrentMotivationIndex] = useState(0);
+  const [isCollapsed, setIsCollapsed] = useState(collapsed);
+
+  useEffect(() => {
+    setIsCollapsed(collapsed);
+  }, [collapsed]);
 
   const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
-  const pendingRate = stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0;
 
-  // 励志短句数组
   const motivationalQuotes = [
     '完成一项任务，就清除一个待办障碍 🎯',
     '按计划推进，时间会给出答案 ✨',
@@ -40,11 +80,10 @@ export default function TaskStats() {
     '认真对待每一项任务，是成长的基础'
   ];
 
-  // 自动轮播励志短句
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentMotivationIndex((prev) => (prev + 1) % motivationalQuotes.length);
-    }, 5000); // 每3秒切换一次
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [motivationalQuotes.length]);
@@ -53,7 +92,7 @@ export default function TaskStats() {
     {
       label: '总任务',
       value: stats.total,
-      icon: <Target className="w-7 h-7" />,
+      icon: <Target className="w-6 h-6" />,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-200'
@@ -61,7 +100,7 @@ export default function TaskStats() {
     {
       label: '已完成',
       value: stats.completed,
-      icon: <CheckCircle className="w-7 h-7" />,
+      icon: <CheckCircle className="w-6 h-6" />,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
       borderColor: 'border-green-200'
@@ -69,7 +108,7 @@ export default function TaskStats() {
     {
       label: '待完成',
       value: stats.pending,
-      icon: <Circle className="w-7 h-7" />,
+      icon: <Circle className="w-6 h-6" />,
       color: 'text-gray-600',
       bgColor: 'bg-gray-50',
       borderColor: 'border-gray-200'
@@ -77,7 +116,7 @@ export default function TaskStats() {
     {
       label: '已逾期',
       value: stats.overdue,
-      icon: <AlertTriangle className="w-7 h-7" />,
+      icon: <AlertTriangle className="w-6 h-6" />,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
       borderColor: 'border-red-200'
@@ -85,7 +124,7 @@ export default function TaskStats() {
     {
       label: '今日到期',
       value: stats.today,
-      icon: <Clock className="w-7 h-7" />,
+      icon: <Clock className="w-6 h-6" />,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-200'
@@ -93,7 +132,6 @@ export default function TaskStats() {
   ];
 
   const getMotivationalMessage = () => {
-    // 根据完成情况显示不同的消息
     if (completionRate === 100) {
       return settings.theme === 'pink' ? '太棒了！所有任务都完成了 ✨' : '出色！任务全部完成';
     } else if (completionRate >= 80) {
@@ -101,48 +139,43 @@ export default function TaskStats() {
     } else if (stats.total === 0) {
       return settings.theme === 'pink' ? '今天还没有任务，要不要添加一些？' : '暂无任务';
     } else {
-      // 显示轮播的励志短句
       return motivationalQuotes[currentMotivationIndex];
     }
   };
 
+  const handleToggleCollapse = () => {
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    onCollapsedChange?.(newCollapsed);
+  };
+
+  // 折叠状态返回null，让父组件决定如何渲染
+  if (isCollapsed) {
+    return null;
+  }
+
+  // 展开状态显示完整面板
   return (
     <div className="bg-card border border-border rounded-lg p-4 stats-card">
-      {/* 标题和完成率 */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <TrendingUp className="w-9 h-9 text-primary" />
-          <h2 className="text-2xl font-semibold text-foreground"> {/* 字体大一些 */}
-            {settings.theme === 'light' ? '任务统计' : '任务进展'}
+          <h2 className="text-2xl font-semibold text-foreground">
+            任务进展
           </h2>
         </div>
 
-        {stats.total > 0 && (
-          <div className="text-right">
-            <div className="text-5xl font-bold text-primary">{completionRate}%</div>
-            <div className="text-xs text-muted-foreground">完成率</div>
-          </div>
-        )}
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleToggleCollapse}
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            title="折叠统计面板"
+          >
+            <ChevronUp className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
-      {/* 进度条 */}
-      {stats.total > 0 && (
-        <div className="mb-4">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1">
-            <span>完成进度</span>
-            <span>{stats.completed} / {stats.total}</span>
-          </div>
-
-          <div className="bg-background rounded-full h-2 overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-500 ease-out progress-bar"
-              style={{ width: `${completionRate}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 统计卡片 */}
       <div className="grid grid-cols-5 gap-1.5 mb-4">
         {statItems.map((item, index) => (
           <div
@@ -153,18 +186,16 @@ export default function TaskStats() {
             `}
           >
             <div className="flex flex-col space-y-1">
-              {/* Top row: icon left, number centered */}
               <div className="flex items-center justify-between">
-                <div className={`p-1 rounded-md ${item.bgColor} flex-shrink-0`}>
+                <div className={`p-1 rounded-md ${item.bgColor} flex-shrink-0 -ml-1`}>
                   <div className={`h-6 w-6 ${item.color}`}>
                     {item.icon}
                   </div>
                 </div>
                 <div className="flex-1 text-center">
-                  <p className={`text-xl font-bold ${item.color} leading-tight`}>{item.value}</p>
+                  <p className={`text-lg font-bold ${item.color} leading-tight`}>{item.value}</p>
                 </div>
               </div>
-              {/* Bottom row: category */}
               <div className="text-center">
                 <p className="text-xs font-medium text-muted-foreground leading-tight">{item.label}</p>
               </div>
@@ -173,8 +204,7 @@ export default function TaskStats() {
         ))}
       </div>
 
-      {/* 激励信息 */}
-      <div className="text-right"> {/* 将 text-center 改为 text-right 实现靠右对齐 */}
+      <div className="text-right">
         <div className="text-xs text-muted-foreground transition-all duration-500 ease-in-out">
           {getMotivationalMessage()}
         </div>

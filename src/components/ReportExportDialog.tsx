@@ -8,7 +8,9 @@ import {
   getMonthRange,
   type ReportOptions 
 } from '../utils/reportGenerator';
-import { invoke } from '@tauri-apps/api/core';
+import { isTauri } from '@tauri-apps/api/core';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { toast } from 'sonner';
 
 interface ReportExportDialogProps {
@@ -65,18 +67,36 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
       const periodText = reportType === 'week' ? '周报' : '月报';
       const fileName = `事半SemiDone_${periodText}_${formatDate(dateRange.start)}_${formatDate(dateRange.end)}.md`;
 
-      // 使用浏览器API下载文件
-      const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.style.display = 'none';
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      if (isTauri()) {
+        const filePath = await save({
+          defaultPath: fileName,
+          filters: [
+            {
+              name: 'Markdown',
+              extensions: ['md']
+            }
+          ]
+        });
+
+        if (!filePath) {
+          toast.info('已取消导出');
+          return;
+        }
+
+        await writeTextFile(filePath, markdownContent);
+      } else {
+        const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
 
       toast.success(`${periodText}导出成功！`);
       onClose();

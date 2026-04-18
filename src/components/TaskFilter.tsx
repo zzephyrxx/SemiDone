@@ -1,12 +1,28 @@
-import React from 'react';
-import { Search, Filter, CheckCircle, Circle, Clock, AlertTriangle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, Filter, CheckCircle, Circle, Clock, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
-import type { TaskFilter as TaskFilterType } from '../types';
+import type { TaskFilter as TaskFilterType, SortField, SortOrder } from '../types';
 
 export default function TaskFilter() {
-  const { filter, searchQuery, setFilter, setSearchQuery, stats } = useTaskStore();
+  const { filter, searchQuery, setFilter, setSearchQuery, stats, sortConfig, setSortConfig } = useTaskStore();
   const { settings } = useSettingsStore();
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowSortMenu(false);
+      }
+    };
+
+    if (showSortMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSortMenu]);
 
   const filterOptions: { value: TaskFilterType; label: string; icon: React.ReactNode; count?: number }[] = [
     {
@@ -41,41 +57,48 @@ export default function TaskFilter() {
     }
   ];
 
+  const sortOptions: { field: SortField; label: string }[] = [
+    { field: 'dueDate', label: '截止时间' },
+    { field: 'priority', label: '优先级' },
+    { field: 'createdAt', label: '创建时间' },
+  ];
+
+  const getSortLabel = (field: SortField): string => {
+    return sortOptions.find(opt => opt.field === field)?.label || '';
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortConfig.field !== field) {
+      return <ArrowUpDown className="w-3 h-3" />;
+    }
+    return sortConfig.order === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />;
+  };
+
+  const handleSortChange = (field: SortField) => {
+    if (sortConfig.field === field) {
+      // 如果点击的是当前字段，切换方向
+      setSortConfig({ field, order: sortConfig.order === 'asc' ? 'desc' : 'asc' });
+    } else {
+      // 如果点击的是新字段，默认降序
+      setSortConfig({ field, order: 'desc' });
+    }
+    setShowSortMenu(false);
+  };
+
   const getFilterButtonClass = (filterValue: TaskFilterType) => {
     const isActive = filter === filterValue;
     const baseClass = "flex items-center space-x-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200";
-    
+
     if (isActive) {
       return `${baseClass} bg-primary text-primary-foreground shadow-sm`;
     }
-    
-    return `${baseClass} text-muted-foreground hover:text-foreground hover:bg-muted`;
-  };
 
-  const getCountBadgeClass = (filterValue: TaskFilterType, count: number) => {
-    if (count === 0) return "hidden";
-    
-    const isActive = filter === filterValue;
-    
-    if (isActive) {
-      return "ml-1 px-1.5 py-0.5 bg-primary-foreground/20 text-primary-foreground text-xs rounded-full";
-    }
-    
-    // 特殊颜色处理
-    if (filterValue === 'overdue' && count > 0) {
-      return "ml-1 px-1.5 py-0.5 bg-red-100 text-red-700 text-xs rounded-full";
-    }
-    
-    if (filterValue === 'today' && count > 0) {
-      return "ml-1 px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full";
-    }
-    
-    return "ml-1 px-1.5 py-0.5 bg-muted text-muted-foreground text-xs rounded-full";
+    return `${baseClass} text-muted-foreground hover:text-foreground hover:bg-muted`;
   };
 
   return (
     <div className="space-y-2">
-      {/* 筛选按钮 */}
+      {/* 筛选按钮行 */}
       <div className="flex flex-wrap gap-1">
         {filterOptions.map((option) => (
           <button
@@ -87,12 +110,6 @@ export default function TaskFilter() {
               {option.icon}
               <span className="ml-1.5">{option.label}</span>
             </span>
-            
-            {option.count !== undefined && (
-              <span className={getCountBadgeClass(option.value, option.count)}>
-                {option.count}
-              </span>
-            )}
           </button>
         ))}
       </div>
@@ -104,12 +121,54 @@ export default function TaskFilter() {
         </div>
       )}
 
-      {/* 筛选结果统计 */}
-      {filter !== 'all' && (
+      {/* 筛选结果统计 + 排序 */}
+      <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {filterOptions.find(opt => opt.value === filter)?.label} · {filterOptions.find(opt => opt.value === filter)?.count || 0} 个待办
+          {filter === 'all' ? (
+            <>全部 · {stats.total || 0} 个待办</>
+          ) : (
+            <>{filterOptions.find(opt => opt.value === filter)?.label} · {filterOptions.find(opt => opt.value === filter)?.count || 0} 个待办</>
+          )}
         </div>
-      )}
+
+        {/* 排序按钮 */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowSortMenu(!showSortMenu)}
+            className="flex items-center space-x-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            <ArrowUpDown className="w-4 h-4" />
+            <span>排序</span>
+            <span className="text-primary">
+              {getSortLabel(sortConfig.field)}
+            </span>
+            {getSortIcon(sortConfig.field)}
+          </button>
+
+          {/* 排序下拉菜单 */}
+          {showSortMenu && (
+            <div className="absolute top-full right-0 mt-1 p-2 bg-background border border-border rounded-lg shadow-xl z-[9999] min-w-[160px]">
+              <div className="text-xs font-medium text-muted-foreground mb-2 px-2">排序方式</div>
+              {sortOptions.map((option) => (
+                <button
+                  key={option.field}
+                  onClick={() => handleSortChange(option.field)}
+                  className={`
+                    w-full flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors
+                    ${sortConfig.field === option.field
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-foreground hover:bg-muted'
+                    }
+                  `}
+                >
+                  <span>{option.label}</span>
+                  {getSortIcon(option.field)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

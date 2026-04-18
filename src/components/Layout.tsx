@@ -27,18 +27,15 @@ export default function Layout() {
     if (settings.collapseMode === 'bar') {
       const quotes = getQuotesByTheme(settings.theme);
       setCurrentQuote(quotes[quoteIndex % quotes.length]);
-      
+
       const timer = setInterval(() => {
         setQuoteIndex((prev) => (prev + 1) % quotes.length);
       }, 5000); // 5秒切换一次
-      
+
       return () => clearInterval(timer);
-    } else {
-      // 展开时设置新的随机索引
-      const quotes = getQuotesByTheme(settings.theme);
-      setQuoteIndex(Math.floor(Math.random() * quotes.length));
     }
-  }, [settings.collapseMode, settings.theme, quoteIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.collapseMode, settings.theme]);
 
   const handleCloseApp = () => {
     setShowCloseConfirm(true);
@@ -159,7 +156,7 @@ export default function Layout() {
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10" />
-            <h1 className="font-bold text-lg text-foreground">事半·SemiDone</h1>
+            <h1 className="font-bold text-xl text-foreground" style={{fontFamily:'Poppins'}}>SemiDone</h1>
           </Link>
         )}
         
@@ -167,31 +164,21 @@ export default function Layout() {
           className="flex items-center gap-1 animate-fade-in"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          {/* 用户头像 */}
+          {/* 用户头像 - 条状模式下隐藏 */}
+          {settings.collapseMode !== 'bar' && (
           <button 
             onClick={() => {
-              if (settings.collapseMode === 'bar') {
-                // 条状模式下点击头像：先展开窗口，再打开资料设置
-                toggleIsCollapsed();
-                // 延迟打开弹窗，等待窗口展开动画完成
-                setTimeout(() => {
-                  setIsUserProfileOpen(true);
-                }, 300);
-              } else {
-                // 展开状态下点击头像打开资料设置
-                setIsUserProfileOpen(true);
-              }
+              setIsUserProfileOpen(true);
             }}
             className="flex items-center gap-2 mr-2 p-1 rounded-lg hover:bg-accent transition-colors"
-            title={settings.collapseMode === 'bar' ? '展开并打开资料设置' : '用户资料'}
+            title="用户资料"
           >
             {getUserAvatarDisplay()}
-            {settings.collapseMode === 'expanded' && (
-              <span className="text-sm text-muted-foreground hidden sm:block">
-                {settings.username || '用户'}
-              </span>
-            )}
+            <span className="text-sm text-muted-foreground hidden sm:block">
+              {settings.username || '用户'}
+            </span>
           </button>
+          )}
           
           {/* 折叠按钮 */}
           <button

@@ -124,20 +124,40 @@ body.transparent-mode .overflow-y-auto {
   background-color: hsla(var(--background) / var(--window-opacity)) !important;
 }
 
+/* 滚动条样式 - 通用（浅色主题） */
+::-webkit-scrollbar {
+  width: 6px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(155, 155, 155, 0.5);
+}
+
 /* 深色主题滚动条样式 */
 .dark ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
   background-color: transparent;
 }
 
 .dark ::-webkit-scrollbar-track {
   background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
@@ -847,4 +867,36 @@ body.transparent-mode [role="alertdialog"] {
 
 .dark .text-orange-600 {
   color: rgb(251, 146, 60) !important;
+}
+
+/* 新建待办弹窗滚动条美化 - 仅在溢出时显示 */
+.quick-add-card {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 155, 155, 0.3) transparent;
+}
+
+.quick-add-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.quick-add-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.quick-add-card::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.3);
+  border-radius: 3px;
+}
+
+.quick-add-card::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(155, 155, 155, 0.5);
+}
+
+/* 暗色模式下滚动条颜色 */
+.dark .quick-add-card::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.dark .quick-add-card::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5);
 }

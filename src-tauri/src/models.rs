@@ -8,11 +8,16 @@ pub struct Attachment {
     pub size: u64,
     #[serde(rename = "type")]
     pub file_type: String,
-    pub data: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(rename = "createdAt")]
     pub created_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Priority {
     High,
     Medium,
@@ -40,6 +45,46 @@ impl Priority {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RecurrenceType {
+    Day,
+    Week,
+    Month,
+}
+
+#[allow(dead_code)]
+impl RecurrenceType {
+    pub fn to_string(&self) -> String {
+        match self {
+            RecurrenceType::Day => "day".to_string(),
+            RecurrenceType::Week => "week".to_string(),
+            RecurrenceType::Month => "month".to_string(),
+        }
+    }
+
+    pub fn from_string(s: &str) -> Self {
+        match s {
+            "day" => RecurrenceType::Day,
+            "week" => RecurrenceType::Week,
+            "month" => RecurrenceType::Month,
+            _ => RecurrenceType::Day,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecurrenceRule {
+    #[serde(rename = "type")]
+    pub recurrence_type: RecurrenceType,
+    pub interval: u32,
+    #[serde(rename = "daysOfWeek", skip_serializing_if = "Option::is_none")]
+    pub days_of_week: Option<Vec<u32>>,  // 周几重复 (0=周日, 1=周一...6=周六)
+    #[serde(rename = "daysOfMonth", skip_serializing_if = "Option::is_none")]
+    pub days_of_month: Option<Vec<u32>>, // 每月几天 (1-31)，支持多选
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Theme {
     Light,
     Pink,
@@ -70,15 +115,33 @@ pub struct Task {
     pub description: Option<String>,
     pub completed: bool,
     pub priority: Priority,
+    #[serde(rename = "dueDate")]
     pub due_date: Option<String>,
+    #[serde(rename = "createdAt")]
     pub created_at: String,
+    #[serde(rename = "updatedAt")]
     pub updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recurrence: Option<RecurrenceRule>,
+    #[serde(rename = "isRecurrenceChild", default)]
+    pub is_recurrence_child: bool,
+    #[serde(rename = "parentTaskId", skip_serializing_if = "Option::is_none")]
+    pub parent_task_id: Option<String>,
 }
 
 impl Task {
-    pub fn new(title: String, description: Option<String>, priority: Option<Priority>, due_date: Option<String>, attachments: Option<Vec<Attachment>>) -> Self {
+    pub fn new(
+        title: String,
+        description: Option<String>,
+        priority: Option<Priority>,
+        due_date: Option<String>,
+        attachments: Option<Vec<Attachment>>,
+        recurrence: Option<RecurrenceRule>,
+        is_recurrence_child: bool,
+        parent_task_id: Option<String>,
+    ) -> Self {
         let now = Utc::now().to_rfc3339();
         Self {
             id: uuid::Uuid::new_v4().to_string(),
@@ -90,6 +153,9 @@ impl Task {
             created_at: now.clone(),
             updated_at: now,
             attachments,
+            recurrence,
+            is_recurrence_child,
+            parent_task_id,
         }
     }
 
@@ -112,6 +178,10 @@ pub struct Settings {
     pub username: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar: Option<String>,
+    #[serde(rename = "autoStart", default)]
+    pub auto_start: bool,
+    #[serde(rename = "dataDir", skip_serializing_if = "Option::is_none")]
+    pub data_dir: Option<String>,
 }
 
 impl Default for Settings {
@@ -124,6 +194,8 @@ impl Default for Settings {
             is_collapsed: false,
             username: None,
             avatar: None,
+            auto_start: false,
+            data_dir: None,
         }
     }
 }
@@ -133,8 +205,11 @@ pub struct CreateTaskRequest {
     pub title: String,
     pub description: Option<String>,
     pub priority: Option<String>,
+    #[serde(rename = "dueDate")]
     pub due_date: Option<String>,
     pub attachments: Option<Vec<Attachment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recurrence: Option<RecurrenceRule>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -143,8 +218,15 @@ pub struct UpdateTaskRequest {
     pub description: Option<String>,
     pub completed: Option<bool>,
     pub priority: Option<String>,
+    #[serde(rename = "dueDate")]
     pub due_date: Option<String>,
     pub attachments: Option<Vec<Attachment>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recurrence: Option<RecurrenceRule>,
+    #[serde(rename = "isRecurrenceChild", default)]
+    pub is_recurrence_child: bool,
+    #[serde(rename = "parentTaskId", skip_serializing_if = "Option::is_none")]
+    pub parent_task_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -152,8 +234,13 @@ pub struct TaskStats {
     pub total: usize,
     pub completed: usize,
     pub pending: usize,
+    pub overdue: usize,
+    pub today: usize,
+    #[serde(rename = "highPriority")]
     pub high_priority: usize,
+    #[serde(rename = "mediumPriority")]
     pub medium_priority: usize,
+    #[serde(rename = "lowPriority")]
     pub low_priority: usize,
 }
 

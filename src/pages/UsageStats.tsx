@@ -36,14 +36,21 @@ export default function UsageStats() {
 
     if (selectedPeriod === 'week') {
       const result = [];
-      for (let i = 6; i >= 0; i--) {
+      // 获取本周一到现在
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0=周日, 1=周一...
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // 周一偏移
+
+      for (let i = 0; i < 7; i++) {
         const date = new Date();
-        date.setDate(date.getDate() - i);
+        date.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + i);
+        date.setHours(12, 0, 0, 0); // 中午避免时区问题
         const dateStr = date.toISOString().split('T')[0];
+        const weekday = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i];
         result.push({
           date: dateStr,
           minutes: weekData[dateStr] || 0,
-          dayName: date.toLocaleDateString('zh-CN', { weekday: 'short' })
+          dayName: weekday
         });
       }
       return result;
@@ -56,7 +63,8 @@ export default function UsageStats() {
       const daysInMonth = new Date(year, month + 1, 0).getDate();
 
       for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
+        // 使用月初中午避免时区问题导致日期偏移到前一天
+        const date = new Date(year, month, day, 12, 0, 0);
         const dateStr = date.toISOString().split('T')[0];
         result.push({
           date: dateStr,
@@ -161,7 +169,7 @@ export default function UsageStats() {
                   : 'text-muted-foreground hover:text-foreground'
                 }`}
             >
-              📅 周视图
+              📊 周视图
             </button>
             <button
               onClick={() => setSelectedPeriod('month')}
@@ -170,7 +178,7 @@ export default function UsageStats() {
                   : 'text-muted-foreground hover:text-foreground'
                 }`}
             >
-              📊 月视图
+              📅 月视图
             </button>
           </div>
         </div>
@@ -183,27 +191,6 @@ export default function UsageStats() {
           formatMinutes={formatMinutes}
           period={selectedPeriod}
         />
-
-        {/* 使用建议 */}
-        {stats.today > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-medium text-blue-800 mb-2">💡 使用分析</h3>
-            <div className="text-sm text-blue-700 space-y-1">
-              {stats.today >= 120 && (
-                <div>• 🎉 今日使用时间超过2小时，您对效率管理很重视！</div>
-              )}
-              {stats.averageDaily < 30 && stats.today > stats.averageDaily * 1.5 && (
-                <div>• 📈 今日使用时间超过平均水平，保持这种积极性！</div>
-              )}
-              {stats.thisWeek > stats.thisMonth * 0.3 && (
-                <div>• 🔥 本周使用频率很高，您正在培养良好的任务管理习惯</div>
-              )}
-              {stats.today > 60 && (
-                <div>• ⏰ 建议结合番茄钟技术，让专注时间更高效</div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

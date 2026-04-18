@@ -11,6 +11,7 @@ src-tauri/target/
 src-tauri/gen/
 
 # Deployment
+release/
 .vercel/
 .netlify/
 
@@ -19,6 +20,7 @@ src-tauri/gen/
 *.pptx
 *.docx
 start.txt
+CLAUDE.md
 
 # OS generated files
 .DS_Store

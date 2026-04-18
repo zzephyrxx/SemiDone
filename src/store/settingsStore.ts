@@ -8,7 +8,7 @@ interface SettingsState {
   // 状态
   settings: Settings;
   loading: boolean;
-  
+
   // 操作
   loadSettings: () => Promise<void>;
   updateSettings: (updates: Partial<Settings>) => Promise<void>;
@@ -21,6 +21,7 @@ interface SettingsState {
   resetSettings: () => Promise<void>;
   setTransparency: (enabled: boolean, level?: number) => Promise<void>;
   applyTransparency: () => Promise<void>;
+  toggleAutoStart: () => Promise<void>;
 }
 
 const defaultSettings: Settings = {
@@ -35,6 +36,7 @@ const defaultSettings: Settings = {
   transparentLevel: 100,
   isEdgeSnapped: false,
   edgePosition: 'right',
+  autoStart: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(devtools(
@@ -427,6 +429,36 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           }
         } catch (error) {
           console.error('Failed to apply transparency:', error);
+        }
+      },
+
+      toggleAutoStart: async () => {
+        const currentSettings = get().settings;
+        const newAutoStartState = !currentSettings.autoStart;
+        console.log('[Autostart] toggleAutoStart called, new state:', newAutoStartState);
+
+        // 先更新本地状态
+        const newSettings = {
+          ...currentSettings,
+          autoStart: newAutoStartState,
+        };
+        set({ settings: newSettings });
+
+        try {
+          // 调用 Rust 端设置自启动
+          console.log('[Autostart] calling Rust setAutostartEnabled...');
+          const response = await api.autostart.setAutostartEnabled(newAutoStartState);
+          console.log('[Autostart] response:', response);
+          if (response.success) {
+            // 保存到后端
+            await api.settings.updateSettings(newSettings);
+            toast.success(newAutoStartState ? '已开启开机自启动' : '已关闭开机自启动');
+          } else {
+            toast.error(response.error || '设置自启动失败');
+          }
+        } catch (error) {
+          console.error('[Autostart] Failed to toggle autostart:', error);
+          toast.error('设置自启动失败');
         }
       },
     }),
