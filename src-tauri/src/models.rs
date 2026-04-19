@@ -177,14 +177,38 @@ pub struct Settings {
     pub is_pinned: bool,
     #[serde(rename = "isCollapsed")]
     pub is_collapsed: bool,
+    #[serde(rename = "collapseMode", default = "default_collapse_mode")]
+    pub collapse_mode: String,
+    #[serde(rename = "useCapsuleMode", default)]
+    pub use_capsule_mode: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar: Option<String>,
+    #[serde(rename = "transparentEnabled", default)]
+    pub transparent_enabled: bool,
+    #[serde(rename = "transparentLevel", default = "default_transparent_level")]
+    pub transparent_level: u8,
+    #[serde(rename = "isEdgeSnapped", default)]
+    pub is_edge_snapped: bool,
+    #[serde(rename = "edgePosition", default = "default_edge_position")]
+    pub edge_position: String,
     #[serde(rename = "autoStart", default)]
     pub auto_start: bool,
     #[serde(rename = "dataDir", skip_serializing_if = "Option::is_none")]
     pub data_dir: Option<String>,
+}
+
+fn default_collapse_mode() -> String {
+    "expanded".to_string()
+}
+
+fn default_transparent_level() -> u8 {
+    100
+}
+
+fn default_edge_position() -> String {
+    "right".to_string()
 }
 
 impl Default for Settings {
@@ -195,8 +219,14 @@ impl Default for Settings {
             auto_save: true,
             is_pinned: false,
             is_collapsed: false,
+            collapse_mode: default_collapse_mode(),
+            use_capsule_mode: false,
             username: None,
             avatar: None,
+            transparent_enabled: false,
+            transparent_level: default_transparent_level(),
+            is_edge_snapped: false,
+            edge_position: default_edge_position(),
             auto_start: false,
             data_dir: None,
         }

@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useShallow } from 'zustand/react/shallow';
-import type { TaskFilter as TaskFilterType } from '../types';
+
+import type { Task, TaskFilter as TaskFilterType } from '../types';
 import TaskItem from '../components/TaskItem';
 import TaskStats, { StatsCollapsedButton } from '../components/TaskStats';
 import TaskFilter from '../components/TaskFilter';
@@ -12,8 +12,83 @@ import QuickAddTask from '../components/QuickAddTask';
 import CelebrationAnimation from '../components/CelebrationAnimation';
 import UsageButton from '../components/UsageButton';
 
+const VIRTUAL_ROW_HEIGHT = 95;
+const EDITING_ROW_HEIGHT = 280;
+const VIRTUAL_OVERSCAN = 6;
+
+function VirtualizedTaskList({ tasks, editingTaskId }: { tasks: Task[]; editingTaskId: string | null }) {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
+
+  useEffect(() => {
+    if (!container) return;
+
+    const updateContainerHeight = () => {
+      setContainerHeight(container.clientHeight);
+    };
+
+    updateContainerHeight();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateContainerHeight();
+    });
+
+    resizeObserver.observe(container);
+    window.addEventListener('resize', updateContainerHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateContainerHeight);
+    };
+  }, [container]);
+
+  useEffect(() => {
+    if (container) {
+      container.scrollTop = 0;
+    }
+    setScrollTop(0);
+  }, [container, tasks, editingTaskId]);
+
+  const editingIndex = editingTaskId ? tasks.findIndex((task) => task.id === editingTaskId) : -1;
+  const extraEditingHeight = editingIndex >= 0 ? EDITING_ROW_HEIGHT - VIRTUAL_ROW_HEIGHT : 0;
+  const totalHeight = tasks.length * VIRTUAL_ROW_HEIGHT + extraEditingHeight;
+  const visibleCount = Math.max(1, Math.ceil(containerHeight / VIRTUAL_ROW_HEIGHT));
+  const startIndex = Math.max(0, Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_OVERSCAN);
+  const endIndex = Math.min(tasks.length, startIndex + visibleCount + VIRTUAL_OVERSCAN * 2);
+  const visibleTasks = tasks.slice(startIndex, endIndex);
+  const offsetY = startIndex * VIRTUAL_ROW_HEIGHT + (editingIndex >= 0 && editingIndex < startIndex ? extraEditingHeight : 0);
+
+  return (
+    <div
+      ref={setContainer}
+      className="flex-grow overflow-y-auto pr-1"
+      onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+    >
+      <div style={{ height: totalHeight, position: 'relative' }}>
+        <div
+          className="absolute left-0 right-0"
+          style={{ transform: `translateY(${offsetY}px)` }}
+        >
+          {visibleTasks.map((task) => {
+            const isEditing = task.id === editingTaskId;
+
+            return (
+              <div
+                key={task.id}
+                className={`pr-1 pb-1 ${isEditing ? 'h-[215px]' : 'h-[95px] overflow-hidden'}`}
+              >
+                <TaskItem task={task} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
-  const navigate = useNavigate();
   const {
     filteredTasks,
     loading,
@@ -22,6 +97,7 @@ export default function Home() {
     loadTasks,
     celebration,
     hideCelebration,
+    editingTaskId,
     statsBarCollapsed,
     setStatsBarCollapsed
   } = useTaskStore(
@@ -33,19 +109,18 @@ export default function Home() {
       loadTasks: state.loadTasks,
       celebration: state.celebration,
       hideCelebration: state.hideCelebration,
+      editingTaskId: state.editingTaskId,
       statsBarCollapsed: state.statsBarCollapsed,
       setStatsBarCollapsed: state.setStatsBarCollapsed,
     }))
   );
 
-  const { settings, loadSettings } = useSettingsStore();
+  const { settings } = useSettingsStore();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const listContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadSettings();
     loadTasks();
-  }, [loadSettings, loadTasks]);
+  }, [loadTasks]);
 
   if (loading) {
     return (
@@ -141,8 +216,8 @@ export default function Home() {
       </div>
 
       {/* Task List */}
-      <div className="flex-grow overflow-y-auto pr-1">
-        {filteredTasks.length === 0 ? (
+      {filteredTasks.length === 0 ? (
+        <div className="flex-grow overflow-y-auto pr-1">
           <div className="text-center py-8">
             <div className="text-4xl mb-3">{getEmptyStateIcon()}</div>
             <p className="text-muted-foreground mb-3">
@@ -157,16 +232,10 @@ export default function Home() {
               </button>
             )}
           </div>
-        ) : (
-          <div ref={listContainerRef} className="space-y-1">
-            {filteredTasks.map((task) => (
-              <div key={task.id} className="pr-1 pb-1">
-                <TaskItem task={task} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <VirtualizedTaskList tasks={filteredTasks} editingTaskId={editingTaskId} />
+      )}
 
       {/* 快速添加待办弹窗 */}
       {showQuickAdd && (

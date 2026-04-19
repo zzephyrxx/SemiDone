@@ -7,6 +7,7 @@ import Other from './pages/Other';
 import UsageStats from './pages/UsageStats';
 import StartupTip from './components/StartupTip';
 import { useSettingsStore } from './store/settingsStore'
+import { Toaster } from 'sonner'
 
 function App() {
   const { settings, loadSettings } = useSettingsStore()
@@ -45,6 +46,7 @@ function App() {
         </Routes>
       </Router>
       <StartupTip />
+      <Toaster richColors position="top-center" duration={2000} />
     </>
   );
 }

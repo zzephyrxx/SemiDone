@@ -900,3 +900,8 @@ body.transparent-mode [role="alertdialog"] {
 .dark .quick-add-card::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.5);
 }
+
+/* sonner toast 顶部间距 */
+[data-sonner-toaster] {
+  top: 70px !important;
+}

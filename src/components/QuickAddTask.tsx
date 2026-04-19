@@ -128,7 +128,6 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
       setShowDatePicker(false);
       setTempDueDate('');
 
-      toast.success('待办创建成功');
       onClose();
     } catch (error) {
       console.error('Create task error:', error);

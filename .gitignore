@@ -21,6 +21,7 @@ release/
 *.docx
 start.txt
 CLAUDE.md
+/docs
 
 # OS generated files
 .DS_Store

@@ -5,7 +5,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import type { TaskFilter as TaskFilterType, SortField, SortOrder } from '../types';
 
 export default function TaskFilter() {
-  const { filter, searchQuery, setFilter, setSearchQuery, stats, sortConfig, setSortConfig } = useTaskStore();
+  const { filter, searchQuery, setFilter, setSearchQuery, stats, filteredTasks, sortConfig, setSortConfig } = useTaskStore();
   const { settings } = useSettingsStore();
   const [showSortMenu, setShowSortMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -97,6 +97,9 @@ export default function TaskFilter() {
     return `${baseClass} text-muted-foreground hover:text-foreground hover:bg-muted`;
   };
 
+  const currentFilterLabel = filterOptions.find(opt => opt.value === filter)?.label || '全部';
+  const currentFilterCount = filter === 'all' ? (stats.total || 0) : filteredTasks.length;
+
   return (
     <div className="space-y-2">
       {/* 筛选按钮行 */}
@@ -128,7 +131,7 @@ export default function TaskFilter() {
           {filter === 'all' ? (
             <>全部 · {stats.total || 0} 个待办</>
           ) : (
-            <>{filterOptions.find(opt => opt.value === filter)?.label} · {filterOptions.find(opt => opt.value === filter)?.count || 0} 个待办</>
+            <>{currentFilterLabel} · {currentFilterCount} 个待办</>
           )}
         </div>
 

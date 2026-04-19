@@ -78,8 +78,8 @@
 /* 粉色主题按钮样式 */
 [data-theme="pink"] .btn-primary,
 [data-theme="pink"] button[class*="bg-primary"] {
-  background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
-  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+  background: linear-gradient(135deg, #f096c5 0%, #f6aad1 100%);
+  box-shadow: 0 4px 15px rgba(203, 108, 156, 0.3);
 }
 
 [data-theme="pink"] .btn-primary:hover,

@@ -173,7 +173,6 @@ export default function AttachmentUpload({
       if (onFilesAdded) {
         onFilesAdded(newAttachments);
       }
-      toast.success(`成功添加 ${newAttachments.length} 个文件`);
     }
   };
 
