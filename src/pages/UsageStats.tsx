@@ -92,9 +92,9 @@ export default function UsageStats() {
 
         {/* 页面标题 */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-2">使用时长统计</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">我的使用时长</h1>
           <p className="text-sm text-muted-foreground">
-            追踪您的应用使用习惯，提升效率管理
+            追踪您的使用习惯，提升效率管理
           </p>
         </div>
 

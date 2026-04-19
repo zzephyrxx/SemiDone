@@ -129,6 +129,8 @@ pub struct Task {
     pub is_recurrence_child: bool,
     #[serde(rename = "parentTaskId", skip_serializing_if = "Option::is_none")]
     pub parent_task_id: Option<String>,
+    #[serde(rename = "recurrenceChildCreated", default)]
+    pub recurrence_child_created: bool,
 }
 
 impl Task {
@@ -156,6 +158,7 @@ impl Task {
             recurrence,
             is_recurrence_child,
             parent_task_id,
+            recurrence_child_created: false,
         }
     }
 
@@ -221,12 +224,16 @@ pub struct UpdateTaskRequest {
     #[serde(rename = "dueDate")]
     pub due_date: Option<String>,
     pub attachments: Option<Vec<Attachment>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub recurrence: Option<RecurrenceRule>,
+    #[serde(default, rename = "recurrence")]
+    pub recurrence: Option<Option<RecurrenceRule>>,
+    #[serde(rename = "clearRecurrence", default)]
+    pub clear_recurrence: bool,
     #[serde(rename = "isRecurrenceChild", default)]
     pub is_recurrence_child: bool,
     #[serde(rename = "parentTaskId", skip_serializing_if = "Option::is_none")]
     pub parent_task_id: Option<String>,
+    #[serde(rename = "recurrenceChildCreated", default)]
+    pub recurrence_child_created: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

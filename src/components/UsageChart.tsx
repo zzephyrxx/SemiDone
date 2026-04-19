@@ -25,10 +25,11 @@ export default function UsageChart({
   const maxMinutes = Math.max(...data.map(d => d.minutes), 1);
   
   // 根据数据量动态调整图表宽度
-  const baseWidth = period === 'month' ? 900 : 600; // 月视图更宽
-  const chartWidth = Math.max(baseWidth, data.length * (period === 'month' ? 25 : 60)); // 月视图每天25px，周视图每天60px
+  const baseWidth = period === 'month' ? 900 : 600; // 月视图900，周视图350
+  // 周视图每天40px，月视图每天25px
+  const chartWidth = Math.max(baseWidth, data.length * (period === 'month' ? 25 : 40));
   const chartHeight = 240; // 稍微增高
-  const padding = { top: 20, right: 15, bottom: 25, left: 45 }; // 增加左边距给Y轴刻度
+  const padding = { top: 25, right: 20, bottom: 25, left: 45 }; // 增加左边距给Y轴刻度
   const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
@@ -95,7 +96,7 @@ export default function UsageChart({
 
   return (
     <div className="bg-background border border-border rounded-lg p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <TrendingUp className="w-5 h-5" />
           使用趋势
@@ -226,7 +227,7 @@ export default function UsageChart({
                         y={point.y}
                         width={barWidth}
                         height={barHeight}
-                        className={`${isToday ? 'fill-blue-500' : 'fill-green-500'} transition-all hover:opacity-80`}
+                        className={`${isToday ? 'fill-green-500' : 'fill-blue-500'} transition-all hover:opacity-80`}
                         rx="2"
                       />
                       {/* 数值标签 */}

@@ -214,7 +214,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
       return formatDistanceToNow(date, {
         addSuffix: true,
         locale: zhCN
-      });
+      }).replace('大约', '约');
     } catch {
       return '日期格式错误';
     }

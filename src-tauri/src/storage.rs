@@ -321,13 +321,16 @@ impl Storage {
             if let Some(attachments) = &updates.attachments {
                 task.attachments = Some(attachments.clone());
             }
-            if let Some(recurrence) = &updates.recurrence {
-                task.recurrence = Some(recurrence.clone());
+            if updates.clear_recurrence {
+                task.recurrence = None;
+            } else if let Some(recurrence) = &updates.recurrence {
+                task.recurrence = recurrence.clone();
             }
             task.is_recurrence_child = updates.is_recurrence_child;
             if let Some(parent_id) = &updates.parent_task_id {
                 task.parent_task_id = Some(parent_id.clone());
             }
+            task.recurrence_child_created = updates.recurrence_child_created;
 
             task.update();
             let updated_task = task.clone();

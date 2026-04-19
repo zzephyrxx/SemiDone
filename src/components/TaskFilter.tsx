@@ -61,6 +61,7 @@ export default function TaskFilter() {
     { field: 'dueDate', label: '截止时间' },
     { field: 'priority', label: '优先级' },
     { field: 'createdAt', label: '创建时间' },
+    { field: 'updatedAt', label: '更新时间' },
   ];
 
   const getSortLabel = (field: SortField): string => {
