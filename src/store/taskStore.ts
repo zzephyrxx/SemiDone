@@ -46,38 +46,83 @@ const calculateNextDueDate = (currentDueDate: string, recurrence: RecurrenceRule
       next = new Date(current.getTime() + recurrence.interval * 24 * 60 * 60 * 1000);
       break;
     case 'week': {
-      // 按周重复：找到下一个指定的周几
-      next = new Date(current.getTime() + recurrence.interval * 7 * 24 * 60 * 60 * 1000);
+      // 按周重复：优先找当前周内后续日期；若没有，则跳到 interval 周后的目标周
       if (recurrence.daysOfWeek && recurrence.daysOfWeek.length > 0) {
-        // 找到下一个符合周几的日期
-        const targetDays = recurrence.daysOfWeek.sort((a, b) => a - b);
-        let currentDay = next.getDay();
-        for (let i = 1; i <= 7; i++) {
-          const nextDay = (currentDay + i) % 7;
-          if (targetDays.includes(nextDay)) {
-            next = new Date(next.getTime() + i * 24 * 60 * 60 * 1000);
-            break;
-          }
+        const targetDays = [...recurrence.daysOfWeek].sort((a, b) => a - b);
+        const currentDay = current.getDay();
+
+        const nextDayInCurrentWeek = targetDays.find(day => day > currentDay);
+        if (nextDayInCurrentWeek !== undefined) {
+          const daysUntilNext = nextDayInCurrentWeek - currentDay;
+          next = new Date(current.getTime() + daysUntilNext * 24 * 60 * 60 * 1000);
+        } else {
+          const firstTargetDay = targetDays[0];
+          const startOfCurrentWeek = new Date(current);
+          startOfCurrentWeek.setDate(current.getDate() - currentDay);
+          startOfCurrentWeek.setHours(0, 0, 0, 0);
+
+          next = new Date(startOfCurrentWeek);
+          next.setDate(startOfCurrentWeek.getDate() + recurrence.interval * 7 + firstTargetDay);
+          next.setHours(current.getHours(), current.getMinutes(), current.getSeconds(), current.getMilliseconds());
         }
+      } else {
+        // 如果没有指定周几，则按 interval 周重复
+        next = new Date(current.getTime() + recurrence.interval * 7 * 24 * 60 * 60 * 1000);
       }
       break;
     }
     case 'month': {
       // 按月重复：支持多天选择
-      next = new Date(current);
-      next.setMonth(next.getMonth() + recurrence.interval);
-
       if (recurrence.daysOfMonth && recurrence.daysOfMonth.length > 0) {
-        const targetDays = recurrence.daysOfMonth.sort((a, b) => a - b);
-        const currentDay = next.getDate();
-        // 找到下一个目标日期
-        let nextTargetDay = targetDays.find(d => d > currentDay);
-        if (!nextTargetDay) {
-          // 如果没有更大的日期，跳到下个月的第一天
-          next.setMonth(next.getMonth() + 1);
-          nextTargetDay = targetDays[0];
+        const targetDays = [...recurrence.daysOfMonth].sort((a, b) => a - b);
+        const currentDay = current.getDate();
+
+        // 获取指定年月的天数
+        const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+
+        // 从当前月份开始，按 interval 逐月查找
+        next = new Date(current);
+        let found = false;
+        let year = next.getFullYear();
+        let month = next.getMonth();
+
+        for (let i = 0; i < 24 && !found; i++) {
+          // 按 interval 个月递增
+          const targetMonth = month + i * recurrence.interval;
+          const targetYear = year + Math.floor(targetMonth / 12);
+          const actualMonth = targetMonth % 12;
+
+          // 检查这个月是否有目标日期
+          const daysInThisMonth = getDaysInMonth(targetYear, actualMonth);
+          // 在目标日期中找到第一个 <= 这个月最大天数的
+          const validTarget = targetDays.find(d => d <= daysInThisMonth);
+
+          if (validTarget !== undefined) {
+            // 如果是当前月（i=0），找 > currentDay 的
+            if (i === 0) {
+              const nextTarget = targetDays.find(d => d > currentDay);
+              if (nextTarget !== undefined) {
+                next.setDate(nextTarget);
+                found = true;
+              }
+              // 如果没找到，当前月没有更大的了，不found，继续循环
+            } else {
+              // 非当前月，用第一个有效的目标日期
+              next.setFullYear(targetYear, actualMonth, validTarget);
+              found = true;
+            }
+          }
         }
-        next.setDate(nextTargetDay);
+
+        // 如果没找到，兜底加 interval 个月
+        if (!found) {
+          next = new Date(current);
+          next.setMonth(next.getMonth() + recurrence.interval);
+        }
+      } else {
+        // 如果没有指定日期，按 interval 月重复
+        next = new Date(current);
+        next.setMonth(next.getMonth() + recurrence.interval);
       }
       break;
     }
@@ -165,37 +210,45 @@ const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery: string
   const { field, order } = sortConfig;
   const multiplier = order === 'asc' ? 1 : -1;
 
-  return filtered.sort((a, b) => {
-    // 未完成的始终排在前面
-    if (a.completed !== b.completed) {
-      return a.completed ? 1 : -1;
-    }
+  // 在"全部"标签下，已完成的任务保持在最后面，不参与排序
+  const completedTasks = filter === 'all' ? filtered.filter(t => t.completed) : [];
+  const notCompletedTasks = filter === 'all' ? filtered.filter(t => !t.completed) : filtered;
 
-    switch (field) {
-      case 'dueDate': {
-        // 没有截止日期的排到最后
-        if (!a.dueDate && !b.dueDate) return 0;
-        if (!a.dueDate) return 1;
-        if (!b.dueDate) return -1;
-        const aTime = new Date(a.dueDate).getTime();
-        const bTime = new Date(b.dueDate).getTime();
-        return (aTime - bTime) * multiplier;
+  const sortTasks = (tasks: Task[]): Task[] => {
+    return [...tasks].sort((a, b) => {
+      switch (field) {
+        case 'dueDate': {
+          // 没有截止日期的排到最后
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          const aTime = new Date(a.dueDate).getTime();
+          const bTime = new Date(b.dueDate).getTime();
+          return (aTime - bTime) * multiplier;
+        }
+        case 'priority': {
+          const priorityOrder = { high: 3, medium: 2, low: 1 };
+          const aPriority = priorityOrder[a.priority || 'medium'];
+          const bPriority = priorityOrder[b.priority || 'medium'];
+          return (aPriority - bPriority) * multiplier;
+        }
+        case 'createdAt': {
+          const aTime = new Date(a.createdAt).getTime();
+          const bTime = new Date(b.createdAt).getTime();
+          return (aTime - bTime) * multiplier;
+        }
+        case 'updatedAt': {
+          const aTime = new Date(a.updatedAt).getTime();
+          const bTime = new Date(b.updatedAt).getTime();
+          return (aTime - bTime) * multiplier;
+        }
+        default:
+          return 0;
       }
-      case 'priority': {
-        const priorityOrder = { high: 3, medium: 2, low: 1 };
-        const aPriority = priorityOrder[a.priority || 'medium'];
-        const bPriority = priorityOrder[b.priority || 'medium'];
-        return (aPriority - bPriority) * multiplier;
-      }
-      case 'createdAt': {
-        const aTime = new Date(a.createdAt).getTime();
-        const bTime = new Date(b.createdAt).getTime();
-        return (aTime - bTime) * multiplier;
-      }
-      default:
-        return 0;
-    }
-  });
+    });
+  };
+
+  return [...sortTasks(notCompletedTasks), ...completedTasks];
 };
 
 export const useTaskStore = create<TaskState>()(devtools(
@@ -317,9 +370,16 @@ export const useTaskStore = create<TaskState>()(devtools(
       const wasCompleted = task.completed;
 
       // 处理循环任务：完成时创建下一个周期任务
-      if (!wasCompleted && task.recurrence && task.dueDate) {
+      if (!wasCompleted && task.recurrence) {
+        // 优先使用当前任务的截止日期作为基准日期，避免提前完成时重复生成同一天
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const fallbackBaseDate = `${year}-${month}-${day}`;
+        const baseDate = task.dueDate || fallbackBaseDate;
         // 计算下一个到期日
-        const nextDueDate = calculateNextDueDate(task.dueDate, task.recurrence);
+        const nextDueDate = calculateNextDueDate(baseDate, task.recurrence);
 
         // 创建新的周期任务
         const createNextRecurrenceTask = async () => {
@@ -329,27 +389,32 @@ export const useTaskStore = create<TaskState>()(devtools(
             priority: task.priority,
             dueDate: nextDueDate,
             attachments: task.attachments,
-            recurrence: task.recurrence,
+            recurrence: task.recurrence, // 子任务继承 recurrence，用于下次完成时创建再下一个
           };
 
           try {
             const response = await api.tasks.createTask(newTaskRequest);
-            if (response.success) {
-              // 将新任务标记为循环子任务
-              await api.tasks.updateTask(response.data.id, {
-                isRecurrenceChild: true,
-                parentTaskId: task.id,
+            if (response.success && response.data) {
+              set(state => {
+                const newTasks = [...state.tasks, response.data!];
+                const filteredTasks = getFilteredTasks(newTasks, state.filter, state.searchQuery, state.sortConfig);
+                return { tasks: newTasks, filteredTasks };
               });
+              return response.data;
             }
           } catch (error) {
             console.error('创建下一个循环任务失败:', error);
           }
+
+          return null;
         };
 
-        // 先完成当前任务，再创建下一个
-        await get().updateTask(id, { completed: true });
-        await createNextRecurrenceTask();
-        toast.success(`已创建下一个周期任务：${new Date(nextDueDate).toLocaleDateString()}`);
+        // 先完成当前任务（清除 recurrence 使其变成普通任务），再创建下一个
+        await get().updateTask(id, { completed: true, recurrence: null, clearRecurrence: true });
+        const createdTask = await createNextRecurrenceTask();
+        if (createdTask) {
+          toast.success(`已创建下一个周期任务：${new Date(nextDueDate).toLocaleDateString()}`);
+        }
       } else {
         await get().updateTask(id, { completed: !task.completed });
       }
@@ -358,7 +423,7 @@ export const useTaskStore = create<TaskState>()(devtools(
       if (!wasCompleted) {
         // Check if this will be the last task to complete
         const currentTasks = get().tasks;
-        const pendingTasks = currentTasks.filter(t => !t.completed && t.id !== id);
+        const pendingTasks = currentTasks.filter(t => !t.completed);
 
         if (pendingTasks.length === 0 && currentTasks.length > 0) {
           // This is the last task - show only all complete animation

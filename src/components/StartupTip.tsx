@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Sparkles, Repeat, Paperclip, Rocket, TrendingUp, ArrowUpDown, FolderOpen, FileSearch } from 'lucide-react';
 
-const APP_VERSION = '4.0.13';
+const APP_VERSION = '4.0.14';
 
 const StartupTip: React.FC = () => {
   const [show, setShow] = useState(false);
@@ -141,7 +141,7 @@ const StartupTip: React.FC = () => {
 
           {/* 提示 */}
           <div className="px-4 py-2.5 text-xs text-gray-500 dark:text-gray-400 text-center">
-            博主水平有限，如果遇到问题欢迎反馈!
+            博主精力有限，部分问题可能未曾测试到，如遇到问题欢迎反馈!
           </div>
         </div>
 

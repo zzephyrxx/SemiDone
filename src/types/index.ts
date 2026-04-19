@@ -54,6 +54,7 @@ export interface Task {
   recurrence?: RecurrenceRule;  // 循环规则
   isRecurrenceChild?: boolean; // 是否是循环任务的子任务
   parentTaskId?: string;        // 父任务ID（用于标识循环任务的子任务）
+  recurrenceChildCreated?: boolean; // 是否已创建过循环子任务（防止重复创建）
 }
 
 // 设置数据结构
@@ -93,9 +94,11 @@ export interface UpdateTaskRequest {
   priority?: Priority;
   dueDate?: string;
   attachments?: Attachment[];
-  recurrence?: RecurrenceRule;
+  recurrence?: RecurrenceRule | null;
+  clearRecurrence?: boolean;
   isRecurrenceChild?: boolean;
   parentTaskId?: string;
+  recurrenceChildCreated?: boolean;
 }
 
 // 待办统计信息
@@ -159,7 +162,7 @@ export interface PomodoroState {
 }
 
 // 排序字段
-export type SortField = 'dueDate' | 'priority' | 'createdAt';
+export type SortField = 'dueDate' | 'priority' | 'createdAt' | 'updatedAt';
 
 // 排序方向
 export type SortOrder = 'asc' | 'desc';

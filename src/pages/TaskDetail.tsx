@@ -436,7 +436,7 @@ export default function TaskDetail() {
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground resize-none"
                 placeholder="添加待办描述..."
-                rows={4}
+                rows={3}
                 maxLength={500}
               />
             ) : (

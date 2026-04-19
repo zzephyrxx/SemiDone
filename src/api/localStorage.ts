@@ -66,6 +66,7 @@ export const taskApi = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         attachments: request.attachments || [],
+        recurrence: request.recurrence,
       };
       
       tasks.push(newTask);
@@ -87,10 +88,15 @@ export const taskApi = {
       if (taskIndex === -1) {
         return createResponse(null, false, '待办不存在');
       }
+
+      const normalizedUpdates = { ...updates };
+      if (updates.clearRecurrence) {
+        normalizedUpdates.recurrence = undefined;
+      }
       
       const updatedTask = {
         ...tasks[taskIndex],
-        ...updates,
+        ...normalizedUpdates,
         updatedAt: new Date().toISOString(),
       };
       
