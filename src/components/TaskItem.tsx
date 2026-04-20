@@ -494,7 +494,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                   {task.recurrence && (
                     <div className="flex items-center space-x-1 text-purple-500" title="周期任务">
                       <Repeat className="w-3 h-3" />
-                      <span>重复</span>
+                      <span>{task.recurrence.type === 'day' ? '日重复' : task.recurrence.type === 'week' ? '周重复' : '月重复'}</span>
                     </div>
                   )}
 

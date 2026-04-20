@@ -33,23 +33,16 @@ export default function Other() {
 
     // 获取数据目录
     const fetchDataDir = async () => {
-      console.log('[DataDir] fetchDataDir 开始...');
       try {
         const { isTauri, invoke } = await import('@tauri-apps/api/core');
-        console.log('[DataDir] isTauri():', isTauri());
         if (isTauri()) {
-          console.log('[DataDir] Tauri可用，直接调用 invoke');
           const response: any = await invoke('get_data_dir_path');
-          console.log('[DataDir] get_data_dir_path 响应:', JSON.stringify(response));
           if (response && response.success && response.data) {
-            console.log('[DataDir] 设置 dataDir:', response.data);
             setDataDir(response.data);
           } else {
-            console.log('[DataDir] 响应无效，使用 fallback');
             setDataDir('C:\\Users\\YuRou\\AppData\\Roaming\\SemiDone\\SemiDoneData');
           }
         } else {
-          console.log('[DataDir] Tauri不可用，使用 fallback');
           setDataDir('C:\\Users\\YuRou\\AppData\\Roaming\\SemiDone\\SemiDoneData');
         }
       } catch (error) {
@@ -65,7 +58,6 @@ export default function Other() {
     if (theme !== 'dark') {
       if (settings.transparentEnabled) {
         await setTransparency(false, 100);
-        toast.info('已自动关闭透明模式', { duration: 3000 });
       }
       // 确保透明度重置为 100%
       document.documentElement.style.setProperty('--window-opacity', '1');
@@ -122,32 +114,24 @@ export default function Other() {
   };
 
   const handleOpenDataFolder = async () => {
-    console.log('[DataDir] handleOpenDataFolder called, dataDir:', dataDir);
     if (!dataDir) {
       toast.error('数据目录路径无效');
       return;
     }
     try {
       const { isTauri, invoke } = await import('@tauri-apps/api/core');
-      console.log('[DataDir] isTauri():', isTauri());
 
       if (isTauri()) {
-        console.log('[DataDir] 直接用 invoke 调用，dataDir:', dataDir);
-        // 尝试用 filePath 作为参数名
-        const response: any = await invoke('open_file_by_path', { filePath: dataDir });
-        console.log('[DataDir] 响应:', JSON.stringify(response));
+        const response: any = await invoke('open_folder_in_explorer', { folderPath: dataDir });
 
         if (!response.success) {
           toast.error(response.error || '打开文件夹失败');
-        } else {
-          toast.success('已打开文件夹');
-        }
+        } 
       } else {
-        console.log('[DataDir] Tauri不可用，使用 window.open');
         window.open(`file://${dataDir}`, '_blank');
       }
     } catch (error) {
-      console.error('[DataDir] 异常:', error);
+      console.error('[DataDir] 打开文件夹异常:', error);
       toast.error('打开文件夹失败: ' + String(error));
     }
   };
@@ -211,8 +195,6 @@ export default function Other() {
         const response: any = await invoke('migrate_data_dir', {
           newPath: targetPath,
         });
-        console.log('[DataDir] migrate_data_dir 响应:', JSON.stringify(response));
-
         if (response.success) {
           toast.success('数据目录已更改，请重启应用');
           setDataDir(targetPath);
@@ -225,7 +207,7 @@ export default function Other() {
         }
       }
     } catch (error) {
-      console.error('[DataDir] 异常:', error);
+      console.error('[DataDir] 更改数据目录异常:', error);
       toast.error('更改数据目录失败: ' + String(error));
     } finally {
       setIsMigrating(false);
@@ -252,7 +234,7 @@ export default function Other() {
       case 'dark':
         return '深色';
       case 'pink':
-        return '梦粉';
+        return '梦';
       default:
         return '未知';
     }
@@ -430,7 +412,7 @@ export default function Other() {
             )}
           </div>
 
-          {/* 胶囊折叠模式设置 */}
+          {/* 悬浮球模式设置 */}
           <div className="card card-shadow hover-lift slide-up">
             <div className="card-header py-4">
               <div className="flex items-center justify-between w-full">

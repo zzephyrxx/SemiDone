@@ -100,10 +100,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               let finalSettings = { ...loadedSettings };
               if (!finalSettings.collapseMode) {
                 finalSettings.collapseMode = finalSettings.isCollapsed ? 'bar' : 'expanded';
-                console.log('🔧 初始化collapseMode为:', finalSettings.collapseMode);
               }
               
-              // 每次启动都重置为展开状态
+              // 每次启动都重置为展开状态（仅本地，不写回后端，避免覆盖其他设置）
               if (finalSettings.isCollapsed || finalSettings.collapseMode !== 'expanded') {
                 // 重置为展开状态
                 finalSettings = { 
@@ -113,8 +112,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
                   isEdgeSnapped: false 
                 };
                 set({ settings: finalSettings });
-                await api.settings.updateSettings(finalSettings);
-                console.log('🔄 重置为展开状态');
               }
               
               // 保存默认尺寸（如果还没有保存）
@@ -151,8 +148,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             if (updates.theme) {
               document.documentElement.setAttribute('data-theme', updates.theme);
             }
-            
-            toast.success('设置已保存');
+          
           } else {
             toast.error(response.error || '保存设置失败');
           }
@@ -271,10 +267,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           };
           set({ settings: newSettings });
           
-          const modeText = newCollapseMode === 'floating' ? '圆球模式' : 
-                          newCollapseMode === 'bar' ? '条状模式' : '展开窗口';
-          toast.success(`已切换到${modeText}`);
-          
           // 异步保存到后端
           try {
             await api.settings.updateSettings(newSettings);
@@ -298,7 +290,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           };
           
           set({ settings: newSettings });
-          toast.success(newCapsuleMode ? '已启用胶囊折叠模式' : '已禁用胶囊折叠模式');
+          toast.success(newCapsuleMode ? '已启用悬浮球模式' : '已禁用悬浮球模式');
           
           // 异步保存到后端
           try {
@@ -385,14 +377,8 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           
           // 保存到后端（静默保存，不显示 toast）
           await api.settings.updateSettings(newSettings);
-          
-          // 只在开关切换时显示提示，调整透明度时不显示
-          if (level === 100 || level === undefined) {
-            toast.success(enabled ? '已开启透明模式' : '已关闭透明模式');
-          }
         } catch (error) {
           console.error('Failed to set transparency:', error);
-          toast.error('设置透明度失败');
         }
       },
       

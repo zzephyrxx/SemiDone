@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Sparkles, Repeat, Paperclip, Rocket, TrendingUp, ArrowUpDown, FolderOpen, FileSearch } from 'lucide-react';
 
-const APP_VERSION = '4.0.14';
+const APP_VERSION = '4.0.15';
 
 const StartupTip: React.FC = () => {
   const [show, setShow] = useState(false);
@@ -108,6 +108,12 @@ const StartupTip: React.FC = () => {
                 <FileSearch className="w-4 h-4 text-cyan-500 flex-shrink-0" />
                 <span>附件可快捷打开</span>
               </div>
+            </div>
+            {/* 注意新版本与旧版本数据不互通 */}
+            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <p className="text-sm text-red-700 dark:text-red-300">
+                <strong>⚠️ 提示：</strong>新版本与旧版本数据不互通，请谅解！
+              </p>
             </div>
           </div>
 

@@ -84,6 +84,8 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
         }
 
         await writeTextFile(filePath, markdownContent);
+        const dirPath = filePath.replace(/\\/g, '/').replace(/\/[^/]*$/, '');
+        toast.success(`${periodText}导出成功！请在以下目录查看：${dirPath}`, { duration: 3000 });
       } else {
         const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -96,10 +98,10 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-      }
 
-      toast.success(`${periodText}导出成功！`);
-      onClose();
+        toast.success(`${periodText}导出成功！请在浏览器下载目录查看`, { duration: 3000 });
+      }
+      setTimeout(() => onClose(), 300);
     } catch (error) {
       console.error('导出报告失败:', error);
       toast.error('导出失败，请重试');
@@ -150,7 +152,7 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
                 onClick={() => setReportType('week')}
                 className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${
                   reportType === 'week'
-                    ? 'border-primary bg-primary/10 text-primary'
+                    ? 'border-primary bg-accent text-primary'
                     : 'border-border hover:border-primary/50'
                 }`}
               >
@@ -161,7 +163,7 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
                 onClick={() => setReportType('month')}
                 className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${
                   reportType === 'month'
-                    ? 'border-primary bg-primary/10 text-primary'
+                    ? 'border-primary bg-accent text-primary'
                     : 'border-border hover:border-primary/50'
                 }`}
               >

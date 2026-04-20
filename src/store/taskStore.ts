@@ -14,11 +14,12 @@ const computeLocalStats = (tasks: Task[]): TaskStats => {
   let todayCount = 0;
 
   tasks.forEach(task => {
-    if (task.dueDate && !task.completed) {
+    if (task.dueDate) {
       const dueDateStr = task.dueDate.split('T')[0];
-      if (dueDateStr < todayStr) {
+      if (!task.completed && dueDateStr < todayStr) {
         overdue++;
-      } else if (dueDateStr === todayStr) {
+      }
+      if (dueDateStr === todayStr) {
         todayCount++;
       }
     }
@@ -170,85 +171,80 @@ interface TaskState {
 
 // 计算过滤后的待办列表
 const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery: string, sortConfig: SortConfig): Task[] => {
-  let filtered = tasks;
-
-  // 按状态筛选
-  switch (filter) {
-    case 'pending':
-      filtered = tasks.filter(task => !task.completed);
-      break;
-    case 'completed':
-      filtered = tasks.filter(task => task.completed);
-      break;
-    case 'overdue':
-      filtered = tasks.filter(task => {
-        if (task.completed || !task.dueDate) return false;
-        return new Date(task.dueDate) < new Date();
-      });
-      break;
-    case 'today':
-      filtered = tasks.filter(task => {
-        if (!task.dueDate) return false;
-        const today = new Date().toDateString();
-        return new Date(task.dueDate).toDateString() === today;
-      });
-      break;
-    default:
-      filtered = tasks;
-  }
-
-  // 按搜索关键词筛选
-  if (searchQuery.trim()) {
-    const query = searchQuery.toLowerCase();
-    filtered = filtered.filter(task =>
-      task.title.toLowerCase().includes(query) ||
-      (task.description && task.description.toLowerCase().includes(query))
-    );
-  }
-
-  // 排序
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const hasSearchQuery = trimmedQuery.length > 0;
+  const todayStr = new Date().toISOString().split('T')[0];
   const { field, order } = sortConfig;
   const multiplier = order === 'asc' ? 1 : -1;
+  const priorityOrder = { high: 3, medium: 2, low: 1 } as const;
 
-  // 在"全部"标签下，已完成的任务保持在最后面，不参与排序
-  const completedTasks = filter === 'all' ? filtered.filter(t => t.completed) : [];
-  const notCompletedTasks = filter === 'all' ? filtered.filter(t => !t.completed) : filtered;
+  const filtered: Task[] = [];
+  const completedInAll: Task[] = [];
 
-  const sortTasks = (tasks: Task[]): Task[] => {
-    return [...tasks].sort((a, b) => {
-      switch (field) {
-        case 'dueDate': {
-          // 没有截止日期的排到最后
-          if (!a.dueDate && !b.dueDate) return 0;
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          const aTime = new Date(a.dueDate).getTime();
-          const bTime = new Date(b.dueDate).getTime();
-          return (aTime - bTime) * multiplier;
-        }
-        case 'priority': {
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          const aPriority = priorityOrder[a.priority || 'medium'];
-          const bPriority = priorityOrder[b.priority || 'medium'];
-          return (aPriority - bPriority) * multiplier;
-        }
-        case 'createdAt': {
-          const aTime = new Date(a.createdAt).getTime();
-          const bTime = new Date(b.createdAt).getTime();
-          return (aTime - bTime) * multiplier;
-        }
-        case 'updatedAt': {
-          const aTime = new Date(a.updatedAt).getTime();
-          const bTime = new Date(b.updatedAt).getTime();
-          return (aTime - bTime) * multiplier;
-        }
-        default:
-          return 0;
+  for (const task of tasks) {
+    let matchesFilter = false;
+
+    switch (filter) {
+      case 'pending':
+        matchesFilter = !task.completed;
+        break;
+      case 'completed':
+        matchesFilter = task.completed;
+        break;
+      case 'overdue':
+        matchesFilter = !task.completed && !!task.dueDate && task.dueDate.split('T')[0] < todayStr;
+        break;
+      case 'today':
+        matchesFilter = !!task.dueDate && task.dueDate.split('T')[0] === todayStr;
+        break;
+      default:
+        matchesFilter = true;
+        break;
+    }
+
+    if (!matchesFilter) {
+      continue;
+    }
+
+    if (hasSearchQuery) {
+      const matchesSearch =
+        task.title.toLowerCase().includes(trimmedQuery) ||
+        (task.description?.toLowerCase().includes(trimmedQuery) ?? false);
+
+      if (!matchesSearch) {
+        continue;
       }
-    });
+    }
+
+    if (filter === 'all' && task.completed) {
+      completedInAll.push(task);
+    } else {
+      filtered.push(task);
+    }
+  }
+
+  const getSortValue = (task: Task): number => {
+    switch (field) {
+      case 'dueDate':
+        return task.dueDate ? new Date(task.dueDate).getTime() : Number.POSITIVE_INFINITY;
+      case 'priority':
+        return priorityOrder[task.priority || 'medium'];
+      case 'createdAt':
+        return new Date(task.createdAt).getTime();
+      case 'updatedAt':
+        return new Date(task.updatedAt).getTime();
+      default:
+        return 0;
+    }
   };
 
-  return [...sortTasks(notCompletedTasks), ...completedTasks];
+  const sorted = [...filtered].sort((a, b) => {
+    const aValue = getSortValue(a);
+    const bValue = getSortValue(b);
+    return (aValue - bValue) * multiplier;
+  });
+
+  return filter === 'all' ? [...sorted, ...completedInAll] : sorted;
 };
 
 export const useTaskStore = create<TaskState>()(devtools(
@@ -307,7 +303,6 @@ export const useTaskStore = create<TaskState>()(devtools(
             return { tasks: newTasks, filteredTasks };
           });
           get().refreshStats();
-          toast.success('待办创建成功');
         } else {
           toast.error(response.error || '创建待办失败');
         }
@@ -329,7 +324,6 @@ export const useTaskStore = create<TaskState>()(devtools(
             return { tasks: newTasks, filteredTasks };
           });
           get().refreshStats();
-          toast.success('待办更新成功');
         } else {
           toast.error(response.error || '更新待办失败');
         }
@@ -353,7 +347,7 @@ export const useTaskStore = create<TaskState>()(devtools(
             };
           });
           get().refreshStats();
-          toast.success('待办删除成功');
+          toast.success('删除成功');
         } else {
           toast.error(response.error || '删除待办失败');
         }
