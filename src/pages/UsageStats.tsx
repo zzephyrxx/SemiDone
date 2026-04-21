@@ -16,7 +16,6 @@ export default function UsageStats() {
   } = useUsageStore();
 
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('week');
-  const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
 
   useEffect(() => {
     loadUsageData();
@@ -44,8 +43,8 @@ export default function UsageStats() {
       for (let i = 0; i < 7; i++) {
         const date = new Date();
         date.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + i);
-        date.setHours(12, 0, 0, 0); // 中午避免时区问题
-        const dateStr = date.toISOString().split('T')[0];
+        // 使用本地日期，与 usageStore 保持一致
+        const dateStr = date.toLocaleDateString('zh-CN');
         const weekday = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i];
         result.push({
           date: dateStr,
@@ -63,9 +62,9 @@ export default function UsageStats() {
       const daysInMonth = new Date(year, month + 1, 0).getDate();
 
       for (let day = 1; day <= daysInMonth; day++) {
-        // 使用月初中午避免时区问题导致日期偏移到前一天
-        const date = new Date(year, month, day, 12, 0, 0);
-        const dateStr = date.toISOString().split('T')[0];
+        const date = new Date(year, month, day);
+        // 使用本地日期，与 usageStore 保持一致
+        const dateStr = date.toLocaleDateString('zh-CN');
         result.push({
           date: dateStr,
           minutes: monthData[dateStr] || 0
@@ -186,8 +185,6 @@ export default function UsageStats() {
         {/* 使用趋势图表 */}
         <UsageChart
           data={usageHistory}
-          chartType={chartType}
-          onChartTypeChange={setChartType}
           formatMinutes={formatMinutes}
           period={selectedPeriod}
         />

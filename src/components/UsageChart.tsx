@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 interface ChartData {
   date: string;
@@ -9,18 +9,14 @@ interface ChartData {
 
 interface UsageChartProps {
   data: ChartData[];
-  chartType: 'bar' | 'line';
-  onChartTypeChange: (type: 'bar' | 'line') => void;
   formatMinutes: (minutes: number) => string;
   period: 'week' | 'month';
 }
 
-export default function UsageChart({ 
-  data, 
-  chartType, 
-  onChartTypeChange, 
-  formatMinutes, 
-  period 
+export default function UsageChart({
+  data,
+  formatMinutes,
+  period
 }: UsageChartProps) {
   const maxMinutes = Math.max(...data.map(d => d.minutes), 1);
   
@@ -101,38 +97,11 @@ export default function UsageChart({
           <TrendingUp className="w-5 h-5" />
           使用趋势
         </h2>
-        
-        <div className="flex items-center gap-2">
-          <div className="flex bg-accent rounded-lg p-1">
-            <button
-              onClick={() => onChartTypeChange('bar')}
-              className={`flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                chartType === 'bar' 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              柱状图
-            </button>
-            <button
-              onClick={() => onChartTypeChange('line')}
-              className={`flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                chartType === 'line' 
-                  ? 'bg-background text-foreground shadow-sm' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              折线图
-            </button>
-          </div>
-        </div>
       </div>
 
       {data.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>暂无使用数据</p>
         </div>
       ) : (
@@ -212,86 +181,49 @@ export default function UsageChart({
 
             {/* 图表内容 */}
             <g transform={`translate(${padding.left}, ${padding.top})`}>
-              {chartType === 'bar' ? (
-                /* 柱状图 */
-                points.map((point, index) => {
-                  const barWidth = Math.max(innerWidth / data.length - 4, 8);
-                  const barHeight = innerHeight - point.y;
-                  const barX = point.x - barWidth / 2;
-                  const isToday = point.date === new Date().toISOString().split('T')[0];
-                  
-                  return (
-                    <g key={index}>
-                      <rect
-                        x={barX}
-                        y={point.y}
-                        width={barWidth}
-                        height={barHeight}
-                        className={`${isToday ? 'fill-green-500' : 'fill-blue-500'} transition-all hover:opacity-80`}
-                        rx="2"
-                      />
-                      {/* 数值标签 */}
-                      {point.minutes > 0 && (
-                        <text 
-                          x={point.x} 
-                          y={point.y - 8} 
-                          textAnchor="middle" 
-                          className="fill-foreground text-xs font-medium"
-                        >
-                          {point.minutes >= 60 ? `${(point.minutes / 60).toFixed(1)}时` : point.minutes}
-                        </text>
-                      )}
-                    </g>
-                  );
-                })
-              ) : (
-                /* 折线图 */
-                <>
-                  {/* 填充区域 */}
-                  <path
-                    d={`${getLinePath()} L ${points[points.length - 1].x} ${innerHeight} L ${points[0].x} ${innerHeight} Z`}
-                    className="fill-blue-100 dark:fill-blue-900/20"
-                  />
-                  
-                  {/* 折线 */}
-                  <path
-                    d={getLinePath()}
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  
-                  {/* 数据点 */}
-                  {points.map((point, index) => {
-                    const isToday = point.date === new Date().toISOString().split('T')[0];
-                    
-                    return (
-                      <g key={index}>
-                        <circle
-                          cx={point.x}
-                          cy={point.y}
-                          r="4"
-                          className={`${isToday ? 'fill-red-500' : 'fill-blue-500'} stroke-background`}
-                          strokeWidth="2"
-                        />
-                        {/* 数值标签 */}
-                        {point.minutes > 0 && (
-                          <text 
-                            x={point.x} 
-                            y={point.y - 12} 
-                            textAnchor="middle" 
-                            className="fill-foreground text-xs font-medium"
-                          >
-                            {point.minutes >= 60 ? `${(point.minutes / 60).toFixed(1)}时` : point.minutes}
-                          </text>
-                        )}
-                      </g>
-                    );
-                  })}
-                </>
-              )}
+              {/* 填充区域 */}
+              <path
+                d={`${getLinePath()} L ${points[points.length - 1].x} ${innerHeight} L ${points[0].x} ${innerHeight} Z`}
+                className="fill-blue-100 dark:fill-blue-900/20"
+              />
+
+              {/* 折线 */}
+              <path
+                d={getLinePath()}
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* 数据点 */}
+              {points.map((point, index) => {
+                const isToday = point.date === new Date().toLocaleDateString('zh-CN');
+
+                return (
+                  <g key={index}>
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r="4"
+                      className={`${isToday ? 'fill-red-500' : 'fill-blue-500'} stroke-background`}
+                      strokeWidth="2"
+                    />
+                    {/* 数值标签 */}
+                    {point.minutes > 0 && (
+                      <text
+                        x={point.x}
+                        y={point.y - 12}
+                        textAnchor="middle"
+                        className="fill-foreground text-xs font-medium"
+                      >
+                        {point.minutes >= 60 ? `${(point.minutes / 60).toFixed(1)}时` : point.minutes}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
             </g>
 
             {/* X轴标签 */}
@@ -317,7 +249,7 @@ export default function UsageChart({
                 <span>使用时长</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-green-500" />
+                <div className="w-3 h-3 rounded bg-red-500" />
                 <span>今日</span>
               </div>
             </div>
