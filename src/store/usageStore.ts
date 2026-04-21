@@ -77,7 +77,8 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
 
   startTracking: () => {
     const now = Date.now();
-    const today = new Date().toISOString().split('T')[0];
+    // 使用本地日期而非 UTC 日期，避免时区问题
+    const today = new Date().toLocaleDateString('zh-CN');
     
     // 检查是否为新的一天，如果是则重置dailyStartTime
     const storedDate = localStorage.getItem('daily_start_date');
@@ -177,7 +178,18 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
       const stored = localStorage.getItem('usage_records');
       if (stored) {
         const records: UsageRecord[] = JSON.parse(stored);
-        set({ usageRecords: records });
+
+        // 清理旧的会话记录，只保留最近30天的
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const cutoffTime = thirtyDaysAgo.getTime();
+        const recentRecords = records.filter(r => r.startTime >= cutoffTime);
+
+        set({ usageRecords: recentRecords });
+        // 如果有清理掉记录，更新存储
+        if (recentRecords.length !== records.length) {
+          localStorage.setItem('usage_records', JSON.stringify(recentRecords));
+        }
         get().calculateStats();
       }
 
@@ -213,7 +225,8 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
   calculateStats: () => {
     const { dailyStartTime } = get();
     const now = Date.now();
-    const today = new Date().toISOString().split('T')[0];
+    // 使用本地日期而非 UTC 日期，避免时区问题
+    const today = new Date().toLocaleDateString('zh-CN');
     
     // 计算今日应用运行总时长（分钟）
     const todayMinutes = dailyStartTime > 0 ? Math.floor((now - dailyStartTime) / (1000 * 60)) : 0;
@@ -221,34 +234,56 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     // 从localStorage获取历史数据
     const weekData = JSON.parse(localStorage.getItem('weekly_usage') || '{}');
     const monthData = JSON.parse(localStorage.getItem('monthly_usage') || '{}');
-    
-    // 更新今日数据
-    const todayUsage: Record<string, number> = { [today]: todayMinutes };
-    const updatedWeekData: Record<string, number> = { ...weekData, ...todayUsage };
-    const updatedMonthData: Record<string, number> = { ...monthData, ...todayUsage };
-    
-    // 计算本周总时长
+
+    // 清理旧月份数据，只保留当月数据避免无用数据累积
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    const cleanedMonthData: Record<string, number> = {};
+    Object.entries(monthData).forEach(([dateStr, minutes]) => {
+      const date = new Date(dateStr);
+      if (date.getFullYear() === currentYear && date.getMonth() === currentMonth) {
+        cleanedMonthData[dateStr] = minutes as number;
+      }
+    });
+
+    // 清理旧周数据，只保留本周数据
     const startOfWeek = new Date();
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
+    const weekStartStr = startOfWeek.toLocaleDateString('zh-CN');
+    const cleanedWeekData: Record<string, number> = {};
+    Object.entries(weekData).forEach(([dateStr, minutes]) => {
+      const date = new Date(dateStr);
+      const weekStart = new Date(startOfWeek);
+      if (date >= weekStart) {
+        cleanedWeekData[dateStr] = minutes as number;
+      }
+    });
     
+    // 更新今日数据
+    const todayUsage: Record<string, number> = { [today]: todayMinutes };
+    const updatedWeekData: Record<string, number> = { ...cleanedWeekData, ...todayUsage };
+    const updatedMonthData: Record<string, number> = { ...cleanedMonthData, ...todayUsage };
+    
+    // 计算本周总时长（复用前面的 startOfWeek）
     let weekMinutes = 0;
     for (let i = 0; i < 7; i++) {
       const date = new Date(startOfWeek);
       date.setDate(startOfWeek.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      // 使用本地日期字符串
+      const dateStr = date.toLocaleDateString('zh-CN');
       weekMinutes += updatedWeekData[dateStr] || 0;
     }
-    
+
     // 计算本月总时长
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let monthMinutes = 0;
     const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-    
+
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(new Date().getFullYear(), new Date().getMonth(), i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = date.toLocaleDateString('zh-CN');
       monthMinutes += updatedMonthData[dateStr] || 0;
     }
     
@@ -282,7 +317,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     for (let i = 0; i < days; i++) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = date.toLocaleDateString('zh-CN');
       
       const dayRecords = usageRecords.filter(r => r.date === dateStr);
       const totalMinutes = dayRecords.reduce((sum, r) => sum + r.duration, 0);
