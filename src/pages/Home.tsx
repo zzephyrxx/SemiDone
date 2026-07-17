@@ -4,7 +4,7 @@ import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useShallow } from 'zustand/react/shallow';
 
-import type { Task, TaskFilter as TaskFilterType } from '../types';
+import type { Task } from '../types';
 import TaskItem from '../components/TaskItem';
 import TaskStats, { StatsCollapsedButton } from '../components/TaskStats';
 import TaskFilter from '../components/TaskFilter';
@@ -269,34 +269,4 @@ export default function Home() {
 
     </div>
   );
-}
-
-function getEmptyStateTitle(filter: TaskFilterType): string {
-  switch (filter) {
-    case 'pending':
-      return '没有待办待办';
-    case 'completed':
-      return '没有已完成待办';
-    case 'overdue':
-      return '没有逾期待办';
-    case 'today':
-      return '今天没有待办';
-    default:
-      return '还没有待办';
-  }
-}
-
-function getEmptyStateDescription(filter: TaskFilterType): string {
-  switch (filter) {
-    case 'pending':
-      return '所有待办都已完成，干得漂亮！';
-    case 'completed':
-      return '还没有完成任何待办，加油！';
-    case 'overdue':
-      return '没有逾期待办，时间管理很棒！';
-    case 'today':
-      return '今天可以休息一下了';
-    default:
-      return '开始创建你的第一个待办吧';
-  }
 }
