@@ -216,27 +216,27 @@ export default function StartupTip() {
             <div className="relative grid grid-cols-2 gap-x-6 rounded-xl border border-violet-100 bg-white/65 px-3 py-2 max-[440px]:gap-x-3 max-[440px]:px-2">
               <span aria-hidden="true" className="absolute bottom-5 left-1/2 top-5 w-px bg-violet-100" />
               <FeatureItem
-                icon={<CalendarDays className="h-4.5 w-4.5" />}
+                icon={<CalendarDays className="h-[18px] w-[18px]" />}
                 iconClass="bg-blue-100 text-blue-600"
                 label="周/月任务视图"
               />
               <FeatureItem
-                icon={<Download className="h-4.5 w-4.5" />}
+                icon={<Download className="h-[18px] w-[18px]" />}
                 iconClass="bg-teal-100 text-teal-600"
                 label="自动检查新版本"
               />
               <FeatureItem
-                icon={<Pin className="h-4.5 w-4.5" />}
+                icon={<Pin className="h-[18px] w-[18px]" />}
                 iconClass="bg-amber-100 text-amber-600"
                 label="待办卡片置顶"
               />
               <FeatureItem
-                icon={<Eye className="h-4.5 w-4.5" />}
+                icon={<Eye className="h-[18px] w-[18px]" />}
                 iconClass="bg-indigo-100 text-indigo-600"
                 label="透明模式更清晰"
               />
               <FeatureItem
-                icon={<Database className="h-4.5 w-4.5" />}
+                icon={<Database className="h-[18px] w-[18px]" />}
                 iconClass="bg-pink-100 text-pink-600"
                 label="数据持久化更稳定"
               />
@@ -272,7 +272,7 @@ export default function StartupTip() {
               type="checkbox"
               checked={dontShowAgain}
               onChange={(event) => setDontShowAgain(event.target.checked)}
-              className="h-4.5 w-4.5 rounded border-slate-400 accent-violet-600 focus:ring-violet-500"
+              className="h-[18px] w-[18px] rounded border-slate-400 accent-violet-600 focus:ring-violet-500"
             />
             <span className="text-[13px] text-slate-600 transition-colors group-hover:text-slate-900">
               本版本不再显示
