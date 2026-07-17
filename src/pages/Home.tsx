@@ -16,7 +16,13 @@ const VIRTUAL_ROW_HEIGHT = 95;
 const EDITING_ROW_HEIGHT = 280;
 const VIRTUAL_OVERSCAN = 6;
 
-function VirtualizedTaskList({ tasks, editingTaskId }: { tasks: Task[]; editingTaskId: string | null }) {
+interface VirtualizedTaskListProps {
+  tasks: Task[];
+  editingTaskId: string | null;
+  resetKey: string;
+}
+
+function VirtualizedTaskList({ tasks, editingTaskId, resetKey }: VirtualizedTaskListProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -48,7 +54,7 @@ function VirtualizedTaskList({ tasks, editingTaskId }: { tasks: Task[]; editingT
       container.scrollTop = 0;
     }
     setScrollTop(0);
-  }, [container, tasks, editingTaskId]);
+  }, [container, resetKey]);
 
   const editingIndex = editingTaskId ? tasks.findIndex((task) => task.id === editingTaskId) : -1;
   const extraEditingHeight = editingIndex >= 0 ? EDITING_ROW_HEIGHT - VIRTUAL_ROW_HEIGHT : 0;
@@ -98,6 +104,7 @@ export default function Home() {
     celebration,
     hideCelebration,
     editingTaskId,
+    sortConfig,
     statsBarCollapsed,
     setStatsBarCollapsed
   } = useTaskStore(
@@ -110,6 +117,7 @@ export default function Home() {
       celebration: state.celebration,
       hideCelebration: state.hideCelebration,
       editingTaskId: state.editingTaskId,
+      sortConfig: state.sortConfig,
       statsBarCollapsed: state.statsBarCollapsed,
       setStatsBarCollapsed: state.setStatsBarCollapsed,
     }))
@@ -117,6 +125,7 @@ export default function Home() {
 
   const { settings } = useSettingsStore();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const taskListResetKey = `${filter}\u0000${searchQuery}\u0000${sortConfig.field}\u0000${sortConfig.order}`;
 
   useEffect(() => {
     loadTasks();
@@ -234,7 +243,11 @@ export default function Home() {
           </div>
         </div>
       ) : (
-        <VirtualizedTaskList tasks={filteredTasks} editingTaskId={editingTaskId} />
+        <VirtualizedTaskList
+          tasks={filteredTasks}
+          editingTaskId={editingTaskId}
+          resetKey={taskListResetKey}
+        />
       )}
 
       {/* 快速添加待办弹窗 */}
