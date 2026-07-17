@@ -78,7 +78,7 @@ pub struct RecurrenceRule {
     pub recurrence_type: RecurrenceType,
     pub interval: u32,
     #[serde(rename = "daysOfWeek", skip_serializing_if = "Option::is_none")]
-    pub days_of_week: Option<Vec<u32>>,  // 周几重复 (0=周日, 1=周一...6=周六)
+    pub days_of_week: Option<Vec<u32>>, // 周几重复 (0=周日, 1=周一...6=周六)
     #[serde(rename = "daysOfMonth", skip_serializing_if = "Option::is_none")]
     pub days_of_month: Option<Vec<u32>>, // 每月几天 (1-31)，支持多选
 }
@@ -121,6 +121,10 @@ pub struct Task {
     pub created_at: String,
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
+    #[serde(rename = "completedAt", default, skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<String>,
+    #[serde(rename = "isPinned", default)]
+    pub is_pinned: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<Attachment>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -154,6 +158,8 @@ impl Task {
             due_date,
             created_at: now.clone(),
             updated_at: now,
+            completed_at: None,
+            is_pinned: false,
             attachments,
             recurrence,
             is_recurrence_child,
@@ -250,6 +256,8 @@ pub struct UpdateTaskRequest {
     pub title: Option<String>,
     pub description: Option<String>,
     pub completed: Option<bool>,
+    #[serde(rename = "isPinned")]
+    pub is_pinned: Option<bool>,
     pub priority: Option<String>,
     #[serde(rename = "dueDate")]
     pub due_date: Option<String>,
@@ -258,12 +266,12 @@ pub struct UpdateTaskRequest {
     pub recurrence: Option<Option<RecurrenceRule>>,
     #[serde(rename = "clearRecurrence", default)]
     pub clear_recurrence: bool,
-    #[serde(rename = "isRecurrenceChild", default)]
-    pub is_recurrence_child: bool,
+    #[serde(rename = "isRecurrenceChild")]
+    pub is_recurrence_child: Option<bool>,
     #[serde(rename = "parentTaskId", skip_serializing_if = "Option::is_none")]
     pub parent_task_id: Option<String>,
-    #[serde(rename = "recurrenceChildCreated", default)]
-    pub recurrence_child_created: bool,
+    #[serde(rename = "recurrenceChildCreated")]
+    pub recurrence_child_created: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

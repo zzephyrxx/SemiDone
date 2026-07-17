@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { X, Sparkles, Repeat, Paperclip, Rocket, TrendingUp, ArrowUpDown, FolderOpen, FileSearch } from 'lucide-react';
+import { X, Sparkles, CalendarDays, Download, Pin, Database, Eye } from 'lucide-react';
 
-const APP_VERSION = '4.0.15';
+const APP_VERSION = '5.0.0';
+const WELCOME_STORAGE_KEY = `welcome_shown_${APP_VERSION}`;
 
 const StartupTip: React.FC = () => {
   const [show, setShow] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
-  const STORAGE_KEY = `welcome_shown_${APP_VERSION}`;
 
   useEffect(() => {
     // 每个新版本都显示一次
-    const hasShown = localStorage.getItem(STORAGE_KEY);
+    const hasShown = localStorage.getItem(WELCOME_STORAGE_KEY);
     if (!hasShown) {
       setTimeout(() => {
         setShow(true);
@@ -20,7 +20,7 @@ const StartupTip: React.FC = () => {
 
   const handleClose = () => {
     if (dontShowAgain) {
-      localStorage.setItem(STORAGE_KEY, 'true');
+      localStorage.setItem(WELCOME_STORAGE_KEY, 'true');
     }
     setShow(false);
   };
@@ -81,39 +81,25 @@ const StartupTip: React.FC = () => {
             <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">v{APP_VERSION} 新功能</h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Rocket className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                <span>开机自启动</span>
+                <CalendarDays className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                <span>周/月任务视图</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <TrendingUp className="w-4 h-4 text-teal-500 flex-shrink-0" />
-                <span>统计面板折叠</span>
+                <Download className="w-4 h-4 text-teal-500 flex-shrink-0" />
+                <span>自动检查新版本</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Repeat className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                <span>周期循环任务</span>
+                <Pin className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <span>待办卡片置顶</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <ArrowUpDown className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-                <span>任务排序</span>
+                <Eye className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                <span>透明模式更清晰</span>
               </div>
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Paperclip className="w-4 h-4 text-pink-500 flex-shrink-0" />
-                <span>支持更多类型附件</span>
+                <Database className="w-4 h-4 text-pink-500 flex-shrink-0" />
+                <span>数据持久化更稳定</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <FolderOpen className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                <span>自定义数据存储路径</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <FileSearch className="w-4 h-4 text-cyan-500 flex-shrink-0" />
-                <span>附件可快捷打开</span>
-              </div>
-            </div>
-            {/* 注意新版本与旧版本数据不互通 */}
-            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-              <p className="text-sm text-red-700 dark:text-red-300">
-                <strong>⚠️ 提示：</strong>新版本与旧版本数据不互通，请谅解！
-              </p>
             </div>
           </div>
 
@@ -121,11 +107,10 @@ const StartupTip: React.FC = () => {
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
             <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">功能优化</h4>
             <div className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
-              <p>- 优化了待办数量增多时的页面卡顿问题</p>
-              <p>- 优化了折叠状态下的显示效果</p>
-              <p>- 任务进展面板展示内容优化</p>
-              <p>- 使用时长统计图标UI优化</p>
-              <p>- 移除了无效的自动保存开关</p>
+              <p>- 完成时间独立记录，历史完成数据继续兼容</p>
+              <p>- 桌面端不再静默降级到浏览器存储</p>
+              <p>- 重复规则、附件和设置区域已拆分，维护更轻量</p>
+              <p>- GitHub Release 检查失败时可在设置页手动重试</p>
             </div>
           </div>
 
@@ -133,6 +118,7 @@ const StartupTip: React.FC = () => {
           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
             <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Bug修复</h4>
             <div className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+              <p>- 修复了使用时长统计显示异常的问题</p>
               <p>- 修复了自定义数据目录重启后路径丢失的问题</p>
               <p>- 修复了附件无法预览/打开的问题</p>
               <p>- 修复了周报/月报导出无法指定下载路径的问题</p>

@@ -89,6 +89,24 @@ body {
 /* 透明模式下的背景 */
 body.transparent-mode {
   background-color: transparent !important;
+  /* 透明背景会随桌面内容变化，使用更亮的弱化文字并保留深色描边。 */
+  --transparent-muted-foreground: 214 32% 82%;
+  --muted-foreground: var(--transparent-muted-foreground);
+}
+
+body.transparent-mode .text-muted-foreground,
+body.transparent-mode .text-gray-500,
+body.transparent-mode .text-gray-600,
+body.transparent-mode .text-gray-700 {
+  color: hsl(var(--transparent-muted-foreground)) !important;
+  text-shadow: 0 1px 2px hsl(var(--background) / 0.95);
+}
+
+body.transparent-mode input::placeholder,
+body.transparent-mode textarea::placeholder {
+  color: hsl(var(--transparent-muted-foreground) / 0.88) !important;
+  opacity: 1;
+  text-shadow: 0 1px 2px hsl(var(--background) / 0.95);
 }
 
 body.transparent-mode #root {

@@ -1,9 +1,9 @@
 use std::sync::Mutex;
 
 #[cfg(target_os = "windows")]
-use windows::Win32::System::Threading::{CreateMutexW};
-#[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, HANDLE};
+#[cfg(target_os = "windows")]
+use windows::Win32::System::Threading::{CreateMutexW};
 #[cfg(target_os = "windows")]
 use windows::core::PCWSTR;
 
@@ -29,7 +29,7 @@ impl SingleInstance {
         {
             let mutex_name = format!("Global\\{}_SingleInstance", app_name);
             let wide_name: Vec<u16> = mutex_name.encode_utf16().chain(std::iter::once(0)).collect();
-            
+
             unsafe {
                 let handle = CreateMutexW(None, true, PCWSTR(wide_name.as_ptr()))
                     .map_err(|e| format!("Failed to create mutex: {}", e))?;
@@ -38,12 +38,12 @@ impl SingleInstance {
                     let _ = CloseHandle(handle);
                     return Err("Another instance is already running".to_string());
                 }
-                
+
                 println!("Single instance mutex created successfully");
                 Ok(SingleInstance { mutex_handle: SafeHandle(handle) })
             }
         }
-        
+
         #[cfg(not(target_os = "windows"))]
         {
             Ok(SingleInstance {})
@@ -71,7 +71,7 @@ static SINGLE_INSTANCE: Mutex<Option<SingleInstance>> = Mutex::new(None);
 
 pub fn ensure_single_instance(app_name: &str) -> Result<(), String> {
     let mut instance_guard = SINGLE_INSTANCE.lock().unwrap();
-    
+
     if instance_guard.is_some() {
         // This case should ideally not be hit if logic is correct, but as a safeguard:
         return Err("Single instance lock already held by this process.".to_string());

@@ -50,6 +50,8 @@ export interface Task {
   dueDate?: string;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string; // 实际完成时间；旧数据缺失时兼容使用 updatedAt
+  isPinned?: boolean; // 是否置顶显示；旧数据缺失时按未置顶处理
   attachments?: Attachment[];
   recurrence?: RecurrenceRule;  // 循环规则
   isRecurrenceChild?: boolean; // 是否是循环任务的子任务
@@ -72,7 +74,7 @@ export interface Settings {
   transparentLevel?: number;     // 透明度级别 0-100 (100为完全不透明)
   isEdgeSnapped?: boolean;       // 是否吸附到边缘
   edgePosition?: 'left' | 'right'; // 吸附边缘位置
-  autoStart?: boolean;            // 开机自启动
+  autoStart?: boolean;            // 开机自启
   dataDir?: string;              // 自定义数据目录
 }
 
@@ -91,6 +93,7 @@ export interface UpdateTaskRequest {
   title?: string;
   description?: string;
   completed?: boolean;
+  isPinned?: boolean;
   priority?: Priority;
   dueDate?: string;
   attachments?: Attachment[];
@@ -159,6 +162,17 @@ export interface PomodoroState {
   breakDuration: number; // 短休息时长（分钟）
   longBreakDuration: number; // 长休息时长（分钟）
   cyclesBeforeLongBreak: number; // 长休息前的循环次数
+}
+
+// 使用数据的统一持久化文档。schemaVersion 用于后续 5.x 数据迁移。
+export interface UsagePersistedData {
+  schemaVersion: 1;
+  usageRecords: UsageRecord[];
+  weeklyUsage: Record<string, number>;
+  monthlyUsage: Record<string, number>;
+  dailyStartDate: string | null;
+  dailyStartTime: number;
+  pomodoro: PomodoroState;
 }
 
 // 排序字段

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { Task, TaskStats, CreateTaskRequest, UpdateTaskRequest, TaskFilter, Priority, RecurrenceRule, SortConfig, SortOrder } from '../types';
+import type { Task, TaskStats, CreateTaskRequest, UpdateTaskRequest, TaskFilter, RecurrenceRule, SortConfig } from '../types';
 import { api } from '../api/tauri';
 import { toast } from 'sonner';
 
@@ -84,8 +84,8 @@ const calculateNextDueDate = (currentDueDate: string, recurrence: RecurrenceRule
         // 从当前月份开始，按 interval 逐月查找
         next = new Date(current);
         let found = false;
-        let year = next.getFullYear();
-        let month = next.getMonth();
+        const year = next.getFullYear();
+        const month = next.getMonth();
 
         for (let i = 0; i < 24 && !found; i++) {
           // 按 interval 个月递增
@@ -170,7 +170,7 @@ interface TaskState {
 }
 
 // 计算过滤后的待办列表
-const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery: string, sortConfig: SortConfig): Task[] => {
+export const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery: string, sortConfig: SortConfig): Task[] => {
   const trimmedQuery = searchQuery.trim().toLowerCase();
   const hasSearchQuery = trimmedQuery.length > 0;
   const todayStr = new Date().toISOString().split('T')[0];
@@ -179,6 +179,7 @@ const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery: string
   const priorityOrder = { high: 3, medium: 2, low: 1 } as const;
 
   const filtered: Task[] = [];
+  const pinned: Task[] = [];
   const completedInAll: Task[] = [];
 
   for (const task of tasks) {
@@ -216,7 +217,9 @@ const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery: string
       }
     }
 
-    if (filter === 'all' && task.completed) {
+    if (task.isPinned) {
+      pinned.push(task);
+    } else if (filter === 'all' && task.completed) {
       completedInAll.push(task);
     } else {
       filtered.push(task);
@@ -238,13 +241,15 @@ const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery: string
     }
   };
 
-  const sorted = [...filtered].sort((a, b) => {
+  const sortTasks = (items: Task[]) => [...items].sort((a, b) => {
     const aValue = getSortValue(a);
     const bValue = getSortValue(b);
     return (aValue - bValue) * multiplier;
   });
 
-  return filter === 'all' ? [...sorted, ...completedInAll] : sorted;
+  const sortedPinned = sortTasks(pinned);
+  const sorted = sortTasks(filtered);
+  return filter === 'all' ? [...sortedPinned, ...sorted, ...completedInAll] : [...sortedPinned, ...sorted];
 };
 
 export const useTaskStore = create<TaskState>()(devtools(
@@ -347,7 +352,6 @@ export const useTaskStore = create<TaskState>()(devtools(
             };
           });
           get().refreshStats();
-          toast.success('删除成功');
         } else {
           toast.error(response.error || '删除待办失败');
         }
@@ -405,10 +409,7 @@ export const useTaskStore = create<TaskState>()(devtools(
 
         // 先完成当前任务（清除 recurrence 使其变成普通任务），再创建下一个
         await get().updateTask(id, { completed: true, recurrence: null, clearRecurrence: true });
-        const createdTask = await createNextRecurrenceTask();
-        if (createdTask) {
-          toast.success(`已创建下一个周期任务：${new Date(nextDueDate).toLocaleDateString()}`);
-        }
+        await createNextRecurrenceTask();
       } else {
         await get().updateTask(id, { completed: !task.completed });
       }

@@ -1,65 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, Calendar, Flag, Type, AlignLeft, Clock, CheckCircle, Circle, Paperclip, Repeat, X, ImageIcon, Clock1, Clock10, Clock12Icon, Clock12, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Calendar, Flag, Type, AlignLeft, Clock, CheckCircle, Circle, Repeat, Clock12 } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
-import { useSettingsStore } from '../store/settingsStore';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
-import AttachmentUpload from '../components/AttachmentUpload';
-import { toast } from 'sonner';
-import type { Priority, UpdateTaskRequest, Attachment, RecurrenceRule, RecurrenceType } from '../types';
-import { DAY_NAMES } from '../types';
+import RecurrenceEditor from '../components/RecurrenceEditor';
+import TaskAttachmentsSection from '../components/TaskAttachmentsSection';
+import type { Priority, UpdateTaskRequest, Attachment, RecurrenceRule } from '../types';
 import { api } from '../api/tauri';
-
-// 辅助函数：获取循环规则的显示文本
-const getRecurrenceText = (recurrence: RecurrenceRule): string => {
-  const unitText = recurrence.type === 'day' ? '天' : recurrence.type === 'week' ? '周' : '月';
-
-  if (recurrence.type === 'week' && recurrence.daysOfWeek && recurrence.daysOfWeek.length > 0) {
-    const daysText = recurrence.daysOfWeek.map(d => DAY_NAMES[d]).join('、');
-    return `每${recurrence.interval}${unitText} ${daysText}重复`;
-  }
-
-  if (recurrence.type === 'month' && recurrence.daysOfMonth && recurrence.daysOfMonth.length > 0) {
-    const daysText = recurrence.daysOfMonth.map(d => `${d}号`).join('、');
-    return `每${recurrence.interval}月 ${daysText}重复`;
-  }
-
-  return `每${recurrence.interval}${unitText}重复`;
-};
-
-// 附件预览组件 - 仅图片显示缩略图，其他文件无预览（受控组件）
-function AttachmentPreview({ attachment, previewUrl, onOpen }: { attachment: Attachment; previewUrl?: string; onOpen: () => void }) {
-  const isImage = attachment.type.startsWith('image/');
-
-  // 图片类型且有预览URL则显示缩略图
-  if (isImage && previewUrl) {
-    return (
-      <div className="w-12 h-12 rounded overflow-hidden bg-background flex-shrink-0 cursor-pointer" onClick={onOpen}>
-        <img
-          src={previewUrl}
-          alt={attachment.name}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    );
-  }
-
-  // 其他文件不显示预览区域，点击可打开
-  return (
-    <div
-      className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-muted/80 transition-colors"
-      onClick={onOpen}
-    >
-      <Paperclip className="w-5 h-5 text-muted-foreground" />
-    </div>
-  );
-}
+import { formatRecurrenceText } from '../utils/recurrence';
 
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { tasks, updateTask, deleteTask, toggleTaskComplete } = useTaskStore();
-  const { settings } = useSettingsStore();
 
   const [task, setTask] = useState(() => tasks.find(t => t.id === id));
   const [title, setTitle] = useState('');
@@ -76,7 +29,6 @@ export default function TaskDetail() {
   const [originalAttachments, setOriginalAttachments] = useState<Attachment[]>([]); // 编辑前的附件列表
   const [newlyAddedAttachments, setNewlyAddedAttachments] = useState<Attachment[]>([]); // 编辑时新上传的附件
   const [recurrence, setRecurrence] = useState<RecurrenceRule | undefined>(undefined);
-  const [showRecurrence, setShowRecurrence] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<Record<string, string>>({}); // 预加载的图片预览
 
   // 预加载所有图片附件
@@ -338,7 +290,6 @@ export default function TaskDetail() {
                   setOriginalAttachments([]); // 清空原始附件列表
                   setNewlyAddedAttachments([]); // 清空新上传列表
                   setRecurrence(task.recurrence);
-                  setShowRecurrence(false);
                 }}
                 className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -448,155 +399,18 @@ export default function TaskDetail() {
             )}
           </div>
 
-          {/* 附件区域 */}
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2 flex items-center">
-              <Paperclip className="w-4 h-4 mr-2" />
-              附件 {task.attachments && task.attachments.length > 0 && `(${task.attachments.length})`}
-            </label>
-            {isEditing ? (
-              <AttachmentUpload
-                attachments={attachments}
-                onChange={setAttachments}
-                onFilesAdded={(newFiles) => {
-                  console.log('[TaskDetail] 新上传的附件:', newFiles.map(f => f.path || f.name));
-                  setNewlyAddedAttachments(prev => [...prev, ...newFiles]);
-                }}
-                taskId={task.id}
-              />
-            ) : (
-              <div>
-                {task.attachments && task.attachments.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-2">
-                    {task.attachments.map((attachment) => {
-                      const hasData = !!attachment.data;
-                      const hasPath = !!attachment.path;
-
-                      const handleOpenFile = async () => {
-                        // 优先使用文件路径方式打开
-                        if (hasPath) {
-                          try {
-                            const pathResponse = await api.attachment.getAttachmentPath(attachment.path!);
-                            if (pathResponse.success && pathResponse.data) {
-                              const openResponse = await api.attachment.openFileByPath(pathResponse.data);
-                              if (!openResponse.success) {
-                                toast.error(openResponse.error || '打开文件失败');
-                              }
-                            } else {
-                              toast.error(pathResponse.error || '获取文件路径失败');
-                            }
-                          } catch (error) {
-                            console.error('Error opening file:', error);
-                            toast.error('打开文件失败');
-                          }
-                          return;
-                        }
-                        // 降级到 Base64 方式
-                        if (!hasData) {
-                          toast.error('无法打开文件：文件路径不存在');
-                          return;
-                        }
-                        if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-                          try {
-                            const { invoke } = await import('@tauri-apps/api/core');
-                            const response = await invoke('open_file_with_system', {
-                              fileName: attachment.name,
-                              fileData: attachment.data,
-                              fileType: attachment.type,
-                            });
-                            if (!(response as any).success) {
-                              toast.error((response as any).error || '打开文件失败');
-                            }
-                          } catch (error) {
-                            console.error('Error opening file:', error);
-                            toast.error('打开文件失败');
-                          }
-                        } else {
-                          const byteCharacters = atob(attachment.data);
-                          const byteNumbers = new Array(byteCharacters.length);
-                          for (let i = 0; i < byteCharacters.length; i++) {
-                            byteNumbers[i] = byteCharacters.charCodeAt(i);
-                          }
-                          const byteArray = new Uint8Array(byteNumbers);
-                          const blob = new Blob([byteArray], { type: attachment.type });
-                          const url = URL.createObjectURL(blob);
-                          window.open(url, '_blank');
-                          setTimeout(() => URL.revokeObjectURL(url), 100);
-                        }
-                      };
-
-                      const handleOpenFolder = async (e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        if (!hasPath) {
-                          toast.error('无法打开文件夹：文件路径不存在');
-                          return;
-                        }
-                        try {
-                          const pathResponse = await api.attachment.getAttachmentPath(attachment.path!);
-                          console.log('[TaskDetail] getAttachmentPath response:', pathResponse);
-                          if (pathResponse.success && pathResponse.data) {
-                            // 获取文件所在文件夹路径
-                            const fullPath = pathResponse.data;
-                            console.log('[TaskDetail] fullPath:', fullPath);
-                            const lastSep = fullPath.lastIndexOf('\\');
-                            const lastSep2 = fullPath.lastIndexOf('/');
-                            const sepIndex = Math.max(lastSep, lastSep2);
-                            const folderPath = sepIndex > 0 ? fullPath.substring(0, sepIndex) : fullPath;
-                            console.log('[TaskDetail] folderPath:', folderPath);
-                            const result = await api.attachment.openFolderInExplorer(folderPath);
-                            console.log('[TaskDetail] openFolderInExplorer result:', result);
-                            if (!result.success) {
-                              toast.error(result.error || '打开文件夹失败');
-                            }
-                          } else {
-                            toast.error(pathResponse.error || '获取文件路径失败');
-                          }
-                        } catch (error) {
-                          console.error('Error opening folder:', error);
-                          toast.error('打开文件夹失败');
-                        }
-                      };
-
-                      return (
-                        <div
-                          key={attachment.id}
-                          className="flex items-center space-x-3 p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer group"
-                          onClick={handleOpenFile}
-                        >
-                          <AttachmentPreview attachment={attachment} previewUrl={imagePreviews[attachment.id]} onOpen={handleOpenFile} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-foreground truncate">
-                              {attachment.name}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {attachment.size < 1024
-                                ? `${attachment.size} B`
-                                : attachment.size < 1024 * 1024
-                                ? `${(attachment.size / 1024).toFixed(1)} KB`
-                                : `${(attachment.size / (1024 * 1024)).toFixed(1)} MB`}
-                              {hasPath && <span className="ml-1 text-green-500">✓ 已存储</span>}
-                            </div>
-                          </div>
-                          <button
-                            onClick={handleOpenFolder}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-muted-foreground/20 rounded-lg transition-all"
-                            title="打开所在位置"
-                          >
-                            <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-foreground whitespace-pre-wrap">
-                    <span className="text-muted-foreground italic">暂无附件</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <TaskAttachmentsSection
+            taskId={task.id}
+            taskAttachments={task.attachments ?? []}
+            editingAttachments={attachments}
+            imagePreviews={imagePreviews}
+            isEditing={isEditing}
+            onAttachmentsChange={setAttachments}
+            onFilesAdded={(newFiles) => {
+              console.log('[TaskDetail] 新上传的附件:', newFiles.map(file => file.path || file.name));
+              setNewlyAddedAttachments(previous => [...previous, ...newFiles]);
+            }}
+          />
         </div>
 
         {/* 右侧侧边栏 */}
@@ -736,163 +550,19 @@ export default function TaskDetail() {
                 <span>重复</span>
               </div>
               {isEditing ? (
-                <div className="relative w-3/5">
-                  <button
-                    type="button"
-                    onClick={() => setShowRecurrence(!showRecurrence)}
-                    className="w-full px-2 py-1 text-xs bg-background border border-border rounded-md hover:bg-muted transition-colors text-left"
-                  >
-                    {recurrence ? getRecurrenceText(recurrence) : '不重复'}
-                  </button>
-
-                  {showRecurrence && (
-                    <>
-                      <div className="fixed inset-0 z-[9998]" onClick={() => setShowRecurrence(false)} />
-                      <div className="absolute bottom-full right-0 mb-1 p-4 bg-background border border-border rounded-lg shadow-xl z-[9999] min-w-[320px]">
-                        <div className="space-y-4">
-                          <div className="text-sm font-medium text-foreground">设置重复周期</div>
-
-                          {/* 周期类型选择 */}
-                          <div className="flex space-x-2">
-                            {(['day', 'week', 'month'] as RecurrenceType[]).map((type) => (
-                              <button
-                                key={type}
-                                type="button"
-                                onClick={() => {
-                                  const newRec: RecurrenceRule = { type, interval: 1 };
-                                  if (type === 'week') {
-                                    newRec.daysOfWeek = [1]; // 默认周一
-                                  } else if (type === 'month') {
-                                    newRec.daysOfMonth = [1]; // 默认1号
-                                  }
-                                  setRecurrence(newRec);
-                                }}
-                                className={`flex-1 px-2 py-1.5 rounded-md border text-xs font-medium transition-colors ${
-                                  recurrence?.type === type
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                                }`}
-                              >
-                                {type === 'day' ? '天' : type === 'week' ? '周' : '月'}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* 间隔选择 */}
-                          <div>
-                            <label className="block text-xs text-muted-foreground mb-1">
-                              {recurrence?.type === 'day' ? '每隔' : recurrence?.type === 'week' ? '每几周' : '每几月'}
-                            </label>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-muted-foreground">每</span>
-                              <input
-                                type="number"
-                                min="1"
-                                max="99"
-                                value={recurrence?.interval || 1}
-                                onChange={(e) => setRecurrence({ ...recurrence!, interval: parseInt(e.target.value) || 1 })}
-                                className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                              />
-                              <span className="text-sm text-muted-foreground">
-                                {recurrence?.type === 'day' ? '天' : recurrence?.type === 'week' ? '周' : '月'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* 按周重复：选择周几 */}
-                          {recurrence?.type === 'week' && (
-                            <div>
-                              <label className="block text-xs text-muted-foreground mb-1">选择周几</label>
-                              <div className="flex flex-wrap gap-1">
-                                {DAY_NAMES.map((name, index) => (
-                                  <button
-                                    key={index}
-                                    type="button"
-                                    onClick={() => {
-                                      const currentDays = recurrence.daysOfWeek || [];
-                                      const newDays = currentDays.includes(index)
-                                        ? currentDays.filter(d => d !== index)
-                                        : [...currentDays, index];
-                                      if (newDays.length > 0) {
-                                        setRecurrence({ ...recurrence, daysOfWeek: newDays.sort((a, b) => a - b) });
-                                      }
-                                    }}
-                                    className={`w-8 h-8 rounded-md border text-xs font-medium transition-colors ${
-                                      recurrence.daysOfWeek?.includes(index)
-                                        ? 'border-primary bg-primary/10 text-primary'
-                                        : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                                    }`}
-                                  >
-                                    {name.charAt(1)}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 按月重复：选择日期网格 */}
-                          {recurrence?.type === 'month' && (
-                            <div>
-                              <label className="block text-xs text-muted-foreground mb-2">选择日期（可多选）</label>
-                              <div className="grid grid-cols-7 gap-1 p-3 bg-background border border-border rounded-lg">
-                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                                  <button
-                                    key={day}
-                                    type="button"
-                                    onClick={() => {
-                                      const currentDays = recurrence.daysOfMonth || [];
-                                      const newDays = currentDays.includes(day)
-                                        ? currentDays.filter(d => d !== day)
-                                        : [...currentDays, day].sort((a, b) => a - b);
-                                      if (newDays.length > 0) {
-                                        setRecurrence({ ...recurrence, daysOfMonth: newDays });
-                                      }
-                                    }}
-                                    className={`w-8 h-8 rounded-md border text-xs font-medium transition-colors ${
-                                      recurrence.daysOfMonth?.includes(day)
-                                        ? 'border-primary bg-primary/10 text-primary'
-                                        : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                                    }`}
-                                  >
-                                    {day}
-                                  </button>
-                                ))}
-                              </div>
-                              {recurrence.daysOfMonth && recurrence.daysOfMonth.length > 0 && (
-                                <div className="mt-2 text-xs text-muted-foreground">
-                                  已选择：每月 {recurrence.daysOfMonth.map(d => `${d}号`).join('、')} 重复
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* 确认按钮 */}
-                          <div className="flex justify-end space-x-2 pt-2 border-t border-border">
-                            <button
-                              type="button"
-                              onClick={() => { setRecurrence(undefined); setShowRecurrence(false); }}
-                              className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                            >
-                              清除
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setShowRecurrence(false)}
-                              className="px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded transition-colors font-medium"
-                            >
-                              确定
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                <div className="w-3/5">
+                  <RecurrenceEditor
+                    value={recurrence}
+                    onChange={setRecurrence}
+                    buttonClassName="w-full px-2 py-1 text-xs bg-background border border-border rounded-md hover:bg-muted transition-colors text-left"
+                    popoverClassName="bg-background"
+                  />
                 </div>
               ) : (
                 <div className="text-right">
                   {task.recurrence ? (
                     <span className="text-sm font-medium text-primary">
-                      {getRecurrenceText(task.recurrence)}
+                      {formatRecurrenceText(task.recurrence)}
                     </span>
                   ) : (
                     <span className="text-sm text-muted-foreground italic">不重复</span>

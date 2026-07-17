@@ -1,6 +1,6 @@
 [package]
 name = "SemiDone"
-version = "4.0.15"
+version = "5.0.0"
 description = "事半·SemiDone"
 authors = ["yurou"]
 license = ""
@@ -27,10 +27,12 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
+tauri-plugin-http = "2"
 uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 base64 = "0.21"
+tauri-plugin-opener = "2"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [

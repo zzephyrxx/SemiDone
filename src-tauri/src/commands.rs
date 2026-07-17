@@ -1,7 +1,7 @@
-use tauri::State;
-use std::sync::Mutex;
 use crate::models::*;
 use crate::storage::Storage;
+use std::sync::Mutex;
+use tauri::State;
 use tauri_plugin_autostart::ManagerExt;
 
 type StorageState<'a> = State<'a, Mutex<Storage>>;
@@ -9,7 +9,7 @@ type StorageState<'a> = State<'a, Mutex<Storage>>;
 #[tauri::command]
 pub async fn get_tasks(storage: StorageState<'_>) -> Result<ApiResponse<Vec<Task>>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
+
     match storage.load_tasks() {
         Ok(tasks) => Ok(ApiResponse::success(tasks)),
         Err(e) => Ok(ApiResponse::error(format!("加载待办失败: {}", e))),
@@ -22,11 +22,12 @@ pub async fn create_task(
     storage: StorageState<'_>,
 ) -> Result<ApiResponse<Task>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
-    let priority = request.priority
+
+    let priority = request
+        .priority
         .map(|p| Priority::from_string(&p))
         .unwrap_or(Priority::Medium);
-    
+
     let task = Task::new(
         request.title,
         request.description,
@@ -37,7 +38,7 @@ pub async fn create_task(
         false, // is_recurrence_child
         None,  // parent_task_id
     );
-    
+
     match storage.add_task(task) {
         Ok(task) => Ok(ApiResponse::success(task)),
         Err(e) => Ok(ApiResponse::error(format!("创建待办失败: {}", e))),
@@ -51,7 +52,7 @@ pub async fn update_task(
     storage: StorageState<'_>,
 ) -> Result<ApiResponse<Option<Task>>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
+
     match storage.update_task(&id, &updates) {
         Ok(task) => Ok(ApiResponse::success(task)),
         Err(e) => Ok(ApiResponse::error(format!("更新待办失败: {}", e))),
@@ -64,7 +65,7 @@ pub async fn delete_task(
     storage: StorageState<'_>,
 ) -> Result<ApiResponse<bool>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
+
     match storage.delete_task(&id) {
         Ok(deleted) => {
             if deleted {
@@ -80,7 +81,7 @@ pub async fn delete_task(
 #[tauri::command]
 pub async fn get_task_stats(storage: StorageState<'_>) -> Result<ApiResponse<TaskStats>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
+
     match storage.load_tasks() {
         Ok(tasks) => {
             let stats = storage.get_task_stats(&tasks);
@@ -93,7 +94,7 @@ pub async fn get_task_stats(storage: StorageState<'_>) -> Result<ApiResponse<Tas
 #[tauri::command]
 pub async fn get_settings(storage: StorageState<'_>) -> Result<ApiResponse<Settings>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
+
     match storage.load_settings() {
         Ok(settings) => Ok(ApiResponse::success(settings)),
         Err(e) => Ok(ApiResponse::error(format!("加载设置失败: {}", e))),
@@ -106,7 +107,7 @@ pub async fn update_settings(
     storage: StorageState<'_>,
 ) -> Result<ApiResponse<Settings>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
+
     match storage.save_settings(&settings) {
         Ok(_) => Ok(ApiResponse::success(settings)),
         Err(e) => Ok(ApiResponse::error(format!("保存设置失败: {}", e))),
@@ -114,34 +115,62 @@ pub async fn update_settings(
 }
 
 #[tauri::command]
+pub async fn get_usage_data(
+    storage: StorageState<'_>,
+) -> Result<ApiResponse<Option<serde_json::Value>>, String> {
+    let storage = storage.lock().map_err(|e| e.to_string())?;
+    match storage.load_usage_data() {
+        Ok(data) => Ok(ApiResponse::success(data)),
+        Err(e) => Ok(ApiResponse::error(format!("加载使用数据失败: {}", e))),
+    }
+}
+
+#[tauri::command]
+pub async fn save_usage_data(
+    usage_data: serde_json::Value,
+    storage: StorageState<'_>,
+) -> Result<ApiResponse<bool>, String> {
+    let storage = storage.lock().map_err(|e| e.to_string())?;
+    match storage.save_usage_data(&usage_data) {
+        Ok(_) => Ok(ApiResponse::success(true)),
+        Err(e) => Ok(ApiResponse::error(format!("保存使用数据失败: {}", e))),
+    }
+}
+
+#[tauri::command]
+pub async fn clear_usage_data(storage: StorageState<'_>) -> Result<ApiResponse<bool>, String> {
+    let storage = storage.lock().map_err(|e| e.to_string())?;
+    match storage.clear_usage_data() {
+        Ok(_) => Ok(ApiResponse::success(true)),
+        Err(e) => Ok(ApiResponse::error(format!("清除使用数据失败: {}", e))),
+    }
+}
+
+#[tauri::command]
 pub async fn export_data(storage: StorageState<'_>) -> Result<ApiResponse<String>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
+
     match storage.load_tasks() {
-        Ok(tasks) => {
-            match serde_json::to_string_pretty(&tasks) {
-                Ok(json_data) => Ok(ApiResponse::success(json_data)),
-                Err(e) => Ok(ApiResponse::error(format!("导出数据失败: {}", e))),
-            }
-        }
+        Ok(tasks) => match serde_json::to_string_pretty(&tasks) {
+            Ok(json_data) => Ok(ApiResponse::success(json_data)),
+            Err(e) => Ok(ApiResponse::error(format!("导出数据失败: {}", e))),
+        },
         Err(e) => Ok(ApiResponse::error(format!("加载待办失败: {}", e))),
     }
 }
 
 #[tauri::command]
 pub async fn import_data(
-    data: String,
+    json_data: String,
     storage: StorageState<'_>,
 ) -> Result<ApiResponse<bool>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
-    
-    match serde_json::from_str::<Vec<Task>>(&data) {
-        Ok(tasks) => {
-            match storage.save_tasks(&tasks) {
-                Ok(_) => Ok(ApiResponse::success(true)),
-                Err(e) => Ok(ApiResponse::error(format!("导入数据失败: {}", e))),
-            }
-        }
+
+    match serde_json::from_str::<Vec<Task>>(&json_data) {
+        Ok(tasks) => match storage.save_tasks(&tasks) {
+            Ok(_) => Ok(ApiResponse::success(true)),
+            Err(e) => Ok(ApiResponse::error(format!("导入数据失败: {}", e))),
+        },
         Err(e) => Ok(ApiResponse::error(format!("解析数据失败: {}", e))),
     }
 }
@@ -162,6 +191,11 @@ pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<boo
         return Ok(ApiResponse::error(format!("重置设置失败: {}", e)));
     }
     println!("[Clear] settings.json 已重置");
+
+    if let Err(e) = storage.clear_usage_data() {
+        return Ok(ApiResponse::error(format!("清空使用数据失败: {}", e)));
+    }
+    println!("[Clear] usage.json 已清空");
 
     // 3. 删除 attachments 目录
     let attachments_dir = storage.get_attachments_dir();
@@ -193,9 +227,13 @@ pub async fn get_data_dir_path(storage: StorageState<'_>) -> Result<ApiResponse<
 }
 
 #[tauri::command]
-pub async fn open_file_with_system(file_name: String, file_data: String, _file_type: String) -> Result<ApiResponse<bool>, String> {
+pub async fn open_file_with_system(
+    file_name: String,
+    file_data: String,
+    _file_type: String,
+) -> Result<ApiResponse<bool>, String> {
+    use base64::{engine::general_purpose, Engine as _};
     use std::fs;
-    use base64::{Engine as _, engine::general_purpose};
 
     // 创建临时文件
     let temp_dir = std::env::temp_dir();
@@ -221,10 +259,7 @@ pub async fn open_file_with_system(file_name: String, file_data: String, _file_t
 
                     #[cfg(target_os = "macos")]
                     {
-                        match std::process::Command::new("open")
-                            .arg(&file_path)
-                            .spawn()
-                        {
+                        match std::process::Command::new("open").arg(&file_path).spawn() {
                             Ok(_) => Ok(ApiResponse::success(true)),
                             Err(e) => Ok(ApiResponse::error(format!("打开文件失败: {}", e))),
                         }
@@ -271,10 +306,7 @@ pub async fn open_file_by_path(file_path: String) -> Result<ApiResponse<bool>, S
 
     #[cfg(target_os = "macos")]
     {
-        match std::process::Command::new("open")
-            .arg(&file_path)
-            .spawn()
-        {
+        match std::process::Command::new("open").arg(&file_path).spawn() {
             Ok(_) => Ok(ApiResponse::success(true)),
             Err(e) => Ok(ApiResponse::error(format!("打开文件失败: {}", e))),
         }
@@ -301,7 +333,10 @@ pub async fn open_file_by_path(file_path: String) -> Result<ApiResponse<bool>, S
 pub async fn open_folder_in_explorer(folder_path: String) -> Result<ApiResponse<bool>, String> {
     use std::path::Path;
 
-    println!("[Rust] open_folder_in_explorer 被调用，folder_path: {}", folder_path);
+    println!(
+        "[Rust] open_folder_in_explorer 被调用，folder_path: {}",
+        folder_path
+    );
 
     // 规范化路径：统一使用正斜杠
     let normalized_path = folder_path.replace('\\', "/");
@@ -347,20 +382,17 @@ pub async fn open_folder_in_explorer(folder_path: String) -> Result<ApiResponse<
             Ok(_) => {
                 println!("[Rust] explorer.exe 启动成功");
                 Ok(ApiResponse::success(true))
-            },
+            }
             Err(e) => {
                 println!("[Rust] explorer.exe 启动失败: {}", e);
                 Ok(ApiResponse::error(format!("打开文件夹失败: {}", e)))
-            },
+            }
         }
     }
 
     #[cfg(target_os = "macos")]
     {
-        match std::process::Command::new("open")
-            .arg(&folder_path)
-            .spawn()
-        {
+        match std::process::Command::new("open").arg(&folder_path).spawn() {
             Ok(_) => Ok(ApiResponse::success(true)),
             Err(e) => Ok(ApiResponse::error(format!("打开文件夹失败: {}", e))),
         }
@@ -383,6 +415,39 @@ pub async fn open_folder_in_explorer(folder_path: String) -> Result<ApiResponse<
     }
 }
 
+fn move_data_file(
+    old_dir: &std::path::Path,
+    new_dir: &std::path::Path,
+    file_name: &str,
+) -> Result<(), String> {
+    let old_file = old_dir.join(file_name);
+    if !old_file.exists() {
+        return Ok(());
+    }
+
+    let new_file = new_dir.join(file_name);
+    if let Err(rename_error) = std::fs::rename(&old_file, &new_file) {
+        if let Err(copy_error) = std::fs::copy(&old_file, &new_file) {
+            return Err(format!(
+                "移动 {file_name} 失败: {rename_error} / {copy_error}"
+            ));
+        }
+        let _ = std::fs::remove_file(&old_file);
+    }
+    println!("[Storage] {file_name} moved");
+    Ok(())
+}
+
+fn migrate_core_data_files(
+    old_dir: &std::path::Path,
+    new_dir: &std::path::Path,
+) -> Result<(), String> {
+    for file_name in ["tasks.json", "settings.json", "usage.json"] {
+        move_data_file(old_dir, new_dir, file_name)?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn migrate_data_dir(
     new_path: String,
@@ -401,34 +466,19 @@ pub async fn migrate_data_dir(
         return Ok(ApiResponse::error(format!("创建新目录失败: {}", e)));
     }
 
-    // 移动 tasks.json（跨盘符时 rename 可能失败，用 copy+delete 兜底）
-    let old_tasks = std::path::Path::new(&old_path).join("tasks.json");
-    if old_tasks.exists() {
-        let new_tasks = new_path_buf.join("tasks.json");
-        if let Err(e) = std::fs::rename(&old_tasks, &new_tasks) {
-            if let Err(e2) = std::fs::copy(&old_tasks, &new_tasks) {
-                return Ok(ApiResponse::error(format!("移动 tasks.json 失败: {} / {}", e, e2)));
-            }
-            let _ = std::fs::remove_file(&old_tasks);
-        }
-        println!("[Storage] tasks.json moved");
+    // 移动核心数据文件（跨盘符时 rename 可能失败，用 copy+delete 兜底）
+    if let Err(error) = migrate_core_data_files(std::path::Path::new(&old_path), &new_path_buf) {
+        return Ok(ApiResponse::error(error));
     }
 
-    // 移动 settings.json 并更新 data_dir（跨盘符时 rename 可能失败，用 copy+delete 兜底）
-    let old_settings = std::path::Path::new(&old_path).join("settings.json");
-    if old_settings.exists() {
-        let new_settings = new_path_buf.join("settings.json");
-        if let Err(e) = std::fs::rename(&old_settings, &new_settings) {
-            if let Err(e2) = std::fs::copy(&old_settings, &new_settings) {
-                return Ok(ApiResponse::error(format!("移动 settings.json 失败: {} / {}", e, e2)));
-            }
-            let _ = std::fs::remove_file(&old_settings);
-        }
-        println!("[Storage] settings.json moved");
-
+    // 更新新目录 settings 中的 data_dir
+    let new_settings = new_path_buf.join("settings.json");
+    if new_settings.exists() {
         // 更新新目录 settings 中的 data_dir
         if let Ok(settings_content) = std::fs::read_to_string(&new_settings) {
-            if let Ok(mut settings) = serde_json::from_str::<crate::models::Settings>(&settings_content) {
+            if let Ok(mut settings) =
+                serde_json::from_str::<crate::models::Settings>(&settings_content)
+            {
                 settings.data_dir = Some(new_path.clone());
                 if let Ok(new_settings_content) = serde_json::to_string_pretty(&settings) {
                     if let Err(e) = std::fs::write(&new_settings, &new_settings_content) {
@@ -448,7 +498,10 @@ pub async fn migrate_data_dir(
         // 跨盘符时 rename 可能失败，用 copy+delete 兜底
         if let Err(e) = std::fs::rename(&old_attachments, &new_attachments) {
             if let Err(e2) = copy_dir_recursive(&old_attachments, &new_attachments) {
-                return Ok(ApiResponse::error(format!("移动 attachments 目录失败: {} / {}", e, e2)));
+                return Ok(ApiResponse::error(format!(
+                    "移动 attachments 目录失败: {} / {}",
+                    e, e2
+                )));
             }
             let _ = std::fs::remove_dir_all(&old_attachments);
         }
@@ -497,7 +550,7 @@ pub async fn get_autostart_enabled(app: tauri::AppHandle) -> Result<ApiResponse<
         Ok(enabled) => {
             println!("[Autostart] is_enabled = {}", enabled);
             Ok(ApiResponse::success(enabled))
-        },
+        }
         Err(e) => {
             println!("[Autostart] is_enabled error: {}", e);
             Ok(ApiResponse::error(format!("获取自启动状态失败: {}", e)))
@@ -506,8 +559,14 @@ pub async fn get_autostart_enabled(app: tauri::AppHandle) -> Result<ApiResponse<
 }
 
 #[tauri::command]
-pub async fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<ApiResponse<bool>, String> {
-    println!("[Autostart] set_autostart_enabled called with enabled = {}", enabled);
+pub async fn set_autostart_enabled(
+    app: tauri::AppHandle,
+    enabled: bool,
+) -> Result<ApiResponse<bool>, String> {
+    println!(
+        "[Autostart] set_autostart_enabled called with enabled = {}",
+        enabled
+    );
     let autostart_manager = app.autolaunch();
     let result = if enabled {
         println!("[Autostart] calling enable()");
@@ -520,7 +579,7 @@ pub async fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Resu
         Ok(_) => {
             println!("[Autostart] success!");
             Ok(ApiResponse::success(enabled))
-        },
+        }
         Err(e) => {
             println!("[Autostart] error: {}", e);
             Ok(ApiResponse::error(format!("设置自启动状态失败: {}", e)))
@@ -552,7 +611,9 @@ pub async fn get_attachment_path(
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
     match storage.get_attachment_path(&relative_path) {
-        Ok(full_path) => Ok(ApiResponse::success(full_path.to_string_lossy().to_string())),
+        Ok(full_path) => Ok(ApiResponse::success(
+            full_path.to_string_lossy().to_string(),
+        )),
         Err(e) => Ok(ApiResponse::error(format!("获取附件路径失败: {}", e))),
     }
 }
@@ -606,5 +667,45 @@ pub async fn set_data_dir(
     match storage.set_data_dir(std::path::PathBuf::from(path)) {
         Ok(_) => Ok(ApiResponse::success(true)),
         Err(e) => Ok(ApiResponse::error(format!("设置数据目录失败: {}", e))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::migrate_core_data_files;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn data_directory_migration_moves_usage_with_tasks_and_settings() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be valid")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("semidone-migration-{unique}"));
+        let old_dir = root.join("old");
+        let new_dir = root.join("new");
+        fs::create_dir_all(&old_dir).expect("old test directory should be created");
+        fs::create_dir_all(&new_dir).expect("new test directory should be created");
+
+        for file_name in ["tasks.json", "settings.json", "usage.json"] {
+            fs::write(old_dir.join(file_name), format!("{file_name} content"))
+                .expect("test data should be written");
+        }
+
+        migrate_core_data_files(&old_dir, &new_dir).expect("core data migration should succeed");
+
+        for file_name in ["tasks.json", "settings.json", "usage.json"] {
+            assert!(
+                new_dir.join(file_name).exists(),
+                "{file_name} should be migrated"
+            );
+            assert!(
+                !old_dir.join(file_name).exists(),
+                "old {file_name} should be removed"
+            );
+        }
+
+        fs::remove_dir_all(root).expect("test directory should be cleaned up");
     }
 }

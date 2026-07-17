@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link } from 'react-router-dom';
-import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../store/settingsStore';
 import { useUsageStore } from '../store/usageStore';
@@ -12,30 +12,32 @@ import { getQuotesByTheme } from '../data/quotes';
 export default function Layout() {
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-  const [currentQuote, setCurrentQuote] = useState('');
   const [quoteIndex, setQuoteIndex] = useState(() => {
     // 从localStorage获取上次的索引，如果不存在则从0开始
     const saved = localStorage.getItem('quoteIndex');
-    return saved ? parseInt(saved, 10) : 0;
+    const parsed = saved ? Number.parseInt(saved, 10) : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
   });
 
   const { settings, toggleIsPinned, toggleIsCollapsed } = useSettingsStore();
   const { pomodoro, formatTime } = useUsageStore();
+  const quotes = getQuotesByTheme(settings.theme);
+  const currentQuote = quotes[quoteIndex % quotes.length] ?? '';
 
   // 轮播励志名言
   useEffect(() => {
     if (settings.collapseMode === 'bar') {
-      const quotes = getQuotesByTheme(settings.theme);
-      setCurrentQuote(quotes[quoteIndex % quotes.length]);
-
       const timer = setInterval(() => {
-        setQuoteIndex((prev) => (prev + 1) % quotes.length);
+        setQuoteIndex((previousIndex) => {
+          const nextIndex = (previousIndex + 1) % quotes.length;
+          localStorage.setItem('quoteIndex', String(nextIndex));
+          return nextIndex;
+        });
       }, 5000); // 5秒切换一次
 
       return () => clearInterval(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.collapseMode, settings.theme]);
+  }, [quotes.length, settings.collapseMode, settings.theme]);
 
   const handleCloseApp = () => {
     setShowCloseConfirm(true);
@@ -71,7 +73,7 @@ export default function Layout() {
     );
   };
 
-  // 悬浮球模式处理函数
+  // 悬浮球处理函数
   const handleExpandFromFloating = async () => {
     await toggleIsCollapsed(); // 从悬浮球切换到展开模式
   };
@@ -80,7 +82,7 @@ export default function Layout() {
     handleCloseApp();
   };
 
-  // 如果是悬浮球模式，只渲染悬浮球组件
+  // 如果是悬浮球，只渲染悬浮球组件
   if (settings.collapseMode === 'floating') {
     return (
       <>
@@ -217,13 +219,22 @@ export default function Layout() {
           
           {/* 设置按钮 - 只在展开时显示 */}
           {settings.collapseMode === 'expanded' && (
-            <Link 
-              to="/settings" 
-              className="p-2 rounded-full hover:bg-accent transition-colors" 
-              title="设置"
-            >
-              <Settings className="w-5 h-5" />
-            </Link>
+            <>
+              <Link
+                to="/task-calendar"
+                className="p-2 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="任务视图"
+              >
+                <CalendarDays className="w-5 h-5" />
+              </Link>
+              <Link
+                to="/settings"
+                className="p-2 rounded-full hover:bg-accent transition-colors"
+                title="设置"
+              >
+                <Settings className="w-5 h-5" />
+              </Link>
+            </>
           )}
           
           {/* 关闭按钮 */}

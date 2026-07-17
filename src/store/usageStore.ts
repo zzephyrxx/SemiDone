@@ -1,17 +1,24 @@
 import { create } from 'zustand';
-import { toast } from 'sonner';
 import type { 
   UsageRecord, 
   UsageStats, 
   UsageDetail, 
-  PomodoroState 
+  PomodoroState,
+  UsagePersistedData,
 } from '../types';
+import {
+  clearPersistedUsageData,
+  loadPersistedUsageData,
+  savePersistedUsageData,
+} from '../services/usagePersistence';
 
 interface UsageStore {
   // 使用时长数据
   usageRecords: UsageRecord[];
   currentSession: UsageRecord | null;
   stats: UsageStats;
+  weeklyUsage: Record<string, number>;
+  monthlyUsage: Record<string, number>;
   
   // 番茄钟状态
   pomodoro: PomodoroState;
@@ -21,12 +28,13 @@ interface UsageStore {
   isTrackingEnabled: boolean;
   sessionStartTime: number;
   dailyStartTime: number; // 今日应用启动时间
+  dailyStartDate: string | null;
   
   // Actions
   startTracking: () => void;
   stopTracking: () => void;
   saveCurrentSession: () => void;
-  loadUsageData: () => void;
+  loadUsageData: () => Promise<void>;
   calculateStats: () => void;
   getUsageDetails: (days: number) => UsageDetail[];
   
@@ -56,6 +64,30 @@ const DEFAULT_POMODORO: PomodoroState = {
   cyclesBeforeLongBreak: 4
 };
 
+function getPersistedData(state: UsageStore): UsagePersistedData {
+  return {
+    schemaVersion: 1,
+    usageRecords: state.usageRecords,
+    weeklyUsage: state.weeklyUsage,
+    monthlyUsage: state.monthlyUsage,
+    dailyStartDate: state.dailyStartDate,
+    dailyStartTime: state.dailyStartTime,
+    pomodoro: state.pomodoro,
+  };
+}
+
+interface UsageWindow extends Window {
+  usageTrackingInterval?: ReturnType<typeof setInterval>;
+}
+
+function getUsageWindow(): UsageWindow {
+  return window as UsageWindow;
+}
+
+function persistUsageState(state: UsageStore): void {
+  void savePersistedUsageData(getPersistedData(state));
+}
+
 export const useUsageStore = create<UsageStore>((set, get) => ({
   usageRecords: [],
   currentSession: null,
@@ -67,6 +99,8 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     totalSessions: 0,
     longestSession: 0
   },
+  weeklyUsage: {},
+  monthlyUsage: {},
   
   pomodoro: DEFAULT_POMODORO,
   pomodoroInterval: null,
@@ -74,33 +108,28 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
   isTrackingEnabled: false,
   sessionStartTime: 0,
   dailyStartTime: 0,
+  dailyStartDate: null,
 
   startTracking: () => {
     const now = Date.now();
     // 使用本地日期而非 UTC 日期，避免时区问题
     const today = new Date().toLocaleDateString('zh-CN');
     
-    // 检查是否为新的一天，如果是则重置dailyStartTime
-    const storedDate = localStorage.getItem('daily_start_date');
+    // 检查是否为新的一天，如果是则重置 dailyStartTime
+    const state = get();
     let dailyStart = now;
     
-    if (storedDate === today) {
-      // 同一天，获取之前保存的启动时间
-      const storedStartTime = localStorage.getItem('daily_start_time');
-      if (storedStartTime) {
-        dailyStart = parseInt(storedStartTime, 10);
-      }
-    } else {
-      // 新的一天，保存新的启动时间和日期
-      localStorage.setItem('daily_start_date', today);
-      localStorage.setItem('daily_start_time', now.toString());
+    if (state.dailyStartDate === today && state.dailyStartTime > 0) {
+      dailyStart = state.dailyStartTime;
     }
 
     set({
       isTrackingEnabled: true,
       sessionStartTime: now,
-      dailyStartTime: dailyStart
+      dailyStartTime: dailyStart,
+      dailyStartDate: today,
     });
+    persistUsageState(get());
 
     // 每分钟更新一次统计
     const trackingInterval = setInterval(() => {
@@ -111,7 +140,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     }, 60000); // 每分钟检查一次
 
     // 保存interval引用用于清理
-    (window as any).usageTrackingInterval = trackingInterval;
+    getUsageWindow().usageTrackingInterval = trackingInterval;
   },
 
   stopTracking: () => {
@@ -129,8 +158,6 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
         };
 
         const updatedRecords = [...state.usageRecords, completedSession];
-        localStorage.setItem('usage_records', JSON.stringify(updatedRecords));
-
         set({
           usageRecords: updatedRecords,
           currentSession: null,
@@ -139,14 +166,14 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
         });
 
         state.calculateStats();
-        toast.success(`本次使用 ${state.formatMinutes(duration)}`);
       }
     }
 
     // 清理tracking interval
-    if ((window as any).usageTrackingInterval) {
-      clearInterval((window as any).usageTrackingInterval);
-      (window as any).usageTrackingInterval = null;
+    const usageWindow = getUsageWindow();
+    if (usageWindow.usageTrackingInterval) {
+      clearInterval(usageWindow.usageTrackingInterval);
+      usageWindow.usageTrackingInterval = undefined;
     }
 
     set({
@@ -154,6 +181,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
       currentSession: null,
       sessionStartTime: 0
     });
+    persistUsageState(get());
   },
 
   saveCurrentSession: () => {
@@ -168,62 +196,40 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
         existingRecords.push(state.currentSession);
       }
       
-      localStorage.setItem('usage_records', JSON.stringify(existingRecords));
       set({ usageRecords: existingRecords });
+      persistUsageState(get());
     }
   },
 
-  loadUsageData: () => {
+  loadUsageData: async () => {
     try {
-      const stored = localStorage.getItem('usage_records');
-      if (stored) {
-        const records: UsageRecord[] = JSON.parse(stored);
+      const persisted = await loadPersistedUsageData(DEFAULT_POMODORO);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const cutoffTime = thirtyDaysAgo.getTime();
+      const recentRecords = persisted.usageRecords.filter(r => r.startTime >= cutoffTime);
+      const shouldResumePomodoro = persisted.pomodoro.isActive;
 
-        // 清理旧的会话记录，只保留最近30天的
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const cutoffTime = thirtyDaysAgo.getTime();
-        const recentRecords = records.filter(r => r.startTime >= cutoffTime);
+      set({
+        usageRecords: recentRecords,
+        weeklyUsage: persisted.weeklyUsage,
+        monthlyUsage: persisted.monthlyUsage,
+        dailyStartDate: persisted.dailyStartDate,
+        dailyStartTime: persisted.dailyStartTime,
+        pomodoro: shouldResumePomodoro
+          ? { ...persisted.pomodoro, isActive: false }
+          : persisted.pomodoro,
+      });
 
-        set({ usageRecords: recentRecords });
-        // 如果有清理掉记录，更新存储
-        if (recentRecords.length !== records.length) {
-          localStorage.setItem('usage_records', JSON.stringify(recentRecords));
-        }
-        get().calculateStats();
-      }
-
-      // 首先尝试加载当前番茄钟状态
-      const currentPomodoroState = localStorage.getItem('pomodoro_current_state');
-      if (currentPomodoroState) {
-        const savedState = JSON.parse(currentPomodoroState);
-        set({ pomodoro: savedState });
-        
-        // 如果番茄钟之前是运行状态，重新启动定时器
-        if (savedState.isActive) {
-          get().startPomodoro();
-        }
-      } else {
-        // 加载番茄钟设置（仅在没有当前状态时）
-        const pomodoroSettings = localStorage.getItem('pomodoro_settings');
-        if (pomodoroSettings) {
-          const settings = JSON.parse(pomodoroSettings);
-          set({
-            pomodoro: {
-              ...DEFAULT_POMODORO,
-              ...settings,
-              timeLeft: settings.workDuration * 60
-            }
-          });
-        }
-      }
+      get().calculateStats();
+      if (shouldResumePomodoro) get().startPomodoro();
     } catch (error) {
       console.error('加载使用数据失败:', error);
     }
   },
 
   calculateStats: () => {
-    const { dailyStartTime } = get();
+    const { dailyStartTime, weeklyUsage, monthlyUsage } = get();
     const now = Date.now();
     // 使用本地日期而非 UTC 日期，避免时区问题
     const today = new Date().toLocaleDateString('zh-CN');
@@ -231,15 +237,11 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     // 计算今日应用运行总时长（分钟）
     const todayMinutes = dailyStartTime > 0 ? Math.floor((now - dailyStartTime) / (1000 * 60)) : 0;
     
-    // 从localStorage获取历史数据
-    const weekData = JSON.parse(localStorage.getItem('weekly_usage') || '{}');
-    const monthData = JSON.parse(localStorage.getItem('monthly_usage') || '{}');
-
     // 清理旧月份数据，只保留当月数据避免无用数据累积
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth();
     const cleanedMonthData: Record<string, number> = {};
-    Object.entries(monthData).forEach(([dateStr, minutes]) => {
+    Object.entries(monthlyUsage).forEach(([dateStr, minutes]) => {
       const date = new Date(dateStr);
       if (date.getFullYear() === currentYear && date.getMonth() === currentMonth) {
         cleanedMonthData[dateStr] = minutes as number;
@@ -251,9 +253,8 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
-    const weekStartStr = startOfWeek.toLocaleDateString('zh-CN');
     const cleanedWeekData: Record<string, number> = {};
-    Object.entries(weekData).forEach(([dateStr, minutes]) => {
+    Object.entries(weeklyUsage).forEach(([dateStr, minutes]) => {
       const date = new Date(dateStr);
       const weekStart = new Date(startOfWeek);
       if (date >= weekStart) {
@@ -277,7 +278,6 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     }
 
     // 计算本月总时长
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     let monthMinutes = 0;
     const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
 
@@ -294,11 +294,9 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     const averageDaily = activeDays.length > 0 ? Math.round(totalMinutes / activeDays.length) : 0;
     const longestSession = Math.max(...Object.values(updatedMonthData).map(v => typeof v === 'number' ? v : 0), 0);
     
-    // 保存数据
-    localStorage.setItem('weekly_usage', JSON.stringify(updatedWeekData));
-    localStorage.setItem('monthly_usage', JSON.stringify(updatedMonthData));
-
     set({
+      weeklyUsage: updatedWeekData,
+      monthlyUsage: updatedMonthData,
       stats: {
         today: todayMinutes,
         thisWeek: weekMinutes,
@@ -308,6 +306,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
         longestSession
       }
     });
+    persistUsageState(get());
   },
 
   getUsageDetails: (days: number): UsageDetail[] => {
@@ -357,8 +356,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     const newPomodoroState = { ...pomodoro, isActive: true };
     set({ pomodoro: newPomodoroState });
     
-    // 保存番茄钟状态到localStorage
-    localStorage.setItem('pomodoro_current_state', JSON.stringify(newPomodoroState));
+    persistUsageState(get());
 
     const interval = setInterval(() => {
       const currentState = get();
@@ -377,8 +375,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
       
       set({ pomodoro: updatedPomodoro });
       
-      // 每秒保存当前状态
-      localStorage.setItem('pomodoro_current_state', JSON.stringify(updatedPomodoro));
+      if (updatedPomodoro.timeLeft % 5 === 0) persistUsageState(get());
     }, 1000);
 
     set({ pomodoroInterval: interval });
@@ -390,8 +387,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     const pausedPomodoro = { ...pomodoro, isActive: false };
     set({ pomodoro: pausedPomodoro });
     
-    // 保存暂停状态
-    localStorage.setItem('pomodoro_current_state', JSON.stringify(pausedPomodoro));
+    persistUsageState(get());
 
     if (pomodoroInterval) {
       clearInterval(pomodoroInterval);
@@ -417,8 +413,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
 
     set({ pomodoro: resetState });
     
-    // 清除持久化的当前状态
-    localStorage.removeItem('pomodoro_current_state');
+    persistUsageState(get());
   },
 
   switchPomodoroMode: () => {
@@ -439,16 +434,13 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
       if (newCycle % pomodoro.cyclesBeforeLongBreak === 0) {
         newMode = 'longBreak';
         newTimeLeft = pomodoro.longBreakDuration * 60;
-        toast.success(`🎉 完成${newCycle}个番茄钟！开始长休息`);
       } else {
         newMode = 'break';
         newTimeLeft = pomodoro.breakDuration * 60;
-        toast.success('✅ 番茄钟完成！开始休息');
       }
     } else {
       newMode = 'work';
       newTimeLeft = pomodoro.workDuration * 60;
-      toast.success('⏰ 休息结束！开始专注工作');
     }
 
     const newPomodoroState = {
@@ -461,8 +453,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
 
     set({ pomodoro: newPomodoroState });
     
-    // 保存切换后的状态
-    localStorage.setItem('pomodoro_current_state', JSON.stringify(newPomodoroState));
+    persistUsageState(get());
 
     // 继续下一阶段
     get().startPomodoro();
@@ -479,8 +470,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
 
     set({ pomodoro: newPomodoro });
     
-    // 保存设置
-    localStorage.setItem('pomodoro_settings', JSON.stringify(settings));
+    persistUsageState(get());
   },
 
   formatTime: (seconds: number): string => {
@@ -509,19 +499,13 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     if (state.pomodoroInterval) {
       clearInterval(state.pomodoroInterval);
     }
-    if ((window as any).usageTrackingInterval) {
-      clearInterval((window as any).usageTrackingInterval);
-      (window as any).usageTrackingInterval = null;
+    const usageWindow = getUsageWindow();
+    if (usageWindow.usageTrackingInterval) {
+      clearInterval(usageWindow.usageTrackingInterval);
+      usageWindow.usageTrackingInterval = undefined;
     }
 
-    // 清除所有 localStorage 中的使用数据
-    localStorage.removeItem('usage_records');
-    localStorage.removeItem('weekly_usage');
-    localStorage.removeItem('monthly_usage');
-    localStorage.removeItem('daily_start_date');
-    localStorage.removeItem('daily_start_time');
-    localStorage.removeItem('pomodoro_current_state');
-    localStorage.removeItem('pomodoro_settings');
+    void clearPersistedUsageData();
 
     // 重置内存状态
     set({
@@ -535,11 +519,14 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
         totalSessions: 0,
         longestSession: 0
       },
+      weeklyUsage: {},
+      monthlyUsage: {},
       pomodoro: DEFAULT_POMODORO,
       pomodoroInterval: null,
       isTrackingEnabled: false,
       sessionStartTime: 0,
-      dailyStartTime: 0
+      dailyStartTime: 0,
+      dailyStartDate: null,
     });
   }
 }));

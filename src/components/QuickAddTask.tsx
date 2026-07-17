@@ -2,26 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, X, Calendar, Flag, Type, AlignLeft, Paperclip, Repeat } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
-import type { Priority, CreateTaskRequest, Attachment, RecurrenceRule, RecurrenceType } from '../types';
-import { DAY_NAMES } from '../types';
+import type { Priority, CreateTaskRequest, Attachment, RecurrenceRule } from '../types';
 import { toast } from 'sonner';
-
-// 辅助函数：获取循环规则的显示文本
-const getRecurrenceText = (recurrence: RecurrenceRule): string => {
-  const unitText = recurrence.type === 'day' ? '天' : recurrence.type === 'week' ? '周' : '月';
-
-  if (recurrence.type === 'week' && recurrence.daysOfWeek && recurrence.daysOfWeek.length > 0) {
-    const daysText = recurrence.daysOfWeek.map(d => DAY_NAMES[d]).join('、');
-    return `每${recurrence.interval}${unitText} ${daysText}重复`;
-  }
-
-  if (recurrence.type === 'month' && recurrence.daysOfMonth && recurrence.daysOfMonth.length > 0) {
-    const daysText = recurrence.daysOfMonth.map(d => `${d}号`).join('、');
-    return `每${recurrence.interval}月 ${daysText}重复`;
-  }
-
-  return `每${recurrence.interval}${unitText}重复`;
-};
+import RecurrenceEditor from './RecurrenceEditor';
 
 interface QuickAddTaskProps {
   onClose: () => void;
@@ -40,7 +23,6 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDueDate, setTempDueDate] = useState('');
   const [recurrence, setRecurrence] = useState<RecurrenceRule | undefined>(undefined);
-  const [showRecurrence, setShowRecurrence] = useState(false);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +31,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
     titleInputRef.current?.focus();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
 
     if (!title.trim()) {
@@ -141,7 +123,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
     if (e.key === 'Escape') {
       onClose();
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      handleSubmit(e as any);
+      void handleSubmit(e);
     }
   };
 
@@ -483,160 +465,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
                 <Repeat className="inline w-4 h-4 mr-1" />
                 重复
               </label>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowRecurrence(!showRecurrence)}
-                  className="w-full px-3 py-2 text-left bg-background border border-border rounded-lg hover:bg-muted transition-colors text-foreground text-sm"
-                >
-                  {recurrence ? getRecurrenceText(recurrence) : '不重复'}
-                </button>
-
-                {showRecurrence && (
-                  <>
-                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowRecurrence(false)} />
-                    <div className="absolute bottom-full right-0 mb-1 p-4 bg-card border border-border rounded-lg shadow-xl z-[9999] min-w-[320px]">
-                      <div className="space-y-4">
-                        <div className="text-sm font-medium text-foreground">设置重复周期</div>
-
-                        {/* 周期类型选择 */}
-                        <div className="flex space-x-2">
-                          {(['day', 'week', 'month'] as RecurrenceType[]).map((type) => (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => {
-                                const newRec: RecurrenceRule = { type, interval: 1 };
-                                if (type === 'week') {
-                                  newRec.daysOfWeek = [1];
-                                } else if (type === 'month') {
-                                  newRec.daysOfMonth = [1];
-                                }
-                                setRecurrence(newRec);
-                              }}
-                              className={`flex-1 px-2 py-1.5 rounded-md border text-xs font-medium transition-colors ${
-                                recurrence?.type === type
-                                  ? 'border-primary bg-primary/10 text-primary'
-                                  : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                              }`}
-                            >
-                              {type === 'day' ? '天' : type === 'week' ? '周' : '月'}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* 间隔选择 */}
-                        {recurrence && (
-                          <div>
-                            <label className="block text-xs text-muted-foreground mb-1">
-                              {recurrence.type === 'day' ? '每隔' : recurrence.type === 'week' ? '每几周' : '每几月'}
-                            </label>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-muted-foreground">每</span>
-                              <input
-                                type="number"
-                                min="1"
-                                max="99"
-                                value={recurrence.interval}
-                                onChange={(e) => setRecurrence({ ...recurrence, interval: parseInt(e.target.value) || 1 })}
-                                className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                              />
-                              <span className="text-sm text-muted-foreground">
-                                {recurrence.type === 'day' ? '天' : recurrence.type === 'week' ? '周' : '月'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 按周重复：选择周几 */}
-                        {recurrence?.type === 'week' && (
-                          <div>
-                            <label className="block text-xs text-muted-foreground mb-1">选择周几</label>
-                            <div className="flex flex-wrap gap-1">
-                              {DAY_NAMES.map((name, index) => (
-                                <button
-                                  key={index}
-                                  type="button"
-                                  onClick={() => {
-                                    const currentDays = recurrence.daysOfWeek || [];
-                                    const newDays = currentDays.includes(index)
-                                      ? currentDays.filter(d => d !== index)
-                                      : [...currentDays, index];
-                                    if (newDays.length > 0) {
-                                      setRecurrence({ ...recurrence, daysOfWeek: newDays.sort((a, b) => a - b) });
-                                    }
-                                  }}
-                                  className={`w-8 h-8 rounded-md border text-xs font-medium transition-colors ${
-                                    recurrence.daysOfWeek?.includes(index)
-                                      ? 'border-primary bg-primary/10 text-primary'
-                                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                                  }`}
-                                >
-                                  {name.charAt(1)}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 按月重复：选择日期网格 */}
-                        {recurrence?.type === 'month' && (
-                          <div>
-                            <label className="block text-xs text-muted-foreground mb-2">选择日期（可多选）</label>
-                            <div className="grid grid-cols-7 gap-1 p-3 bg-background border border-border rounded-lg">
-                              {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                                <button
-                                  key={day}
-                                  type="button"
-                                  onClick={() => {
-                                    const currentDays = recurrence.daysOfMonth || [];
-                                    const newDays = currentDays.includes(day)
-                                      ? currentDays.filter(d => d !== day)
-                                      : [...currentDays, day].sort((a, b) => a - b);
-                                    if (newDays.length > 0) {
-                                      setRecurrence({ ...recurrence, daysOfMonth: newDays });
-                                    }
-                                  }}
-                                  className={`w-8 h-8 rounded-md border text-xs font-medium transition-colors ${
-                                    recurrence.daysOfMonth?.includes(day)
-                                      ? 'border-primary bg-primary/10 text-primary'
-                                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
-                                  }`}
-                                >
-                                  {day}
-                                </button>
-                              ))}
-                            </div>
-                            {recurrence.daysOfMonth && recurrence.daysOfMonth.length > 0 && (
-                              <div className="mt-2 text-xs text-muted-foreground">
-                                已选择：每月 {recurrence.daysOfMonth.map(d => `${d}号`).join('、')} 重复
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* 确认按钮 */}
-                        <div className="flex justify-end space-x-2 pt-2 border-t border-border">
-                          <button
-                            type="button"
-                            onClick={() => { setRecurrence(undefined); setShowRecurrence(false); }}
-                            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                          >
-                            清除
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowRecurrence(false)}
-                            className="px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded transition-colors font-medium"
-                          >
-                            确定
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+              <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
             </div>
           </div>
         )}

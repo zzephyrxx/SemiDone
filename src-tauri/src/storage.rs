@@ -1,8 +1,8 @@
+use crate::models::{Priority, Settings, Task, TaskStats};
+use chrono::{Local, NaiveDate};
+use serde_json;
 use std::fs;
 use std::path::PathBuf;
-use serde_json;
-use chrono::{Local, NaiveDate};
-use crate::models::{Task, Settings, TaskStats, Priority};
 
 pub struct Storage {
     data_dir: PathBuf,
@@ -45,8 +45,7 @@ impl Storage {
 
     fn get_default_data_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
         // 使用 APPDATA 路径（用户配置目录）
-        let app_data = dirs::data_dir()
-            .ok_or("无法获取 APPDATA 目录")?;
+        let app_data = dirs::data_dir().ok_or("无法获取 APPDATA 目录")?;
 
         Ok(app_data.join("SemiDone").join("SemiDoneData"))
     }
@@ -71,6 +70,10 @@ impl Storage {
 
     fn get_tasks_file(&self) -> PathBuf {
         self.data_dir.join("tasks.json")
+    }
+
+    fn get_usage_file(&self) -> PathBuf {
+        self.data_dir.join("usage.json")
     }
 
     pub fn get_settings_file(&self) -> PathBuf {
@@ -107,7 +110,7 @@ impl Storage {
         }
 
         // 解码 Base64 数据
-        use base64::{Engine as _, engine::general_purpose};
+        use base64::{engine::general_purpose, Engine as _};
         let decoded_data = general_purpose::STANDARD.decode(file_data)?;
 
         // 确定文件扩展名
@@ -125,7 +128,10 @@ impl Storage {
         Ok(format!("{}/{}", task_id, safe_file_name))
     }
 
-    pub fn get_attachment_path(&self, relative_path: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    pub fn get_attachment_path(
+        &self,
+        relative_path: &str,
+    ) -> Result<PathBuf, Box<dyn std::error::Error>> {
         // 规范化路径分隔符：统一使用正斜杠
         let normalized_relative = relative_path.replace('\\', "/");
         let full_path = self.get_attachments_dir().join(&normalized_relative);
@@ -133,16 +139,21 @@ impl Storage {
             return Err(format!("附件不存在: {}", relative_path).into());
         }
         // 返回时将路径转换为正斜杠格式，确保跨平台一致
-        Ok(PathBuf::from(full_path.to_string_lossy().replace('\\', "/")))
+        Ok(PathBuf::from(
+            full_path.to_string_lossy().replace('\\', "/"),
+        ))
     }
 
-    pub fn get_attachment_as_base64(&self, relative_path: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn get_attachment_as_base64(
+        &self,
+        relative_path: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let full_path = self.get_attachments_dir().join(relative_path);
         if !full_path.exists() {
             return Err(format!("附件不存在: {}", relative_path).into());
         }
         let data = fs::read(&full_path)?;
-        use base64::{Engine as _, engine::general_purpose};
+        use base64::{engine::general_purpose, Engine as _};
         Ok(general_purpose::STANDARD.encode(&data))
     }
 
@@ -172,8 +183,7 @@ impl Storage {
         }
 
         let content = fs::read_to_string(file_path)?;
-        let tasks: Vec<Task> = serde_json::from_str(&content)
-            .unwrap_or_else(|_| Vec::new());
+        let tasks: Vec<Task> = serde_json::from_str(&content).unwrap_or_else(|_| Vec::new());
 
         Ok(tasks)
     }
@@ -182,6 +192,33 @@ impl Storage {
         let file_path = self.get_tasks_file();
         let content = serde_json::to_string_pretty(tasks)?;
         fs::write(file_path, content)?;
+        Ok(())
+    }
+
+    pub fn load_usage_data(&self) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error>> {
+        let file_path = self.get_usage_file();
+        if !file_path.exists() {
+            return Ok(None);
+        }
+
+        let content = fs::read_to_string(file_path)?;
+        Ok(Some(serde_json::from_str(&content)?))
+    }
+
+    pub fn save_usage_data(
+        &self,
+        data: &serde_json::Value,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let content = serde_json::to_string_pretty(data)?;
+        fs::write(self.get_usage_file(), content)?;
+        Ok(())
+    }
+
+    pub fn clear_usage_data(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let file_path = self.get_usage_file();
+        if file_path.exists() {
+            fs::remove_file(file_path)?;
+        }
         Ok(())
     }
 
@@ -195,8 +232,8 @@ impl Storage {
         }
 
         let content = fs::read_to_string(file_path)?;
-        let settings: Settings = serde_json::from_str(&content)
-            .unwrap_or_else(|_| Settings::default());
+        let settings: Settings =
+            serde_json::from_str(&content).unwrap_or_else(|_| Settings::default());
 
         Ok(settings)
     }
@@ -218,7 +255,8 @@ impl Storage {
 
         let mut bootstrap_settings = if bootstrap_settings_file.exists() {
             match fs::read_to_string(&bootstrap_settings_file) {
-                Ok(content) => serde_json::from_str::<Settings>(&content).unwrap_or_else(|_| Settings::default()),
+                Ok(content) => serde_json::from_str::<Settings>(&content)
+                    .unwrap_or_else(|_| Settings::default()),
                 Err(_) => Settings::default(),
             }
         } else {
@@ -239,43 +277,56 @@ impl Storage {
 
         let today = Local::now().date_naive();
 
-        let overdue = tasks.iter()
+        let overdue = tasks
+            .iter()
             .filter(|t| {
                 if t.completed || t.due_date.is_none() {
                     return false;
                 }
-                if let Ok(due) = NaiveDate::parse_from_str(&t.due_date.as_ref().unwrap(), "%Y-%m-%dT%H:%M:%S%.f") {
+                if let Ok(due) =
+                    NaiveDate::parse_from_str(&t.due_date.as_ref().unwrap(), "%Y-%m-%dT%H:%M:%S%.f")
+                {
                     return due < today;
                 }
-                if let Ok(due) = NaiveDate::parse_from_str(&t.due_date.as_ref().unwrap()[..10], "%Y-%m-%d") {
+                if let Ok(due) =
+                    NaiveDate::parse_from_str(&t.due_date.as_ref().unwrap()[..10], "%Y-%m-%d")
+                {
                     return due < today;
                 }
                 false
             })
             .count();
 
-        let today_count = tasks.iter()
+        let today_count = tasks
+            .iter()
             .filter(|t| {
                 if t.completed || t.due_date.is_none() {
                     return false;
                 }
-                if let Ok(due) = NaiveDate::parse_from_str(&t.due_date.as_ref().unwrap(), "%Y-%m-%dT%H:%M:%S%.f") {
+                if let Ok(due) =
+                    NaiveDate::parse_from_str(&t.due_date.as_ref().unwrap(), "%Y-%m-%dT%H:%M:%S%.f")
+                {
                     return due == today;
                 }
-                if let Ok(due) = NaiveDate::parse_from_str(&t.due_date.as_ref().unwrap()[..10], "%Y-%m-%d") {
+                if let Ok(due) =
+                    NaiveDate::parse_from_str(&t.due_date.as_ref().unwrap()[..10], "%Y-%m-%d")
+                {
                     return due == today;
                 }
                 false
             })
             .count();
 
-        let high_priority = tasks.iter()
+        let high_priority = tasks
+            .iter()
             .filter(|t| matches!(t.priority, Priority::High))
             .count();
-        let medium_priority = tasks.iter()
+        let medium_priority = tasks
+            .iter()
             .filter(|t| matches!(t.priority, Priority::Medium))
             .count();
-        let low_priority = tasks.iter()
+        let low_priority = tasks
+            .iter()
             .filter(|t| matches!(t.priority, Priority::Low))
             .count();
 
@@ -299,7 +350,11 @@ impl Storage {
         Ok(task)
     }
 
-    pub fn update_task(&self, id: &str, updates: &crate::models::UpdateTaskRequest) -> Result<Option<Task>, Box<dyn std::error::Error>> {
+    pub fn update_task(
+        &self,
+        id: &str,
+        updates: &crate::models::UpdateTaskRequest,
+    ) -> Result<Option<Task>, Box<dyn std::error::Error>> {
         let mut tasks = self.load_tasks()?;
 
         if let Some(task) = tasks.iter_mut().find(|t| t.id == id) {
@@ -310,7 +365,19 @@ impl Storage {
                 task.description = Some(description.clone());
             }
             if let Some(completed) = updates.completed {
+                if completed && !task.completed {
+                    task.completed_at = Some(chrono::Utc::now().to_rfc3339());
+                } else if completed && task.completed_at.is_none() {
+                    task.completed_at = Some(task.updated_at.clone());
+                } else if !completed {
+                    task.completed_at = None;
+                }
                 task.completed = completed;
+            } else if task.completed && task.completed_at.is_none() {
+                task.completed_at = Some(task.updated_at.clone());
+            }
+            if let Some(is_pinned) = updates.is_pinned {
+                task.is_pinned = is_pinned;
             }
             if let Some(priority_str) = &updates.priority {
                 task.priority = Priority::from_string(priority_str);
@@ -326,11 +393,15 @@ impl Storage {
             } else if let Some(recurrence) = &updates.recurrence {
                 task.recurrence = recurrence.clone();
             }
-            task.is_recurrence_child = updates.is_recurrence_child;
+            if let Some(is_recurrence_child) = updates.is_recurrence_child {
+                task.is_recurrence_child = is_recurrence_child;
+            }
             if let Some(parent_id) = &updates.parent_task_id {
                 task.parent_task_id = Some(parent_id.clone());
             }
-            task.recurrence_child_created = updates.recurrence_child_created;
+            if let Some(recurrence_child_created) = updates.recurrence_child_created {
+                task.recurrence_child_created = recurrence_child_created;
+            }
 
             task.update();
             let updated_task = task.clone();
@@ -355,5 +426,132 @@ impl Storage {
         } else {
             Ok(false)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Storage;
+    use crate::models::{Task, UpdateTaskRequest};
+    use serde_json::json;
+
+    #[test]
+    fn usage_data_round_trip_uses_the_active_data_directory() {
+        let data_dir =
+            std::env::temp_dir().join(format!("semidone-usage-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&data_dir).expect("create test data directory");
+        let storage = Storage {
+            data_dir: data_dir.clone(),
+        };
+        let usage_data = json!({
+            "schemaVersion": 1,
+            "usageRecords": [],
+            "weeklyUsage": { "2026/7/16": 42 },
+            "monthlyUsage": { "2026/7/16": 42 },
+            "dailyStartDate": "2026/7/16",
+            "dailyStartTime": 12345,
+            "pomodoro": { "isActive": false, "timeLeft": 1500 }
+        });
+
+        storage
+            .save_usage_data(&usage_data)
+            .expect("save usage data");
+        let loaded = storage.load_usage_data().expect("load usage data");
+
+        assert_eq!(loaded, Some(usage_data));
+        std::fs::remove_dir_all(data_dir).expect("remove test data directory");
+    }
+
+    #[test]
+    fn task_completion_timestamp_survives_later_edits_and_clears_when_reopened() {
+        let data_dir =
+            std::env::temp_dir().join(format!("semidone-task-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&data_dir).expect("create test data directory");
+        let storage = Storage {
+            data_dir: data_dir.clone(),
+        };
+        let task = storage
+            .add_task(Task::new(
+                "测试任务".into(),
+                None,
+                None,
+                None,
+                None,
+                None,
+                false,
+                None,
+            ))
+            .expect("create task");
+
+        let complete: UpdateTaskRequest = serde_json::from_value(json!({ "completed": true }))
+            .expect("deserialize completion update");
+        let completed = storage
+            .update_task(&task.id, &complete)
+            .expect("complete task")
+            .expect("task should exist");
+        let completed_at = completed
+            .completed_at
+            .clone()
+            .expect("completedAt should be set");
+
+        let edit: UpdateTaskRequest = serde_json::from_value(json!({ "title": "完成后编辑" }))
+            .expect("deserialize title update");
+        let edited = storage
+            .update_task(&task.id, &edit)
+            .expect("edit task")
+            .expect("task should exist");
+        assert_eq!(edited.completed_at.as_deref(), Some(completed_at.as_str()));
+
+        let reopen: UpdateTaskRequest = serde_json::from_value(json!({ "completed": false }))
+            .expect("deserialize reopen update");
+        let reopened = storage
+            .update_task(&task.id, &reopen)
+            .expect("reopen task")
+            .expect("task should exist");
+        assert!(reopened.completed_at.is_none());
+
+        std::fs::remove_dir_all(data_dir).expect("remove test data directory");
+    }
+
+    #[test]
+    fn task_pin_state_round_trip_survives_reload() {
+        let data_dir =
+            std::env::temp_dir().join(format!("semidone-pin-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&data_dir).expect("create test data directory");
+        let storage = Storage {
+            data_dir: data_dir.clone(),
+        };
+        let mut original_task = Task::new(
+                "长期关注事项".into(),
+                None,
+                None,
+                None,
+                None,
+                None,
+                true,
+                Some("recurrence-parent".into()),
+            );
+        original_task.recurrence_child_created = true;
+        let task = storage
+            .add_task(original_task)
+            .expect("create task");
+
+        let pin: UpdateTaskRequest = serde_json::from_value(json!({ "isPinned": true }))
+            .expect("deserialize pin update");
+        storage.update_task(&task.id, &pin).expect("pin task");
+        let reloaded = storage.load_tasks().expect("reload tasks");
+        assert!(reloaded[0].is_pinned);
+        assert!(reloaded[0].is_recurrence_child);
+        assert!(reloaded[0].recurrence_child_created);
+
+        let unpin: UpdateTaskRequest = serde_json::from_value(json!({ "isPinned": false }))
+            .expect("deserialize unpin update");
+        let updated = storage
+            .update_task(&task.id, &unpin)
+            .expect("unpin task")
+            .expect("task should exist");
+        assert!(!updated.is_pinned);
+
+        std::fs::remove_dir_all(data_dir).expect("remove test data directory");
     }
 }

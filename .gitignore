@@ -15,6 +15,12 @@ release/
 .vercel/
 .netlify/
 
+# Dependencies and test output
+node_modules/
+coverage/
+/dist/assets/
+/dist/index.html
+
 # Personal/Development files
 *.exe
 *.pptx
@@ -22,6 +28,11 @@ release/
 start.txt
 CLAUDE.md
 /docs
+
+# Keep the project changelog under version control
+!/docs/
+/docs/*
+!/docs/更新日志.md
 
 # OS generated files
 .DS_Store
