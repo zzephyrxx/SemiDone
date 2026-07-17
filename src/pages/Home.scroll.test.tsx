@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     celebration: { show: false, message: '', isAllComplete: false },
     hideCelebration: vi.fn(),
     editingTaskId: null as string | null,
+    sortConfig: { field: 'createdAt', order: 'desc' },
     statsBarCollapsed: false,
     setStatsBarCollapsed: vi.fn(),
   },
