@@ -5,7 +5,9 @@ import Home from './pages/Home';
 import TaskDetail from './pages/TaskDetail';
 import Other from './pages/Other';
 import UsageStats from './pages/UsageStats';
+import TaskCalendar from './pages/TaskCalendar';
 import StartupTip from './components/StartupTip';
+import UpdateNotifier from './components/UpdateNotifier';
 import { useSettingsStore } from './store/settingsStore'
 import { Toaster } from 'sonner'
 
@@ -14,7 +16,7 @@ function App() {
 
   useEffect(() => {
     loadSettings()
-  }, [])
+  }, [loadSettings])
 
   useEffect(() => {
     const root = document.documentElement;
@@ -42,10 +44,12 @@ function App() {
             <Route path="task/:id" element={<TaskDetail />} />
             <Route path="settings" element={<Other />} />
             <Route path="usage-stats" element={<UsageStats />} />
+            <Route path="task-calendar" element={<TaskCalendar />} />
           </Route>
         </Routes>
       </Router>
       <StartupTip />
+      <UpdateNotifier />
       <Toaster richColors position="top-center" duration={2000} />
     </>
   );

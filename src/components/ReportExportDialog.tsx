@@ -79,13 +79,10 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
         });
 
         if (!filePath) {
-          toast.info('已取消导出');
           return;
         }
 
         await writeTextFile(filePath, markdownContent);
-        const dirPath = filePath.replace(/\\/g, '/').replace(/\/[^/]*$/, '');
-        toast.success(`${periodText}导出成功！请在以下目录查看：${dirPath}`, { duration: 3000 });
       } else {
         const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -99,7 +96,6 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        toast.success(`${periodText}导出成功！请在浏览器下载目录查看`, { duration: 3000 });
       }
       setTimeout(() => onClose(), 300);
     } catch (error) {

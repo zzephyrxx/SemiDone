@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools } from 'zustand/middleware';
 import type { Settings, Theme } from '../types';
 import { api } from '../api/tauri';
 import { toast } from 'sonner';
@@ -40,8 +40,7 @@ const defaultSettings: Settings = {
 };
 
 export const useSettingsStore = create<SettingsState>()(devtools(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       // 初始状态
       settings: defaultSettings,
       loading: false,
@@ -93,9 +92,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             
             // 初始化窗口尺寸和折叠模式
             try {
-              const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window');
-              const appWindow = getCurrentWindow();
-              
               // 确保collapseMode字段存在，如果不存在则根据isCollapsed设置默认值
               let finalSettings = { ...loadedSettings };
               if (!finalSettings.collapseMode) {
@@ -181,8 +177,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           
           // 应用主题变化（如果需要）
           document.documentElement.setAttribute('data-theme', currentSettings.theme);
-          
-          toast.success(newPinnedState ? '已置顶窗口' : '已取消置顶');
           
           // 异步保存到后端，不阻塞UI
           try {
@@ -290,7 +284,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           };
           
           set({ settings: newSettings });
-          toast.success(newCapsuleMode ? '已启用悬浮球模式' : '已禁用悬浮球模式');
           
           // 异步保存到后端
           try {
@@ -355,7 +348,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
       
       resetSettings: async () => {
         await get().updateSettings(defaultSettings);
-        toast.success('设置已重置为默认值');
       },
       
       setTransparency: async (enabled: boolean, level?: number) => {
@@ -438,7 +430,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           if (response.success) {
             // 保存到后端
             await api.settings.updateSettings(newSettings);
-            toast.success(newAutoStartState ? '已开启开机自启动' : '已关闭开机自启动');
           } else {
             toast.error(response.error || '设置自启动失败');
           }
@@ -448,17 +439,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         }
       },
     }),
-    {
-      name: 'settings-store',
-      // 只持久化设置数据，不持久化loading状态
-      partialize: (state) => ({ settings: state.settings }),
-      // 在加载时合并默认设置
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        settings: { ...defaultSettings, ...(persistedState as any)?.settings },
-      }),
-    }
-  ),
   {
     name: 'settings-store',
   }

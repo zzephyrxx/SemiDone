@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Clock, Timer, TrendingUp, Calendar, BarChart3 } from 'lucide-react';
+import { ArrowLeft, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUsageStore } from '../store/usageStore';
 import UsageTimer from '../components/UsageTimer';
@@ -12,14 +12,15 @@ export default function UsageStats() {
     formatMinutes,
     loadUsageData,
     calculateStats,
-    isTrackingEnabled
+    isTrackingEnabled,
+    weeklyUsage,
+    monthlyUsage,
   } = useUsageStore();
 
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('week');
 
   useEffect(() => {
-    loadUsageData();
-    calculateStats();
+    void loadUsageData();
 
     // 每分钟更新一次
     const interval = setInterval(() => {
@@ -30,16 +31,10 @@ export default function UsageStats() {
   }, [loadUsageData, calculateStats]);
 
   const getUsageHistory = () => {
-    const weekData = JSON.parse(localStorage.getItem('weekly_usage') || '{}');
-    const monthData = JSON.parse(localStorage.getItem('monthly_usage') || '{}');
-
     if (selectedPeriod === 'week') {
       const result = [];
       // 获取本周一到现在
       const today = new Date();
-      const dayOfWeek = today.getDay(); // 0=周日, 1=周一...
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // 周一偏移
-
       for (let i = 0; i < 7; i++) {
         const date = new Date();
         date.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + i);
@@ -48,7 +43,7 @@ export default function UsageStats() {
         const weekday = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i];
         result.push({
           date: dateStr,
-          minutes: weekData[dateStr] || 0,
+          minutes: weeklyUsage[dateStr] || 0,
           dayName: weekday
         });
       }
@@ -67,7 +62,7 @@ export default function UsageStats() {
         const dateStr = date.toLocaleDateString('zh-CN');
         result.push({
           date: dateStr,
-          minutes: monthData[dateStr] || 0
+          minutes: monthlyUsage[dateStr] || 0
         });
       }
       return result;
@@ -75,8 +70,6 @@ export default function UsageStats() {
   };
 
   const usageHistory = getUsageHistory();
-  const maxMinutes = Math.max(...usageHistory.map(h => h.minutes), 1);
-
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { format, isToday, isTomorrow, isYesterday, parseISO, formatDistanceToNow, isAfter, isBefore, startOfDay } from 'date-fns';
+import { formatDistanceToNow, isBefore, startOfDay } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import {
   Calendar,
@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Type,
   FileText,
-  Repeat
+  Repeat,
+  Pin
 } from 'lucide-react';
 import type { Task, Priority, UpdateTaskRequest } from '../types';
 import { useTaskStore } from '../store/taskStore';
@@ -151,6 +152,11 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowDeleteDialog(true);
+  };
+
+  const handleTogglePin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    void updateTask(task.id, { isPinned: !task.isPinned });
   };
 
   const handleDeleteConfirm = async () => {
@@ -429,10 +435,21 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
             <div className="flex flex-col justify-between min-h-[4.5rem]">
               {/* 上半部分: 标题和右侧信息 */}
               <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                  {task.isPinned && (
+                    <button
+                      type="button"
+                      onClick={handleTogglePin}
+                      className="flex-shrink-0 -ml-1 p-1.5 rounded-full text-primary hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition-colors"
+                      title="取消置顶"
+                      aria-label="取消置顶"
+                    >
+                      <Pin className="w-3.5 h-3.5 fill-current -rotate-12" strokeWidth={2.2} />
+                    </button>
+                  )}
                   <h3
                     className={`
-                      text-base font-medium leading-6 transition-all duration-200
+                      flex-1 min-w-0 text-base font-medium leading-6 transition-all duration-200
                       whitespace-nowrap overflow-hidden text-ellipsis mt-1
                       ${task.completed
                         ? 'line-through text-emerald-700/80 decoration-emerald-400 decoration-2'
@@ -508,8 +525,21 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                 {/* 操作按钮 */}
                 <div className={`
                   flex items-center space-x-1 transition-opacity duration-200
-                  ${isHovered ? 'opacity-100' : 'opacity-0'}
+                  group-focus-within:opacity-100 group-focus-within:pointer-events-auto
+                  ${isHovered ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
                 `}>
+                  {!task.isPinned && (
+                    <button
+                      type="button"
+                      onClick={handleTogglePin}
+                      className="p-2 rounded text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                      title="置顶待办"
+                      aria-label="置顶待办"
+                    >
+                      <Pin className="w-4 h-4" />
+                    </button>
+                  )}
+
                   <button
                     onClick={handleEdit}
                     className="p-2 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"

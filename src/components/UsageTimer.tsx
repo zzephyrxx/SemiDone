@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Play, Pause, RotateCcw, Settings, BarChart3, Timer } from 'lucide-react';
 import { useUsageStore } from '../store/usageStore';
-import { toast } from 'sonner';
 
 interface UsageTimerProps {
   onShowDetails?: () => void;
@@ -169,7 +168,6 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
 
   const handleSave = () => {
     updatePomodoroSettings(settings);
-    toast.success('番茄钟设置已保存');
     onClose();
   };
 

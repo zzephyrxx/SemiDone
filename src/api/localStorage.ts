@@ -1,10 +1,11 @@
-import type { Task, Settings, CreateTaskRequest, UpdateTaskRequest, TaskStats, ApiResponse, Theme } from '../types';
+import type { Task, Settings, CreateTaskRequest, UpdateTaskRequest, TaskStats, ApiResponse, Theme, UsagePersistedData } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 // localStorage键名常量
 const STORAGE_KEYS = {
   TASKS: 'windows-todo-tasks',
   SETTINGS: 'windows-todo-settings',
+  USAGE: 'semidone-usage-data',
 } as const;
 
 // 默认设置
@@ -61,6 +62,7 @@ export const taskApi = {
         title: request.title,
         description: request.description || '',
         completed: false,
+        isPinned: false,
         priority: request.priority || 'medium',
         dueDate: request.dueDate,
         createdAt: new Date().toISOString(),
@@ -93,12 +95,27 @@ export const taskApi = {
       if (updates.clearRecurrence) {
         normalizedUpdates.recurrence = undefined;
       }
-      
-      const updatedTask = {
-        ...tasks[taskIndex],
+
+      const existingTask = tasks[taskIndex] as Task;
+      const now = new Date().toISOString();
+      let completedAt = existingTask.completedAt;
+      if (updates.completed === true) {
+        completedAt = existingTask.completed
+          ? existingTask.completedAt ?? existingTask.updatedAt
+          : now;
+      } else if (updates.completed === false) {
+        completedAt = undefined;
+      } else if (existingTask.completed && !completedAt) {
+        completedAt = existingTask.updatedAt;
+      }
+
+      const updatedTask: Task = {
+        ...existingTask,
         ...normalizedUpdates,
-        updatedAt: new Date().toISOString(),
+        completedAt,
+        updatedAt: now,
       };
+      if (!completedAt) delete updatedTask.completedAt;
       
       tasks[taskIndex] = updatedTask;
       localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
@@ -180,6 +197,35 @@ export const settingsApi = {
   },
 };
 
+export const usageApi = {
+  async getUsageData(): Promise<ApiResponse<UsagePersistedData | null>> {
+    try {
+      const usageData = safeJsonParse<UsagePersistedData | null>(localStorage.getItem(STORAGE_KEYS.USAGE), null);
+      return createResponse(usageData);
+    } catch (error) {
+      return createResponse(null, false, `获取使用数据失败: ${error}`);
+    }
+  },
+
+  async saveUsageData(data: UsagePersistedData): Promise<ApiResponse<boolean>> {
+    try {
+      localStorage.setItem(STORAGE_KEYS.USAGE, JSON.stringify(data));
+      return createResponse(true);
+    } catch (error) {
+      return createResponse(false, false, `保存使用数据失败: ${error}`);
+    }
+  },
+
+  async clearUsageData(): Promise<ApiResponse<boolean>> {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.USAGE);
+      return createResponse(true);
+    } catch (error) {
+      return createResponse(false, false, `清除使用数据失败: ${error}`);
+    }
+  },
+};
+
 // 数据管理API
 export const dataApi = {
   // 导出数据
@@ -235,6 +281,7 @@ export const dataApi = {
 export const api = {
   tasks: taskApi,
   settings: settingsApi,
+  usage: usageApi,
   data: dataApi,
 };
 
