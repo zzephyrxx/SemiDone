@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import StartupTip from './StartupTip';
 
-const WELCOME_STORAGE_KEY = 'welcome_shown_5.0.0';
+const WELCOME_STORAGE_KEY = 'welcome_shown_5.0.1';
 
 function renderWelcome() {
   render(<StartupTip />);
@@ -27,7 +27,7 @@ describe('StartupTip welcome dialog', () => {
 
     const dialog = screen.getByRole('dialog', { name: '欢迎使用 SemiDone' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(screen.getByText('v5.0.0 新功能')).toBeVisible();
+    expect(screen.getByText('v5.0.1 新功能')).toBeVisible();
     expect(screen.getByText('周/月任务视图')).toBeVisible();
     expect(screen.getByText('自动检查新版本')).toBeVisible();
     expect(screen.getByTestId('welcome-header-curve')).toBeVisible();
