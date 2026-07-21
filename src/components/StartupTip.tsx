@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 
-const APP_VERSION = '5.0.0';
+const APP_VERSION = '5.0.1';
 const WELCOME_STORAGE_KEY = `welcome_shown_${APP_VERSION}`;
 
 const OPTIMIZATIONS = [
