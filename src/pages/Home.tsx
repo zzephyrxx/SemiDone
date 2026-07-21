@@ -4,7 +4,7 @@ import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useShallow } from 'zustand/react/shallow';
 
-import type { Task, TaskFilter as TaskFilterType } from '../types';
+import type { Task } from '../types';
 import TaskItem from '../components/TaskItem';
 import TaskStats, { StatsCollapsedButton } from '../components/TaskStats';
 import TaskFilter from '../components/TaskFilter';
@@ -16,7 +16,13 @@ const VIRTUAL_ROW_HEIGHT = 95;
 const EDITING_ROW_HEIGHT = 280;
 const VIRTUAL_OVERSCAN = 6;
 
-function VirtualizedTaskList({ tasks, editingTaskId }: { tasks: Task[]; editingTaskId: string | null }) {
+interface VirtualizedTaskListProps {
+  tasks: Task[];
+  editingTaskId: string | null;
+  resetKey: string;
+}
+
+function VirtualizedTaskList({ tasks, editingTaskId, resetKey }: VirtualizedTaskListProps) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -48,7 +54,7 @@ function VirtualizedTaskList({ tasks, editingTaskId }: { tasks: Task[]; editingT
       container.scrollTop = 0;
     }
     setScrollTop(0);
-  }, [container, tasks, editingTaskId]);
+  }, [container, resetKey]);
 
   const editingIndex = editingTaskId ? tasks.findIndex((task) => task.id === editingTaskId) : -1;
   const extraEditingHeight = editingIndex >= 0 ? EDITING_ROW_HEIGHT - VIRTUAL_ROW_HEIGHT : 0;
@@ -98,6 +104,7 @@ export default function Home() {
     celebration,
     hideCelebration,
     editingTaskId,
+    sortConfig,
     statsBarCollapsed,
     setStatsBarCollapsed
   } = useTaskStore(
@@ -110,6 +117,7 @@ export default function Home() {
       celebration: state.celebration,
       hideCelebration: state.hideCelebration,
       editingTaskId: state.editingTaskId,
+      sortConfig: state.sortConfig,
       statsBarCollapsed: state.statsBarCollapsed,
       setStatsBarCollapsed: state.setStatsBarCollapsed,
     }))
@@ -117,6 +125,7 @@ export default function Home() {
 
   const { settings } = useSettingsStore();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const taskListResetKey = `${filter}\u0000${searchQuery}\u0000${sortConfig.field}\u0000${sortConfig.order}`;
 
   useEffect(() => {
     loadTasks();
@@ -234,7 +243,11 @@ export default function Home() {
           </div>
         </div>
       ) : (
-        <VirtualizedTaskList tasks={filteredTasks} editingTaskId={editingTaskId} />
+        <VirtualizedTaskList
+          tasks={filteredTasks}
+          editingTaskId={editingTaskId}
+          resetKey={taskListResetKey}
+        />
       )}
 
       {/* 快速添加待办弹窗 */}
@@ -256,34 +269,4 @@ export default function Home() {
 
     </div>
   );
-}
-
-function getEmptyStateTitle(filter: TaskFilterType): string {
-  switch (filter) {
-    case 'pending':
-      return '没有待办待办';
-    case 'completed':
-      return '没有已完成待办';
-    case 'overdue':
-      return '没有逾期待办';
-    case 'today':
-      return '今天没有待办';
-    default:
-      return '还没有待办';
-  }
-}
-
-function getEmptyStateDescription(filter: TaskFilterType): string {
-  switch (filter) {
-    case 'pending':
-      return '所有待办都已完成，干得漂亮！';
-    case 'completed':
-      return '还没有完成任何待办，加油！';
-    case 'overdue':
-      return '没有逾期待办，时间管理很棒！';
-    case 'today':
-      return '今天可以休息一下了';
-    default:
-      return '开始创建你的第一个待办吧';
-  }
 }

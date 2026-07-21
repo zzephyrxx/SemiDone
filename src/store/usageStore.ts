@@ -26,8 +26,9 @@ interface UsageStore {
   
   // 追踪状态
   isTrackingEnabled: boolean;
+  isUsageDataLoaded: boolean;
   sessionStartTime: number;
-  dailyStartTime: number; // 今日应用启动时间
+  dailyStartTime: number; // 兼容旧版持久化字段；新版本不再用它计算时长
   dailyStartDate: string | null;
   
   // Actions
@@ -70,22 +71,83 @@ function getPersistedData(state: UsageStore): UsagePersistedData {
     usageRecords: state.usageRecords,
     weeklyUsage: state.weeklyUsage,
     monthlyUsage: state.monthlyUsage,
-    dailyStartDate: state.dailyStartDate,
-    dailyStartTime: state.dailyStartTime,
+    // 5.0.0 会持久化应用启动时间，并在下次启动后把离线时间也算入使用时长。
+    // 保留字段用于兼容旧数据格式，但不再持久化会话中的时间戳。
+    dailyStartDate: null,
+    dailyStartTime: 0,
     pomodoro: state.pomodoro,
   };
 }
 
-interface UsageWindow extends Window {
-  usageTrackingInterval?: ReturnType<typeof setInterval>;
-}
-
-function getUsageWindow(): UsageWindow {
-  return window as UsageWindow;
-}
-
 function persistUsageState(state: UsageStore): void {
   void savePersistedUsageData(getPersistedData(state));
+}
+
+const MINUTE_MS = 60_000;
+let usageLoadPromise: Promise<void> | null = null;
+let usageTrackingInterval: ReturnType<typeof setInterval> | null = null;
+
+function getLocalDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString('zh-CN');
+}
+
+function getStartOfLocalDay(timestamp: number): number {
+  const date = new Date(timestamp);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function sanitizeStoredMinutes(dateStr: string, value: unknown, now: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 0;
+
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return 0;
+
+  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const todayStart = getStartOfLocalDay(now);
+  if (dayStart > todayStart) return 0;
+
+  // 单日统计不可能超过一天；当天统计也不可能超过今天已经过去的分钟数。
+  // 超出上限的数据来自 5.0.0 的跨天启动时间 bug，无法可靠还原，因此清零。
+  const maximum = dayStart === todayStart
+    ? Math.ceil((now - todayStart) / MINUTE_MS)
+    : 24 * 60;
+  const minutes = Math.floor(value);
+  return minutes <= maximum ? minutes : 0;
+}
+
+function mergeSanitizedUsage(
+  weeklyUsage: Record<string, number>,
+  monthlyUsage: Record<string, number>,
+  now: number,
+): Record<string, number> {
+  const merged: Record<string, number> = {};
+
+  for (const source of [monthlyUsage, weeklyUsage]) {
+    for (const [dateStr, value] of Object.entries(source)) {
+      const minutes = sanitizeStoredMinutes(dateStr, value, now);
+      if (minutes > 0) merged[dateStr] = Math.max(merged[dateStr] ?? 0, minutes);
+    }
+  }
+
+  return merged;
+}
+
+function addElapsedMinutes(
+  usage: Record<string, number>,
+  startTime: number,
+  now: number,
+): number {
+  if (startTime <= 0 || startTime > now) return now;
+
+  const elapsedMinutes = Math.floor((now - startTime) / MINUTE_MS);
+  for (let index = 0; index < elapsedMinutes; index += 1) {
+    // 按每个完整分钟的中点归属本地日期，避免跨午夜的时长全部落到当天。
+    const dateStr = getLocalDate(startTime + index * MINUTE_MS + MINUTE_MS / 2);
+    usage[dateStr] = (usage[dateStr] ?? 0) + 1;
+  }
+
+  // 只推进已经记账的完整分钟，保留不足一分钟的余量。
+  return startTime + elapsedMinutes * MINUTE_MS;
 }
 
 export const useUsageStore = create<UsageStore>((set, get) => ({
@@ -106,27 +168,21 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
   pomodoroInterval: null,
   
   isTrackingEnabled: false,
+  isUsageDataLoaded: false,
   sessionStartTime: 0,
   dailyStartTime: 0,
   dailyStartDate: null,
 
   startTracking: () => {
+    if (get().isTrackingEnabled) return;
+
     const now = Date.now();
-    // 使用本地日期而非 UTC 日期，避免时区问题
-    const today = new Date().toLocaleDateString('zh-CN');
-    
-    // 检查是否为新的一天，如果是则重置 dailyStartTime
-    const state = get();
-    let dailyStart = now;
-    
-    if (state.dailyStartDate === today && state.dailyStartTime > 0) {
-      dailyStart = state.dailyStartTime;
-    }
+    const today = getLocalDate(now);
 
     set({
       isTrackingEnabled: true,
       sessionStartTime: now,
-      dailyStartTime: dailyStart,
+      dailyStartTime: now,
       dailyStartDate: today,
     });
     persistUsageState(get());
@@ -140,11 +196,14 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     }, 60000); // 每分钟检查一次
 
     // 保存interval引用用于清理
-    getUsageWindow().usageTrackingInterval = trackingInterval;
+    usageTrackingInterval = trackingInterval;
   },
 
   stopTracking: () => {
     const state = get();
+
+    // 先把最后一个完整分钟计入统计，再结束本次会话。
+    if (state.isTrackingEnabled) state.calculateStats();
     
     if (state.currentSession && state.isTrackingEnabled) {
       const now = Date.now();
@@ -170,10 +229,9 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     }
 
     // 清理tracking interval
-    const usageWindow = getUsageWindow();
-    if (usageWindow.usageTrackingInterval) {
-      clearInterval(usageWindow.usageTrackingInterval);
-      usageWindow.usageTrackingInterval = undefined;
+    if (usageTrackingInterval) {
+      clearInterval(usageTrackingInterval);
+      usageTrackingInterval = null;
     }
 
     set({
@@ -202,46 +260,60 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
   },
 
   loadUsageData: async () => {
-    try {
-      const persisted = await loadPersistedUsageData(DEFAULT_POMODORO);
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const cutoffTime = thirtyDaysAgo.getTime();
-      const recentRecords = persisted.usageRecords.filter(r => r.startTime >= cutoffTime);
-      const shouldResumePomodoro = persisted.pomodoro.isActive;
+    if (get().isUsageDataLoaded) return;
+    if (usageLoadPromise) return usageLoadPromise;
 
-      set({
-        usageRecords: recentRecords,
-        weeklyUsage: persisted.weeklyUsage,
-        monthlyUsage: persisted.monthlyUsage,
-        dailyStartDate: persisted.dailyStartDate,
-        dailyStartTime: persisted.dailyStartTime,
-        pomodoro: shouldResumePomodoro
-          ? { ...persisted.pomodoro, isActive: false }
-          : persisted.pomodoro,
-      });
+    usageLoadPromise = (async () => {
+      try {
+        const persisted = await loadPersistedUsageData(DEFAULT_POMODORO);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const cutoffTime = thirtyDaysAgo.getTime();
+        const recentRecords = persisted.usageRecords.filter(r => r.startTime >= cutoffTime);
+        const shouldResumePomodoro = persisted.pomodoro.isActive;
 
-      get().calculateStats();
-      if (shouldResumePomodoro) get().startPomodoro();
-    } catch (error) {
-      console.error('加载使用数据失败:', error);
-    }
+        set({
+          usageRecords: recentRecords,
+          weeklyUsage: persisted.weeklyUsage,
+          monthlyUsage: persisted.monthlyUsage,
+          isUsageDataLoaded: true,
+          pomodoro: shouldResumePomodoro
+            ? { ...persisted.pomodoro, isActive: false }
+            : persisted.pomodoro,
+        });
+
+        // 不恢复旧版 dailyStartTime；它是造成跨天、离线时间被累计的根源。
+        get().calculateStats();
+        if (shouldResumePomodoro) get().startPomodoro();
+      } catch (error) {
+        console.error('加载使用数据失败:', error);
+      } finally {
+        usageLoadPromise = null;
+      }
+    })();
+
+    return usageLoadPromise;
   },
 
   calculateStats: () => {
-    const { dailyStartTime, weeklyUsage, monthlyUsage } = get();
+    const {
+      isTrackingEnabled,
+      sessionStartTime,
+      weeklyUsage,
+      monthlyUsage,
+    } = get();
     const now = Date.now();
-    // 使用本地日期而非 UTC 日期，避免时区问题
-    const today = new Date().toLocaleDateString('zh-CN');
-    
-    // 计算今日应用运行总时长（分钟）
-    const todayMinutes = dailyStartTime > 0 ? Math.floor((now - dailyStartTime) / (1000 * 60)) : 0;
+    const today = getLocalDate(now);
+    const dailyUsage = mergeSanitizedUsage(weeklyUsage, monthlyUsage, now);
+    const nextSessionStartTime = isTrackingEnabled
+      ? addElapsedMinutes(dailyUsage, sessionStartTime, now)
+      : sessionStartTime;
     
     // 清理旧月份数据，只保留当月数据避免无用数据累积
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth();
     const cleanedMonthData: Record<string, number> = {};
-    Object.entries(monthlyUsage).forEach(([dateStr, minutes]) => {
+    Object.entries(dailyUsage).forEach(([dateStr, minutes]) => {
       const date = new Date(dateStr);
       if (date.getFullYear() === currentYear && date.getMonth() === currentMonth) {
         cleanedMonthData[dateStr] = minutes as number;
@@ -253,8 +325,9 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
     startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
     const cleanedWeekData: Record<string, number> = {};
-    Object.entries(weeklyUsage).forEach(([dateStr, minutes]) => {
+    Object.entries(dailyUsage).forEach(([dateStr, minutes]) => {
       const date = new Date(dateStr);
       const weekStart = new Date(startOfWeek);
       if (date >= weekStart) {
@@ -262,10 +335,9 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
       }
     });
     
-    // 更新今日数据
-    const todayUsage: Record<string, number> = { [today]: todayMinutes };
-    const updatedWeekData: Record<string, number> = { ...cleanedWeekData, ...todayUsage };
-    const updatedMonthData: Record<string, number> = { ...cleanedMonthData, ...todayUsage };
+    const updatedWeekData = cleanedWeekData;
+    const updatedMonthData = cleanedMonthData;
+    const todayMinutes = dailyUsage[today] ?? 0;
     
     // 计算本周总时长（复用前面的 startOfWeek）
     let weekMinutes = 0;
@@ -297,6 +369,9 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     set({
       weeklyUsage: updatedWeekData,
       monthlyUsage: updatedMonthData,
+      sessionStartTime: nextSessionStartTime,
+      dailyStartDate: isTrackingEnabled ? getLocalDate(nextSessionStartTime) : null,
+      dailyStartTime: isTrackingEnabled ? nextSessionStartTime : 0,
       stats: {
         today: todayMinutes,
         thisWeek: weekMinutes,
@@ -499,10 +574,9 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
     if (state.pomodoroInterval) {
       clearInterval(state.pomodoroInterval);
     }
-    const usageWindow = getUsageWindow();
-    if (usageWindow.usageTrackingInterval) {
-      clearInterval(usageWindow.usageTrackingInterval);
-      usageWindow.usageTrackingInterval = undefined;
+    if (usageTrackingInterval) {
+      clearInterval(usageTrackingInterval);
+      usageTrackingInterval = null;
     }
 
     void clearPersistedUsageData();
@@ -524,6 +598,7 @@ export const useUsageStore = create<UsageStore>((set, get) => ({
       pomodoro: DEFAULT_POMODORO,
       pomodoroInterval: null,
       isTrackingEnabled: false,
+      isUsageDataLoaded: true,
       sessionStartTime: 0,
       dailyStartTime: 0,
       dailyStartDate: null,
@@ -558,9 +633,9 @@ if (typeof window !== 'undefined') {
   });
 
   // 应用启动时自动开始追踪
-  window.addEventListener('load', () => {
+  window.addEventListener('load', async () => {
     const store = useUsageStore.getState();
-    store.loadUsageData();
-    store.startTracking();
+    await store.loadUsageData();
+    useUsageStore.getState().startTracking();
   });
 }
