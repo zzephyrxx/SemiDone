@@ -39,6 +39,23 @@ const defaultSettings: Settings = {
   autoStart: false,
 };
 
+const EXPANDED_WINDOW_SIZE_CONSTRAINTS = {
+  minWidth: 400,
+  minHeight: 700,
+} as const;
+
+const fixedWindowSizeConstraints = (width: number, height: number) => ({
+  minWidth: width,
+  minHeight: height,
+  maxWidth: width,
+  maxHeight: height,
+});
+
+async function setNativeWindowTopmost(enabled: boolean): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke('set_window_topmost', { enabled });
+}
+
 export const useSettingsStore = create<SettingsState>()(devtools(
   (set, get) => ({
       // 初始状态
@@ -62,9 +79,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             // 恢复置顶状态
             if (loadedSettings.isPinned) {
               try {
-                const { getCurrentWindow } = await import('@tauri-apps/api/window');
-                const appWindow = getCurrentWindow();
-                await appWindow.setAlwaysOnTop(true);
+                await setNativeWindowTopmost(true);
                 console.log('Window pinned state restored');
               } catch (error) {
                 console.warn('Failed to restore pin state:', error);
@@ -167,10 +182,8 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         const currentSettings = get().settings;
         const newPinnedState = !currentSettings.isPinned;
         try {
-          // 直接使用Tauri的窗口API设置置顶
-          const { getCurrentWindow } = await import('@tauri-apps/api/window');
-          const appWindow = getCurrentWindow();
-          await appWindow.setAlwaysOnTop(newPinnedState);
+          // 由 Rust 原生层同步置顶状态并启动/停止 Windows 守卫。
+          await setNativeWindowTopmost(newPinnedState);
           
           // 先更新本地状态，再保存到后端
           set({ settings: { ...currentSettings, isPinned: newPinnedState } });
@@ -220,11 +233,15 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             
             // 根据胶囊模式设置选择折叠方式
             newCollapseMode = currentSettings.useCapsuleMode ? 'floating' : 'bar';
-            
+
+            let collapsedWidth: number;
+            let collapsedHeight: number;
+
             if (currentSettings.useCapsuleMode) {
               // 圆球模式：60x60正方形尺寸
               console.log('🔵 切换到圆球模式: 60x60');
-              await appWindow.setSize(new LogicalSize(60, 60));
+              collapsedWidth = 60;
+              collapsedHeight = 60;
             } else {
               // 条状模式：原有逻辑
               const savedSize = localStorage.getItem('expandedWindowSize');
@@ -234,12 +251,25 @@ export const useSettingsStore = create<SettingsState>()(devtools(
                 targetWidth = width;
               }
               console.log('📏 切换到条状模式:', targetWidth, 'x 65');
-              await appWindow.setSize(new LogicalSize(targetWidth, 65));
+              collapsedWidth = targetWidth;
+              collapsedHeight = 65;
             }
-            await appWindow.setResizable(false);
+
+            // 不再切换 resizable。Tao 在 Windows 上切到 false 会移除
+            // WS_THICKFRAME 并重建原生 frame，导致任务栏恢复动画先闪到左上角。
+            // 保持创建时的原生样式，仅用相同的 min/max 约束锁定折叠尺寸。
+            await appWindow.setSizeConstraints(null);
+            await appWindow.setSize(new LogicalSize(collapsedWidth, collapsedHeight));
+            await appWindow.setSizeConstraints(
+              fixedWindowSizeConstraints(collapsedWidth, collapsedHeight),
+            );
           } else {
             // 展开模式：恢复保存的尺寸
             newCollapseMode = 'expanded';
+
+            // 折叠态的 min/max 相同，必须先完整解除再放大窗口。
+            await appWindow.setSizeConstraints(null);
+
             const savedSize = localStorage.getItem('expandedWindowSize');
             if (savedSize) {
               const { width, height } = JSON.parse(savedSize);
@@ -249,7 +279,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               console.log('🔼 使用默认尺寸: 550 x 1000');
               await appWindow.setSize(new LogicalSize(550, 1000));
             }
-            await appWindow.setResizable(true);
+
+            // 重新启用展开态最小尺寸；省略 max 会同时保持最大尺寸为空。
+            await appWindow.setSizeConstraints(EXPANDED_WINDOW_SIZE_CONSTRAINTS);
           }
           
           // 更新状态
@@ -310,26 +342,36 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           const appWindow = getCurrentWindow();
           
           if (snapped && position) {
-            // 吸附到边缘：移动到屏幕边缘并调整为半圆形状
-            const { availableMonitors, LogicalPosition, LogicalSize } = await import('@tauri-apps/api/window');
-            const monitors = await availableMonitors();
-            const currentMonitor = monitors[0]; // 使用主显示器
-            
-            if (currentMonitor) {
-              const { size: monitorSize } = currentMonitor;
-              const windowWidth = 30; // 半圆宽度
-              const windowHeight = 30;
-              
-              const x = position === 'left' ? 0 : monitorSize.width - windowWidth;
-              const y = Math.floor((monitorSize.height - windowHeight) / 2); // 垂直居中
-              
-              await appWindow.setPosition(new LogicalPosition(x, y));
-              await appWindow.setSize(new LogicalSize(windowWidth, windowHeight));
-            }
+            // 使用当前显示器的真实物理坐标，兼容副屏、负坐标和 DPI 缩放。
+            const {
+              currentMonitor,
+              LogicalSize,
+              PhysicalPosition,
+            } = await import('@tauri-apps/api/window');
+            const monitor = await currentMonitor();
+            if (!monitor) throw new Error('无法识别悬浮球所在显示器');
+
+            const logicalSize = 30;
+            const physicalSize = Math.round(logicalSize * monitor.scaleFactor);
+            const monitorLeft = monitor.position.x;
+            const monitorRight = monitorLeft + monitor.size.width;
+            const x = position === 'left'
+              ? monitorLeft
+              : monitorRight - physicalSize;
+            const y = monitor.position.y + Math.floor((monitor.size.height - physicalSize) / 2);
+
+            await appWindow.setSizeConstraints(null);
+            await appWindow.setSize(new LogicalSize(logicalSize, logicalSize));
+            await appWindow.setSizeConstraints(
+              fixedWindowSizeConstraints(logicalSize, logicalSize),
+            );
+            await appWindow.setPosition(new PhysicalPosition(x, y));
           } else if (!snapped && currentSettings.collapseMode === 'floating') {
             // 取消吸附：恢复为完整圆球形状
             const { LogicalSize } = await import('@tauri-apps/api/window');
+            await appWindow.setSizeConstraints(null);
             await appWindow.setSize(new LogicalSize(60, 60));
+            await appWindow.setSizeConstraints(fixedWindowSizeConstraints(60, 60));
           }
           
           set({ settings: newSettings });
@@ -342,7 +384,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           }
         } catch (error) {
           console.error('Failed to set edge snap:', error);
-          toast.error('设置边缘吸附失败');
         }
       },
       

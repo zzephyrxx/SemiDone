@@ -23,6 +23,10 @@ pub fn run() {
 
     // 初始化存储
     let storage = Storage::new().expect("Failed to initialize storage");
+    let topmost_enabled = storage
+        .load_settings()
+        .map(|settings| settings.is_pinned)
+        .unwrap_or(false);
 
     // 创建系统托盘菜单将在setup中处理
 
@@ -30,15 +34,22 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
         .manage(Mutex::new(storage))
-        .on_window_event(|_window, event| match event {
+        .manage(commands::TopmostState::new(topmost_enabled))
+        .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
-                _window.hide().unwrap();
+                // 先阻止窗口被销毁，再隐藏到托盘。即使隐藏失败，WebView 仍然
+                // 存活，避免出现进程仍在但托盘无法恢复窗口的状态。
                 api.prevent_close();
+                if let Err(error) = window.hide() {
+                    eprintln!("Failed to hide window after close request: {error}");
+                }
             }
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_tasks,
+            commands::set_window_topmost,
+            commands::reassert_window_topmost,
             commands::create_task,
             commands::update_task,
             commands::delete_task,
@@ -74,6 +85,9 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
+            #[cfg(target_os = "windows")]
+            commands::start_topmost_watchdog(app.handle().clone())?;
+
             // 创建托盘右键菜单
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
@@ -93,9 +107,9 @@ pub fn run() {
                             if let Some(window) = app.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.unminimize();
-                                let _ = window.set_always_on_top(true);
+                                let _ = commands::force_window_topmost(&window);
                                 let _ = window.set_focus();
-                                let _ = window.set_always_on_top(false);
+                                let _ = commands::restore_configured_window_topmost(app, &window);
                                 println!("  └─ ✅ 窗口已显示并聚焦");
                             }
                         }
@@ -144,7 +158,9 @@ pub fn run() {
                                                 }
 
                                                 // 临时置顶（Windows需要这样才能强制前台）
-                                                if let Err(e) = window.set_always_on_top(true) {
+                                                if let Err(e) =
+                                                    commands::force_window_topmost(&window)
+                                                {
                                                     println!("  │  ├─ ⚠️ 临时置顶失败: {:?}", e);
                                                 } else {
                                                     println!("  │  ├─ ✅ 临时置顶成功");
@@ -157,11 +173,19 @@ pub fn run() {
                                                     println!("  │  ├─ ✅ 聚焦成功");
                                                 }
 
-                                                // 立即取消置顶
-                                                if let Err(e) = window.set_always_on_top(false) {
-                                                    println!("  │  └─ ⚠️ 取消置顶失败: {:?}", e);
+                                                // 按用户设置恢复最终置顶状态。
+                                                let topmost_result =
+                                                    commands::restore_configured_window_topmost(
+                                                        tray.app_handle(),
+                                                        &window,
+                                                    );
+                                                if let Err(e) = topmost_result {
+                                                    println!(
+                                                        "  │  └─ ⚠️ 恢复置顶状态失败: {:?}",
+                                                        e
+                                                    );
                                                 } else {
-                                                    println!("  │  └─ ✅ 取消置顶成功");
+                                                    println!("  │  └─ ✅ 已恢复用户置顶设置");
                                                 }
                                             } else {
                                                 // 窗口隐藏：显示并聚焦
@@ -182,7 +206,9 @@ pub fn run() {
                                                 }
 
                                                 // 临时置顶以强制前台
-                                                if let Err(e) = window.set_always_on_top(true) {
+                                                if let Err(e) =
+                                                    commands::force_window_topmost(&window)
+                                                {
                                                     println!("  │  ├─ ⚠️ 临时置顶失败: {:?}", e);
                                                 } else {
                                                     println!("  │  ├─ ✅ 临时置顶成功");
@@ -195,11 +221,19 @@ pub fn run() {
                                                     println!("  │  ├─ ✅ 聚焦成功");
                                                 }
 
-                                                // 取消置顶
-                                                if let Err(e) = window.set_always_on_top(false) {
-                                                    println!("  │  └─ ⚠️ 取消置顶失败: {:?}", e);
+                                                // 按用户设置恢复最终置顶状态。
+                                                let topmost_result =
+                                                    commands::restore_configured_window_topmost(
+                                                        tray.app_handle(),
+                                                        &window,
+                                                    );
+                                                if let Err(e) = topmost_result {
+                                                    println!(
+                                                        "  │  └─ ⚠️ 恢复置顶状态失败: {:?}",
+                                                        e
+                                                    );
                                                 } else {
-                                                    println!("  │  └─ ✅ 取消置顶成功");
+                                                    println!("  │  └─ ✅ 已恢复用户置顶设置");
                                                 }
                                             }
 

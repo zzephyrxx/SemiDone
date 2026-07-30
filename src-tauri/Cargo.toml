@@ -1,6 +1,6 @@
 [package]
 name = "SemiDone"
-version = "5.0.0"
+version = "5.2.0"
 description = "事半·SemiDone"
 authors = ["yurou"]
 license = ""
@@ -21,22 +21,23 @@ tauri-build = { version = "2.3.1", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.7.0", features = ["tray-icon"] }
+tauri = { version = "=2.10.3", features = ["tray-icon"] }
 tauri-plugin-log = "2"
-tauri-plugin-fs = "2"
-tauri-plugin-dialog = "2"
+tauri-plugin-fs = "=2.5.1"
+tauri-plugin-dialog = "=2.7.2"
 tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
-tauri-plugin-http = "2"
+tauri-plugin-http = "=2.5.9"
 uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 base64 = "0.21"
-tauri-plugin-opener = "2"
+tauri-plugin-opener = "=2.5.4"
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = [
+windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_System_Threading",
   "Win32_Security",
+  "Win32_UI_WindowsAndMessaging",
 ] }

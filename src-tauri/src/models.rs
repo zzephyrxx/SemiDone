@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attachment {
@@ -121,7 +121,11 @@ pub struct Task {
     pub created_at: String,
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
-    #[serde(rename = "completedAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "completedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub completed_at: Option<String>,
     #[serde(rename = "isPinned", default)]
     pub is_pinned: bool,

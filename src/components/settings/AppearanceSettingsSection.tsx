@@ -122,7 +122,7 @@ export default function AppearanceSettingsSection({
               <Palette className="h-4 w-4 text-blue-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">主题风格</p>
+              <p className="text-sm font-semibold text-foreground">主题</p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/70 p-1">
@@ -149,8 +149,8 @@ export default function AppearanceSettingsSection({
         <SettingTile
           icon={<Rocket className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
           iconClass="bg-emerald-500/10"
-          title="开机自启动"
-          description="随系统启动自动运行"
+          title="开机自启"
+          description="开机自动运行"
           control={(
             <SettingSwitch
               label="开机自启动"
@@ -165,7 +165,7 @@ export default function AppearanceSettingsSection({
           icon={<Eye className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
           iconClass="bg-cyan-500/10"
           title="透明模式"
-          description={settings.theme === 'dark' ? '让窗口背景半透明' : '仅支持深色主题'}
+          description={settings.theme === 'dark' ? '让窗口背景半透明' : '深色主题可用'}
           control={(
             <SettingSwitch
               label="透明模式"
@@ -180,8 +180,8 @@ export default function AppearanceSettingsSection({
         <SettingTile
           icon={<Circle className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
           iconClass="bg-violet-500/10"
-          title="悬浮球模式"
-          description="折叠后显示为悬浮球"
+          title="悬浮球"
+          description="折叠为悬浮球"
           control={(
             <SettingSwitch
               label="悬浮球模式"
