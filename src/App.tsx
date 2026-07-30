@@ -7,12 +7,15 @@ import Other from './pages/Other';
 import UsageStats from './pages/UsageStats';
 import TaskCalendar from './pages/TaskCalendar';
 import StartupTip from './components/StartupTip';
-import UpdateNotifier from './components/UpdateNotifier';
+import { useGlobalInteractionGuards } from './hooks/useGlobalInteractionGuards';
+import { usePinnedWindowGuard } from './hooks/usePinnedWindowGuard';
 import { useSettingsStore } from './store/settingsStore'
 import { Toaster } from 'sonner'
 
 function App() {
   const { settings, loadSettings } = useSettingsStore()
+  useGlobalInteractionGuards();
+  usePinnedWindowGuard(settings.isPinned);
 
   useEffect(() => {
     loadSettings()
@@ -49,7 +52,6 @@ function App() {
         </Routes>
       </Router>
       <StartupTip />
-      <UpdateNotifier />
       <Toaster richColors position="top-center" duration={2000} />
     </>
   );
