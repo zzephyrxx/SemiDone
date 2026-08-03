@@ -7,13 +7,15 @@ import {
   Rocket,
   SlidersHorizontal,
   Sun,
+  Waves,
 } from 'lucide-react';
 import type { ReactElement } from 'react';
-import type { Settings, Theme } from '../../types';
+import type { LiquidGlassSettings, Settings, Theme } from '../../types';
 
 interface AppearanceSettingsSectionProps {
   settings: Settings;
   onThemeChange: (theme: Theme) => void;
+  onLiquidGlassChange: (updates: Partial<LiquidGlassSettings>) => void;
   onToggleAutoStart: () => void;
   onTransparencyToggle: (enabled: boolean) => void;
   onTransparencyLevelChange: (level: number) => void;
@@ -96,6 +98,7 @@ function SettingTile({ icon, iconClass, title, description, control }: SettingTi
 export default function AppearanceSettingsSection({
   settings,
   onThemeChange,
+  onLiquidGlassChange,
   onToggleAutoStart,
   onTransparencyToggle,
   onTransparencyLevelChange,
@@ -122,7 +125,7 @@ export default function AppearanceSettingsSection({
               <Palette className="h-4 w-4 text-blue-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">主题风格</p>
+              <p className="text-sm font-semibold text-foreground">主题</p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/70 p-1">
@@ -149,8 +152,8 @@ export default function AppearanceSettingsSection({
         <SettingTile
           icon={<Rocket className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
           iconClass="bg-emerald-500/10"
-          title="开机自启动"
-          description="随系统启动自动运行"
+          title="开机自启"
+          description="开机自动运行"
           control={(
             <SettingSwitch
               label="开机自启动"
@@ -165,7 +168,7 @@ export default function AppearanceSettingsSection({
           icon={<Eye className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
           iconClass="bg-cyan-500/10"
           title="透明模式"
-          description={settings.theme === 'dark' ? '让窗口背景半透明' : '仅支持深色主题'}
+          description={settings.theme === 'dark' ? '让窗口背景半透明' : '深色主题可用'}
           control={(
             <SettingSwitch
               label="透明模式"
@@ -180,8 +183,8 @@ export default function AppearanceSettingsSection({
         <SettingTile
           icon={<Circle className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
           iconClass="bg-violet-500/10"
-          title="悬浮球模式"
-          description="折叠后显示为悬浮球"
+          title="悬浮球"
+          description="折叠为悬浮球"
           control={(
             <SettingSwitch
               label="悬浮球模式"
@@ -191,6 +194,82 @@ export default function AppearanceSettingsSection({
             />
           )}
         />
+
+        <div className="min-[480px]:col-span-2 rounded-xl border border-border/80 bg-background/35 p-3 transition-colors hover:border-primary/25">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Waves className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">液态玻璃效果</p>
+              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">应用于常用弹窗，并跟随当前主题</p>
+            </div>
+            <SettingSwitch
+              label="液态玻璃效果"
+              checked={settings.liquidGlass.enabled}
+              onChange={() => onLiquidGlassChange({ enabled: !settings.liquidGlass.enabled })}
+              accentClass="bg-cyan-600 dark:bg-cyan-500"
+            />
+          </div>
+
+          {settings.liquidGlass.enabled && (
+            <div
+              data-testid="liquid-glass-controls"
+              className="mt-3 grid grid-cols-1 gap-3 border-t border-border/70 pt-3 min-[520px]:grid-cols-[1fr_1fr_auto]"
+            >
+              <label className="min-w-0">
+                <span className="mb-1.5 flex items-center justify-between gap-2 text-xs">
+                  <span className="font-medium text-foreground">模糊程度</span>
+                  <output className="tabular-nums text-muted-foreground">
+                    {settings.liquidGlass.blur} / 10
+                  </output>
+                </span>
+                <input
+                  type="range"
+                  aria-label="模糊程度"
+                  min="1"
+                  max="10"
+                  step="1"
+                  value={settings.liquidGlass.blur}
+                  onChange={(event) => onLiquidGlassChange({ blur: Number(event.target.value) })}
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary disabled:cursor-not-allowed"
+                />
+              </label>
+
+              <label className="min-w-0">
+                <span className="mb-1.5 flex items-center justify-between gap-2 text-xs">
+                  <span className="font-medium text-foreground">折射强度</span>
+                  <output className="tabular-nums text-muted-foreground">
+                    {settings.liquidGlass.refraction}%
+                  </output>
+                </span>
+                <input
+                  type="range"
+                  aria-label="折射强度"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={settings.liquidGlass.refraction}
+                  onChange={(event) => onLiquidGlassChange({ refraction: Number(event.target.value) })}
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary disabled:cursor-not-allowed"
+                />
+              </label>
+
+              <div className="flex min-w-[118px] items-center justify-between gap-3 min-[520px]:border-l min-[520px]:border-border/70 min-[520px]:pl-3">
+                <div>
+                  <p className="text-xs font-medium text-foreground">色散效果</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">边缘轻微分色</p>
+                </div>
+                <SettingSwitch
+                  label="色散效果"
+                  checked={settings.liquidGlass.dispersion}
+                  onChange={() => onLiquidGlassChange({ dispersion: !settings.liquidGlass.dispersion })}
+                  accentClass="bg-cyan-600 dark:bg-cyan-500"
+                />
+              </div>
+            </div>
+          )}
+        </div>
 
         {settings.transparentEnabled && (
           <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-2.5 min-[480px]:col-span-2">

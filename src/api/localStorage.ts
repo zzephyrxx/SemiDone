@@ -1,5 +1,6 @@
 import type { Task, Settings, CreateTaskRequest, UpdateTaskRequest, TaskStats, ApiResponse, Theme, UsagePersistedData } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeLiquidGlassSettings } from '../utils/liquidGlassSettings';
 
 // localStorage键名常量
 const STORAGE_KEYS = {
@@ -11,6 +12,7 @@ const STORAGE_KEYS = {
 // 默认设置
 const DEFAULT_SETTINGS: Settings = {
   theme: 'light' as Theme,
+  liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
   notifications: true,
   autoSave: true,
   isPinned: false,
@@ -179,7 +181,12 @@ export const settingsApi = {
   async getSettings(): Promise<ApiResponse<Settings>> {
     try {
       const settingsJson = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      const settings = safeJsonParse(settingsJson, DEFAULT_SETTINGS);
+      const storedSettings = safeJsonParse(settingsJson, DEFAULT_SETTINGS);
+      const settings = {
+        ...DEFAULT_SETTINGS,
+        ...storedSettings,
+        liquidGlass: normalizeLiquidGlassSettings(storedSettings.liquidGlass),
+      };
       return createResponse(settings);
     } catch (error) {
       return createResponse(DEFAULT_SETTINGS, false, `获取设置失败: ${error}`);

@@ -20,9 +20,14 @@ export default function DataDirectoryDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-card border border-border rounded-lg shadow-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold text-foreground mb-4">更改数据目录</h3>
+    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="data-directory-title"
+        className="liquid-glass-modal-surface bg-card border border-border rounded-lg shadow-lg p-6 w-full max-w-md"
+      >
+        <h3 id="data-directory-title" className="text-lg font-semibold text-foreground mb-4">更改数据目录</h3>
         <p className="text-sm text-muted-foreground mb-4">当前目录：{currentDataDir}</p>
         <div className="mb-4">
           <label className="block text-sm font-medium text-foreground mb-2">目标目录</label>

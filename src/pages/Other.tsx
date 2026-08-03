@@ -23,6 +23,7 @@ export default function Other() {
     settings,
     updateSettings,
     setTransparency,
+    setLiquidGlass,
     toggleCapsuleMode,
     toggleAutoStart,
   } = useSettingsStore();
@@ -200,6 +201,7 @@ export default function Other() {
           <AppearanceSettingsSection
             settings={settings}
             onThemeChange={(theme) => void handleThemeChange(theme)}
+            onLiquidGlassChange={(updates) => void setLiquidGlass(updates)}
             onToggleAutoStart={() => void toggleAutoStart()}
             onTransparencyToggle={(enabled) => void handleTransparencyToggle(enabled)}
             onTransparencyLevelChange={(level) => void handleTransparencyLevelChange(level)}

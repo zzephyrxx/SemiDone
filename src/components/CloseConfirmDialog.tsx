@@ -11,15 +11,20 @@ export default function CloseConfirmDialog({ isOpen, onConfirm, onCancel }: Clos
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background border border-border rounded-lg shadow-lg p-6 w-80 mx-4">
+    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="close-app-title"
+        className="liquid-glass-modal-surface bg-background border border-border rounded-lg shadow-lg p-6 w-80 mx-4"
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-destructive/10 rounded-full flex items-center justify-center">
               <Power className="w-4 h-4 text-destructive" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">关闭应用</h3>
+            <h3 id="close-app-title" className="text-lg font-semibold text-foreground">关闭应用</h3>
           </div>
           <button
             onClick={onCancel}
