@@ -60,8 +60,16 @@ export interface Task {
 }
 
 // 设置数据结构
+export interface LiquidGlassSettings {
+  enabled: boolean;
+  blur: number;
+  refraction: number;
+  dispersion: boolean;
+}
+
 export interface Settings {
   theme: Theme;
+  liquidGlass: LiquidGlassSettings;
   notifications: boolean;
   autoSave: boolean;
   isPinned: boolean;

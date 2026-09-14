@@ -1,0 +1,99 @@
+:root {
+  --liquid-glass-dialog-blur: 11.11px;
+}
+
+.liquid-glass-filter-definitions {
+  position: fixed;
+  left: -9999px;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.liquid-glass-modal-overlay {
+  transition: background-color 180ms ease;
+}
+
+.liquid-glass-modal-surface {
+  background-clip: padding-box;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    backdrop-filter 180ms ease;
+}
+
+html[data-liquid-glass-dialogs='true'] .liquid-glass-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+html[data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface {
+  isolation: isolate;
+  border-color: rgba(255, 255, 255, 0.72) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 14% 5%, rgba(255, 255, 255, 0.58), transparent 34%),
+    linear-gradient(
+      145deg,
+      hsl(var(--card) / 0.58),
+      hsl(var(--card) / 0.22)
+    ) !important;
+  -webkit-backdrop-filter:
+    url(#semidone-dialog-refraction)
+    blur(var(--liquid-glass-dialog-blur))
+    saturate(1.22)
+    brightness(1.04);
+  backdrop-filter:
+    url(#semidone-dialog-refraction)
+    blur(var(--liquid-glass-dialog-blur))
+    saturate(1.22)
+    brightness(1.04);
+  box-shadow:
+    0 22px 54px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+html[data-liquid-glass-dialogs='true'][data-liquid-glass-dispersion='true']
+  .liquid-glass-modal-surface {
+  -webkit-backdrop-filter:
+    url(#semidone-dialog-chromatic-refraction)
+    blur(var(--liquid-glass-dialog-blur))
+    saturate(1.38)
+    contrast(1.04);
+  backdrop-filter:
+    url(#semidone-dialog-chromatic-refraction)
+    blur(var(--liquid-glass-dialog-blur))
+    saturate(1.38)
+    contrast(1.04);
+}
+
+html.dark[data-liquid-glass-dialogs='true'] .liquid-glass-modal-overlay,
+html[data-theme='dark'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+html.dark[data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface,
+html[data-theme='dark'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  background:
+    radial-gradient(circle at 14% 5%, rgba(255, 255, 255, 0.18), transparent 35%),
+    linear-gradient(145deg, hsl(var(--card) / 0.64), hsl(var(--card) / 0.3)) !important;
+  box-shadow:
+    0 24px 58px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html[data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface {
+    background: hsl(var(--card) / 0.96) !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  html[data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface {
+    background: hsl(var(--card) / 0.88) !important;
+  }
+}

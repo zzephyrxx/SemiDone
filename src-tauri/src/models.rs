@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attachment {
@@ -121,7 +121,11 @@ pub struct Task {
     pub created_at: String,
     #[serde(rename = "updatedAt")]
     pub updated_at: String,
-    #[serde(rename = "completedAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "completedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub completed_at: Option<String>,
     #[serde(rename = "isPinned", default)]
     pub is_pinned: bool,
@@ -174,8 +178,30 @@ impl Task {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LiquidGlassSettings {
+    pub enabled: bool,
+    pub blur: u8,
+    pub refraction: u8,
+    pub dispersion: bool,
+}
+
+impl Default for LiquidGlassSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            blur: 6,
+            refraction: 42,
+            dispersion: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub theme: String,
+    #[serde(rename = "liquidGlass", default)]
+    pub liquid_glass: LiquidGlassSettings,
     pub notifications: bool,
     #[serde(rename = "autoSave")]
     pub auto_save: bool,
@@ -221,6 +247,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: "light".to_string(),
+            liquid_glass: LiquidGlassSettings::default(),
             notifications: true,
             auto_save: true,
             is_pinned: false,

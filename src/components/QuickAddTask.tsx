@@ -173,7 +173,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg shadow-lg p-6 quick-add-card max-h-[90vh] overflow-y-auto">
+    <div className="liquid-glass-modal-surface bg-card border border-border rounded-lg shadow-lg p-6 quick-add-card max-h-[90vh] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">

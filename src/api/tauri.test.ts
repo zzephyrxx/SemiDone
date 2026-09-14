@@ -87,6 +87,12 @@ describe('Tauri API storage boundary', () => {
     const taskUpdate = { completed: true };
     const settings = {
       theme: 'light' as const,
+      liquidGlass: {
+        enabled: true,
+        blur: 6,
+        refraction: 42,
+        dispersion: true,
+      },
       notifications: true,
       autoSave: true,
       isPinned: false,

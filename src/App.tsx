@@ -7,6 +7,7 @@ import Other from './pages/Other';
 import UsageStats from './pages/UsageStats';
 import TaskCalendar from './pages/TaskCalendar';
 import StartupTip from './components/StartupTip';
+import LiquidGlassRuntime from './components/LiquidGlassRuntime';
 import UpdateNotifier from './components/UpdateNotifier';
 import { useSettingsStore } from './store/settingsStore'
 import { Toaster } from 'sonner'
@@ -37,6 +38,7 @@ function App() {
 
   return (
     <>
+      <LiquidGlassRuntime />
       <Router>
         <Routes>
           <Route path="/" element={<Layout />}>

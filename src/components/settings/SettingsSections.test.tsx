@@ -12,6 +12,12 @@ afterEach(cleanup);
 
 const settings: Settings = {
   theme: 'light',
+  liquidGlass: {
+    enabled: true,
+    blur: 6,
+    refraction: 42,
+    dispersion: true,
+  },
   notifications: true,
   autoSave: true,
   isPinned: false,
@@ -37,10 +43,12 @@ describe('settings page sections', () => {
   it('keeps appearance actions controlled by the page', () => {
     const onThemeChange = vi.fn();
     const onToggleAutoStart = vi.fn();
+    const onLiquidGlassChange = vi.fn();
     render(
       <AppearanceSettingsSection
         settings={settings}
         onThemeChange={onThemeChange}
+        onLiquidGlassChange={onLiquidGlassChange}
         onToggleAutoStart={onToggleAutoStart}
         onTransparencyToggle={vi.fn()}
         onTransparencyLevelChange={vi.fn()}
@@ -52,11 +60,56 @@ describe('settings page sections', () => {
     expect(within(section).getByRole('button', { name: /深色/ })).toBeVisible();
     expect(within(section).getByRole('switch', { name: /开机自启动/ })).toBeVisible();
 
+    const glassSwitch = within(section).getByRole('switch', { name: '液态玻璃效果' });
+    expect(glassSwitch).toBeChecked();
+    expect(glassSwitch).toHaveClass('bg-cyan-600', 'dark:bg-cyan-500');
+
+    const blurSlider = within(section).getByRole('slider', { name: '模糊程度' });
+    expect(blurSlider).toHaveValue('6');
+    expect(blurSlider).toHaveAttribute('min', '1');
+    expect(blurSlider).toHaveAttribute('max', '10');
+    expect(within(section).getByRole('slider', { name: '折射强度' })).toHaveValue('42');
+
     fireEvent.click(screen.getByRole('button', { name: /深色/ }));
     fireEvent.click(screen.getByRole('switch', { name: /开机自启动/ }));
+    fireEvent.change(blurSlider, { target: { value: '9' } });
+    fireEvent.change(screen.getByRole('slider', { name: '折射强度' }), { target: { value: '60' } });
+    fireEvent.click(screen.getByRole('switch', { name: '色散效果' }));
+    fireEvent.click(glassSwitch);
 
     expect(onThemeChange).toHaveBeenCalledWith('dark');
     expect(onToggleAutoStart).toHaveBeenCalledOnce();
+    expect(onLiquidGlassChange).toHaveBeenCalledWith({ blur: 9 });
+    expect(onLiquidGlassChange).toHaveBeenCalledWith({ refraction: 60 });
+    expect(onLiquidGlassChange).toHaveBeenCalledWith({ dispersion: false });
+    expect(onLiquidGlassChange).toHaveBeenCalledWith({ enabled: false });
+  });
+
+  it('hides liquid-glass parameters until the feature is enabled', () => {
+    render(
+      <AppearanceSettingsSection
+        settings={{
+          ...settings,
+          liquidGlass: {
+            ...settings.liquidGlass,
+            enabled: false,
+          },
+        }}
+        onThemeChange={vi.fn()}
+        onLiquidGlassChange={vi.fn()}
+        onToggleAutoStart={vi.fn()}
+        onTransparencyToggle={vi.fn()}
+        onTransparencyLevelChange={vi.fn()}
+        onToggleCapsuleMode={vi.fn()}
+      />,
+    );
+
+    const section = screen.getByRole('region', { name: '外观与交互' });
+    expect(within(section).getByRole('switch', { name: '液态玻璃效果' })).not.toBeChecked();
+    expect(within(section).queryByTestId('liquid-glass-controls')).not.toBeInTheDocument();
+    expect(within(section).queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('slider', { name: '折射强度' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('switch', { name: '色散效果' })).not.toBeInTheDocument();
   });
 
   it('keeps data actions and the current directory visible', () => {

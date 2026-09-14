@@ -14,13 +14,18 @@ export default function DeleteConfirmDialog({ isOpen, task, onConfirm, onCancel 
   if (!isOpen || !task) return null;
 
   const dialogContent = (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999]">
-      <div className="bg-background border border-border rounded-lg shadow-xl w-80 p-4 mx-4">
+    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-[99999]">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-task-title"
+        className="liquid-glass-modal-surface bg-background border border-border rounded-lg shadow-xl w-80 p-4 mx-4"
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-red-500" />
-            <h3 className="text-lg font-semibold text-foreground">确认删除</h3>
+            <h3 id="delete-task-title" className="text-lg font-semibold text-foreground">确认删除</h3>
           </div>
           <button
             onClick={onCancel}
