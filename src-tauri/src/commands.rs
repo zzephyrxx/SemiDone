@@ -1,16 +1,21 @@
 use crate::models::*;
 use crate::storage::Storage;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
 type StorageState<'a> = State<'a, Mutex<Storage>>;
 
 #[tauri::command]
-pub fn set_window_topmost(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
-    window
-        .set_always_on_top(enabled)
-        .map_err(|error| error.to_string())
+pub async fn set_window_topmost(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
+    let pinning = window.state::<crate::window_pinning::WindowPinning>().inner().clone();
+    pinning.configure(window, Some(enabled), None)
+}
+
+#[tauri::command]
+pub async fn set_window_pin_mode(window: tauri::WebviewWindow, compact: bool) -> Result<(), String> {
+    let pinning = window.state::<crate::window_pinning::WindowPinning>().inner().clone();
+    pinning.configure(window, None, Some(compact))
 }
 
 #[tauri::command]

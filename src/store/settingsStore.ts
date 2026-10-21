@@ -139,16 +139,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               document.documentElement.setAttribute('data-theme', loadedSettings.theme);
             }
 
-            // 恢复置顶状态
-            if (loadedSettings.isPinned) {
-              try {
-                await setNativeWindowTopmost(true);
-                console.log('Window pinned state restored');
-              } catch (error) {
-                console.warn('Failed to restore pin state:', error);
-              }
-            }
-            
             // 恢复透明度状态
             if (loadedSettings.transparentEnabled) {
               try {
@@ -214,6 +204,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           console.error('Load settings error:', error);
           set({ settings: defaultSettings });
         } finally {
+          // Synchronize both states, including reloads after imports or fallback defaults.
+          try { await setNativeWindowTopmost(get().settings.isPinned); }
+          catch (error) { console.warn('Failed to restore native pin state:', error); }
           set({ loading: false });
         }
       },
@@ -227,7 +220,18 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           ...(updates.zenMode ? { zenMode: normalizeZenModeSettings(updates.zenMode) } : {}),
         };
         
+        let nativePinChanged = false;
+        const rollbackPin = async () => {
+          if (!nativePinChanged) return;
+          nativePinChanged = false;
+          try { await setNativeWindowTopmost(currentSettings.isPinned); }
+          catch (error) { console.warn('Failed to restore native pin state:', error); }
+        };
         try {
+          if (updates.isPinned !== undefined && updates.isPinned !== currentSettings.isPinned) {
+            await setNativeWindowTopmost(newSettings.isPinned);
+            nativePinChanged = true;
+          }
           const response = await api.settings.updateSettings(newSettings);
           if (response.success) {
             set({ settings: newSettings });
@@ -238,9 +242,11 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             }
           
           } else {
+            await rollbackPin();
             toast.error(response.error || '保存设置失败');
           }
         } catch (error) {
+          await rollbackPin();
           console.error('Update settings error:', error);
           toast.error('保存设置失败');
         }

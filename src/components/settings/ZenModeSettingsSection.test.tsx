@@ -32,6 +32,10 @@ describe('Zen mode settings', () => {
     expect(configuration).toHaveAttribute('open');
     fireEvent.change(screen.getByRole('slider', { name: '字体大小' }), { target: { value: '22' } });
     expect(useSettingsStore.getState().settings.zenMode?.fontSize).toBe(22);
+    fireEvent.click(screen.getByRole('button', { name: '文字颜色' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '文字颜色色值' }), { target: { value: '#abcdef' } });
+    await waitFor(() => expect(useSettingsStore.getState().settings.zenMode?.textColor).toBe('#abcdef'));
+    expect(screen.getByRole('region', { name: '文字颜色调色盘' })).toBeVisible();
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).not.toBeChecked());
     expect(configuration).not.toHaveAttribute('open');

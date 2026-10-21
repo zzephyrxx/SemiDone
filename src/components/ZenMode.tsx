@@ -99,10 +99,10 @@ export default function ZenMode({ onClose }: Props) {
           <button type="button" ref={appearanceButton} title="Zen 模式配置" aria-label="Zen 模式配置"
             aria-expanded={showAppearance} aria-controls="zen-appearance-panel"
             onClick={() => setShowAppearance((show) => !show)}><Palette size={15} /></button>
-          <button type="button" title={settings.isPinned ? '取消置顶' : '置顶窗口'}
+          <button type="button" className="zen-icon-only" title={settings.isPinned ? '取消置顶' : '置顶窗口'}
             aria-label={settings.isPinned ? '取消置顶' : '置顶窗口'} aria-pressed={settings.isPinned}
             onClick={() => void toggleIsPinned()}>{settings.isPinned ? <Pin size={15} /> : <PinOff size={15} />}</button>
-          <button type="button" title="退出 Zen 模式（Esc）" aria-label="返回完整模式" aria-pressed={true}
+          <button type="button" className="zen-icon-only" title="退出 Zen 模式（Esc）" aria-label="返回完整模式" aria-pressed={true}
             onClick={() => void setZenMode({ active: false })}><ZenIcon variant="off" size={20} /></button>
           <button type="button" title="关闭应用" aria-label="关闭应用" onClick={onClose}><X size={15} /></button>
         </div>

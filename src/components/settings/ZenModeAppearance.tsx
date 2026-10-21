@@ -1,5 +1,7 @@
+import { useId, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import ParameterSlider from './ParameterSlider';
+import ZenColorPicker from './ZenColorPicker';
 import type { ZenModeSettings } from '../../types';
 import { DEFAULT_ZEN_MODE_SETTINGS, zenModeStyle } from '../../utils/zenModeSettings';
 
@@ -15,20 +17,35 @@ const COLORS = [
 ] as const;
 
 export default function ZenModeAppearance({ settings, onChange }: Props) {
+  const [editingColor, setEditingColor] = useState<{ key: (typeof COLORS)[number]['key']; label: string } | null>(null);
+  const editorId = useId();
+  const colorButtons = useRef<Partial<Record<(typeof COLORS)[number]['key'], HTMLButtonElement | null>>>({});
+  const closePicker = () => {
+    if (editingColor) colorButtons.current[editingColor.key]?.focus();
+    setEditingColor(null);
+  };
   return (
     <div className="zen-appearance">
       <ParameterSlider label="字体大小" min={12} max={28} value={settings.fontSize} suffix=" px"
         onChange={(fontSize) => onChange({ fontSize })} />
       <div className="zen-color-grid">
         {COLORS.map(({ key, label }) => (
-          <label key={key} className="zen-color-field">
+          <div key={key} className="zen-color-field">
             <span>{label}</span>
-            <input type="color" aria-label={label} value={settings[key]}
-              onChange={(event) => onChange({ [key]: event.target.value })} />
+            <button type="button" className="zen-color-trigger" aria-label={label}
+              ref={(element) => { colorButtons.current[key] = element; }}
+              aria-expanded={editingColor?.key === key} aria-controls={editingColor?.key === key ? editorId : undefined}
+              onClick={() => setEditingColor((current) => current?.key === key ? null : { key, label })}>
+              <span style={{ backgroundColor: settings[key] }} />
+            </button>
             <span className="zen-color-value">{settings[key].toUpperCase()}</span>
-          </label>
+          </div>
         ))}
       </div>
+      {editingColor && <div id={editorId} className="zen-color-editor">
+        <ZenColorPicker key={editingColor.key} label={editingColor.label} value={settings[editingColor.key]}
+          onChange={(color) => onChange({ [editingColor.key]: color })} onClose={closePicker} />
+      </div>}
       {([
         { key: 'backgroundOpacity', label: '面板不透明度' },
         { key: 'rowOpacity', label: '每行底色不透明度' },

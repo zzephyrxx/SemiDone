@@ -121,7 +121,13 @@ describe('Zen mode', () => {
     render(<ZenMode onClose={vi.fn()} />);
     await screen.findByText(pending.title);
     fireEvent.click(screen.getByRole('button', { name: 'Zen 模式配置' }));
-    fireEvent.change(screen.getByLabelText('文字颜色'), { target: { value: '#aabbcc' } });
+    fireEvent.click(screen.getByRole('button', { name: '文字颜色' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '文字颜色色值' }), { target: { value: '#aabbcc' } });
+    expect(screen.getByRole('region', { name: '文字颜色调色盘' })).toBeVisible();
+    fireEvent.keyDown(screen.getByRole('textbox', { name: '文字颜色色值' }), { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: '文字颜色调色盘' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Zen 模式配置' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '文字颜色' })).toHaveFocus();
     fireEvent.change(screen.getByRole('slider', { name: '面板不透明度' }), { target: { value: '0' } });
     await waitFor(async () => expect((await api.settings.getSettings()).data?.zenMode).toMatchObject({
       textColor: '#aabbcc', backgroundOpacity: 0, enabled: true,

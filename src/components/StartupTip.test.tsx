@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe('StartupTip welcome dialog', () => {
-  it('renders an accessible 6.1.0 release overview covering changes since 5.0', () => {
+  it('renders the approved 6.1.0 release overview', () => {
     renderWelcome();
 
     const dialog = screen.getByRole('dialog', { name: '欢迎使用 SemiDone' });
@@ -35,11 +35,8 @@ describe('StartupTip welcome dialog', () => {
 
     expect(screen.getByText('V6.1.0 · 2026.10')).toBeVisible();
     expect(screen.getByText('V6.1.0 更新内容')).toBeVisible();
-    expect(screen.getByText(/5\.0 之后的主要更新/)).toBeVisible();
-    expect(screen.getAllByRole('listitem')).toHaveLength(4);
-    expect(screen.getByText(/新增 Zen 禅模式/)).toBeVisible();
-    expect(screen.getByText(/液态玻璃.*实时预览/)).toBeVisible();
-    expect(screen.getByText(/跨天使用时长/)).toBeVisible();
+    expect(screen.queryByText(/5\.0.*主要更新/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual(["新增液态玻璃 UI，视觉更有质感。","新增 Zen（禅·极简模式），极致简约，回归记事本。","修复使用 Win+D 等方式返回桌面后，窗口置顶效果丢失的问题。","修复使用时长跨天统计和重复累计问题。","修复其他若干已知问题。"]);
     expect(screen.getByRole('button', { name: '开始体验' })).toBeVisible();
   });
 

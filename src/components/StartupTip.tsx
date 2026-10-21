@@ -90,10 +90,6 @@ export default function StartupTip() {
               </span>
             </div>
 
-            <p className="welcome-dialog-intro mt-2 text-xs leading-5 text-muted-foreground">
-              5.0 之后的主要更新，让待办更轻、界面更清晰。
-            </p>
-
             <ul className="welcome-dialog-highlights mt-4 divide-y divide-border/50 border-y border-border/50">
               {RELEASE_HIGHLIGHTS.map((text) => (
                 <li key={text} className="flex items-start gap-3 py-3 text-xs leading-5 text-foreground/80">

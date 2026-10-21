@@ -1,4 +1,14 @@
 /* Zen只对背景使用透明度，保持文字和控件清晰。 */
+html[data-zen-mode='true'] {
+  /* Zen 窗口外圆角：调整此值即可修改圆角大小。 */
+  --zen-window-radius: 8px;
+}
+
+/* 所有窗口内容共用一次圆角裁切；留 1px 透明边缘，避免右、下边缘裁断抗锯齿。 */
+html[data-zen-mode='true'] #root {
+  clip-path: inset(1px round var(--zen-window-radius));
+  isolation: isolate;
+}
 html[data-zen-mode='true'],
 html[data-zen-mode='true'] body,
 html[data-zen-mode='true'] #root {
@@ -6,7 +16,8 @@ html[data-zen-mode='true'] #root {
 }
 
 .zen-mode {
-  position: relative;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -44,6 +55,9 @@ html[data-zen-mode='true'] #root {
 .zen-toolbar-actions button[aria-expanded='true'],
 .zen-toolbar-actions button[aria-pressed='true'] { background: #ddd6fe; color: #5b21b6; }
 .zen-toolbar-actions button:last-child:hover { background: #fee2e2; color: #b91c1c; }
+/* 保留与调色板按钮相同的浅色底；置顶与退出 Zen 不使用紫色选中底。 */
+.zen-toolbar-actions button.zen-icon-only { background: #f1f5f9; color: #334155; }
+.zen-toolbar-actions button.zen-icon-only:hover { background: #ddd6fe; color: #5b21b6; }
 .zen-mode button:focus-visible,
 .zen-mode input:focus-visible,
 .zen-appearance button:focus-visible,
@@ -109,11 +123,29 @@ html[data-zen-mode='true'] #root {
 .zen-appearance { padding: 12px; border-radius: 10px; background: #f8fafc; color: #334155; }
 .zen-color-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .zen-color-field { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 12px; }
-.zen-color-field input { width: 100%; height: 30px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px; background: #ffffff; cursor: pointer; }
+.zen-color-trigger { display: block; width: 100%; height: 30px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px; background: #fff; cursor: pointer; }
+.zen-color-trigger > span { display: block; width: 100%; height: 100%; border-radius: 3px; }
+.zen-color-trigger[aria-expanded='true'] { border-color: #7c3aed; box-shadow: 0 0 0 1px #7c3aed; }
+.zen-color-picker { margin-top: 10px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; }
+.zen-color-picker-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; font-size: 12px; }
+.zen-color-picker-heading button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 5px; background: #f1f5f9; color: #334155; cursor: pointer; }
+.zen-color-plane { position: relative; height: 96px; margin: 5px; border-radius: 4px; touch-action: none; cursor: crosshair; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); }
+.zen-color-plane:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 3px; }
+.zen-color-cursor { position: absolute; width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #334155; transform: translate(-50%, -50%); pointer-events: none; }
+.zen-color-hue { display: flex; padding: 0 5px; }
+.zen-color-hue input { appearance: none; -webkit-appearance: none; flex: 1; min-width: 0; width: 100%; height: 12px; margin: 8px 0; border: 0; border-radius: 6px; background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); cursor: pointer; }
+.zen-color-hue input::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border: 2px solid #fff; border-radius: 50%; background: transparent; box-shadow: 0 0 0 1px #64748b; }
+.zen-color-hue input::-moz-range-thumb { width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; background: transparent; box-shadow: 0 0 0 1px #64748b; }
+.zen-color-swatches { display: flex; gap: 7px; padding: 4px 0 8px; }
+.zen-color-swatches button { flex: 1; min-width: 0; height: 18px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; }
+.zen-color-swatches button[aria-pressed='true'] { outline: 2px solid #7c3aed; outline-offset: 1px; }
+.zen-color-hex { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.zen-color-hex input { min-width: 0; width: 100%; height: 28px; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 6px; background: #fff; color: #334155; font-size: 12px; }
 .zen-color-value { font-size: 10px; font-variant-numeric: tabular-nums; }
 .zen-appearance { --parameter-accent: #7c3aed; }
 .zen-appearance .parameter-slider + .zen-color-grid,
-.zen-appearance .zen-color-grid + .parameter-slider { margin-top: 10px; }
+.zen-appearance .zen-color-grid + .parameter-slider,
+.zen-appearance .zen-color-editor + .parameter-slider { margin-top: 10px; }
 .zen-appearance .parameter-slider + .parameter-slider { margin-top: 6px; }
 .zen-preview-checker {
   margin-top: 12px;
