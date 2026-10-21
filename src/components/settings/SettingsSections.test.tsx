@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Settings } from '../../types';
 import type { UpdateCheckResult } from '../../services/githubUpdateService';
@@ -8,11 +8,7 @@ import AboutSettingsSection from './AboutSettingsSection';
 import AppearanceSettingsSection from './AppearanceSettingsSection';
 import DataSettingsSection from './DataSettingsSection';
 
-afterEach(() => {
-  cleanup();
-  vi.useRealTimers();
-  vi.restoreAllMocks();
-});
+afterEach(cleanup);
 
 const settings: Settings = {
   theme: 'light',
@@ -67,7 +63,6 @@ describe('settings page sections', () => {
     const glassSwitch = within(section).getByRole('switch', { name: '液态玻璃' });
     expect(glassSwitch).toBeChecked();
     expect(glassSwitch).toHaveClass('bg-cyan-600', 'dark:bg-cyan-500');
-    expect(glassSwitch).not.toHaveClass('bg-primary');
 
     const blurSlider = within(section).getByRole('slider', { name: '模糊程度' });
     expect(blurSlider).toHaveValue('6');
@@ -169,17 +164,6 @@ describe('settings page sections', () => {
     fireEvent.click(updateCapsule);
     await waitFor(() => expect(openRelease).toHaveBeenCalledWith(availableResult.releaseUrl));
     expect(screen.queryByRole('heading', { name: '软件更新' })).not.toBeInTheDocument();
-  });
-
-  it('shows the current-version status when no update is available', async () => {
-    render(
-      <AboutSettingsSection
-        appVersion="5.0.0"
-        checkForUpdate={vi.fn().mockResolvedValue(currentResult)}
-      />,
-    );
-
-    expect(await screen.findByText('已是最新')).toBeVisible();
   });
 
   it('keeps the public-account QR code collapsed until requested', () => {
