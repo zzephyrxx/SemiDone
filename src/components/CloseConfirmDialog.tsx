@@ -11,31 +11,33 @@ export default function CloseConfirmDialog({ isOpen, onConfirm, onCancel }: Clos
   if (!isOpen) return null;
 
   return (
-    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="close-dialog-overlay liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="close-app-title"
-        className="liquid-glass-modal-surface bg-background border border-border rounded-lg shadow-lg p-6 w-80 mx-4"
+        aria-describedby="close-app-description"
+        className="close-dialog liquid-glass-modal-surface bg-background border border-border rounded-lg shadow-lg p-6 w-80 mx-4"
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="close-dialog-header flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-destructive/10 rounded-full flex items-center justify-center">
+            <div className="close-dialog-icon w-8 h-8 bg-destructive/10 rounded-full flex items-center justify-center">
               <Power className="w-4 h-4 text-destructive" />
             </div>
             <h3 id="close-app-title" className="text-lg font-semibold text-foreground">关闭应用</h3>
           </div>
           <button
             onClick={onCancel}
-            className="p-1 rounded-full hover:bg-accent transition-colors"
+            aria-label="取消关闭应用"
+            className="close-dialog-dismiss p-1 rounded-full hover:bg-accent transition-colors"
           >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="mb-6">
+        <div id="close-app-description" className="close-dialog-body mb-6">
           <p className="text-sm text-muted-foreground">
             确定要关闭 <span className="font-medium text-foreground">事半·SemiDone</span> 应用程序吗？
           </p>
@@ -45,7 +47,7 @@ export default function CloseConfirmDialog({ isOpen, onConfirm, onCancel }: Clos
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-2">
+        <div className="close-dialog-footer flex justify-end gap-2">
           <button
             onClick={onCancel}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import Layout from './Layout';
@@ -13,9 +13,11 @@ const mocks = vi.hoisted(() => ({
     useCapsuleMode: false,
     username: '',
     avatar: undefined as string | undefined,
+    zenMode: undefined as { enabled: boolean; active: boolean } | undefined,
   },
   toggleIsPinned: vi.fn(),
   toggleIsCollapsed: vi.fn(),
+  setZenMode: vi.fn(),
 }));
 
 vi.mock('../store/settingsStore', () => ({
@@ -23,6 +25,7 @@ vi.mock('../store/settingsStore', () => ({
     settings: mocks.settings,
     toggleIsPinned: mocks.toggleIsPinned,
     toggleIsCollapsed: mocks.toggleIsCollapsed,
+    setZenMode: mocks.setZenMode,
   }),
 }));
 
@@ -40,10 +43,14 @@ vi.mock('../data/quotes', () => ({
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 vi.mock('./UserProfileModal', () => ({ default: () => null }));
 vi.mock('./CloseConfirmDialog', () => ({ default: () => null }));
+vi.mock('./ZenMode', () => ({ default: () => <div>Zen 视图</div> }));
+vi.mock('../utils/windowDragging', () => ({ startWindowDragging: vi.fn() }));
 
 beforeEach(() => {
   localStorage.clear();
   mocks.settings.collapseMode = 'bar';
+  mocks.settings.zenMode = undefined;
+  vi.clearAllMocks();
   vi.useFakeTimers();
 });
 
@@ -68,5 +75,25 @@ describe('Layout header', () => {
 
     const taskCalendarLink = screen.getByTitle('任务视图');
     expect(taskCalendarLink).toHaveAttribute('href', '/task-calendar');
+  });
+
+  it('enters Zen mode from the header and replaces the full interface', () => {
+    mocks.settings.collapseMode = 'expanded';
+    mocks.settings.zenMode = { enabled: true, active: false };
+    const view = render(<MemoryRouter><Layout /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: '进入 Zen 模式' }));
+    expect(mocks.setZenMode).toHaveBeenCalledWith({ active: true });
+    mocks.settings.zenMode = { enabled: true, active: true };
+    view.rerender(<MemoryRouter><Layout /></MemoryRouter>);
+    expect(screen.getByText('Zen 视图')).toBeVisible();
+    expect(screen.queryByTitle('任务视图')).not.toBeInTheDocument();
+  });
+
+  it('hides the Zen entry when the setting is switched off', () => {
+    mocks.settings.collapseMode = 'expanded';
+    mocks.settings.zenMode = { enabled: false, active: false };
+    render(<MemoryRouter><Layout /></MemoryRouter>);
+    expect(screen.queryByRole('button', { name: /进入.*Zen/ })).not.toBeInTheDocument();
+    expect(screen.getByTitle('设置')).toBeVisible();
   });
 });

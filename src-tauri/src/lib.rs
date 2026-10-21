@@ -38,6 +38,7 @@ pub fn run() {
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![
+            commands::set_window_topmost,
             commands::get_tasks,
             commands::create_task,
             commands::update_task,

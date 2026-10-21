@@ -64,7 +64,7 @@ describe('settings page sections', () => {
     expect(within(section).getByRole('button', { name: /深色/ })).toBeVisible();
     expect(within(section).getByRole('switch', { name: /开机自启动/ })).toBeVisible();
 
-    const glassSwitch = within(section).getByRole('switch', { name: '液态玻璃效果' });
+    const glassSwitch = within(section).getByRole('switch', { name: '液态玻璃' });
     expect(glassSwitch).toBeChecked();
     expect(glassSwitch).toHaveClass('bg-cyan-600', 'dark:bg-cyan-500');
     expect(glassSwitch).not.toHaveClass('bg-primary');
@@ -110,7 +110,7 @@ describe('settings page sections', () => {
     );
 
     const section = screen.getByRole('region', { name: '外观与交互' });
-    expect(within(section).getByRole('switch', { name: '液态玻璃效果' })).not.toBeChecked();
+    expect(within(section).getByRole('switch', { name: '液态玻璃' })).not.toBeChecked();
     expect(within(section).queryByTestId('liquid-glass-controls')).not.toBeInTheDocument();
     expect(within(section).queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
     expect(within(section).queryByRole('slider', { name: '折射强度' })).not.toBeInTheDocument();
@@ -288,7 +288,7 @@ describe('settings page sections', () => {
 
     fireEvent.click(trigger);
 
-    const dialog = screen.getByRole('dialog', { name: '液态玻璃效果预览' });
+    const dialog = screen.getByRole('dialog', { name: '液态玻璃预览' });
     const samplePanes = screen.getAllByTestId(/^liquid-preview-glass-/);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -297,7 +297,7 @@ describe('settings page sections', () => {
     expect(dialog.parentElement).not.toHaveClass('bg-[#061421]/25');
     expect(dialog.style.translate).toBe('');
     expect(screen.queryByTestId('easter-egg-dialog-drag-handle')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '液态玻璃效果预览' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '液态玻璃预览' })).toBeVisible();
     expect(samplePanes).toHaveLength(5);
     samplePanes.forEach((pane) => {
       expect(pane.style.transform).toContain('translate(0px, 0px)');
@@ -305,7 +305,7 @@ describe('settings page sections', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '关闭彩蛋弹窗' }));
     expect(
-      screen.queryByRole('dialog', { name: '液态玻璃效果预览' }),
+      screen.queryByRole('dialog', { name: '液态玻璃预览' }),
     ).not.toBeInTheDocument();
   });
   it('drags the donation dialog by its title and keeps it inside the app viewport', () => {

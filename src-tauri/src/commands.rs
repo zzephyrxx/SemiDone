@@ -7,6 +7,13 @@ use tauri_plugin_autostart::ManagerExt;
 type StorageState<'a> = State<'a, Mutex<Storage>>;
 
 #[tauri::command]
+pub fn set_window_topmost(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
+    window
+        .set_always_on_top(enabled)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub async fn get_tasks(storage: StorageState<'_>) -> Result<ApiResponse<Vec<Task>>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 

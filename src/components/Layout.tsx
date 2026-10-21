@@ -7,6 +7,9 @@ import { useUsageStore } from '../store/usageStore';
 import UserProfileModal from './UserProfileModal';
 import CloseConfirmDialog from './CloseConfirmDialog';
 import FloatingBall from './FloatingBall';
+import ZenMode from './ZenMode';
+import ZenIcon from './icons/ZenIcon';
+import { startWindowDragging } from '../utils/windowDragging';
 import { getQuotesByTheme } from '../data/quotes';
 
 export default function Layout() {
@@ -19,7 +22,7 @@ export default function Layout() {
     return Number.isFinite(parsed) ? parsed : 0;
   });
 
-  const { settings, toggleIsPinned, toggleIsCollapsed } = useSettingsStore();
+  const { settings, toggleIsPinned, toggleIsCollapsed, setZenMode } = useSettingsStore();
   const { pomodoro, formatTime } = useUsageStore();
   const quotes = getQuotesByTheme(settings.theme);
   const currentQuote = quotes[quoteIndex % quotes.length] ?? '';
@@ -59,9 +62,9 @@ export default function Layout() {
   const getUserAvatarDisplay = () => {
     if (settings.avatar) {
       return (
-        <img 
-          src={settings.avatar} 
-          alt="Avatar" 
+        <img
+          src={settings.avatar}
+          alt="Avatar"
           className="w-8 h-8 rounded-full object-cover"
         />
       );
@@ -91,9 +94,9 @@ export default function Layout() {
           onClose={handleCloseFromFloating}
           isTransparent={true}
         />
-        
+
         {/* User Profile Modal */}
-        <UserProfileModal 
+        <UserProfileModal
           isOpen={isUserProfileOpen}
           onClose={() => setIsUserProfileOpen(false)}
         />
@@ -108,22 +111,30 @@ export default function Layout() {
     );
   }
 
+  if (settings.zenMode?.enabled && settings.zenMode.active && settings.collapseMode === 'expanded') {
+    return (
+      <>
+        <ZenMode onClose={handleCloseApp} />
+        <CloseConfirmDialog isOpen={showCloseConfirm} onConfirm={confirmClose} onCancel={cancelClose} />
+      </>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Header - 自定义标题栏 */}
-      <div 
+      <div
         className="flex-shrink-0 h-[65px] bg-background border-b border-border flex items-center justify-between px-4 select-none titlebar"
-        data-tauri-drag-region
-        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+        onMouseDown={startWindowDragging}
       >
         {/* Logo区域 / 励志名言 / 番茄钟计时 */}
         {settings.collapseMode === 'bar' ? (
-          <div 
+          <div
             className="flex items-center gap-3 flex-1 min-w-0 cursor-move"
             style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
           >
             <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10 flex-shrink-0" />
-            
+
             {/* 番茄钟聚焦模式显示 */}
             {pomodoro.isActive ? (
               <div className="flex items-center gap-2 flex-1 min-w-0 animate-fade-in">
@@ -152,23 +163,23 @@ export default function Layout() {
             )}
           </div>
         ) : (
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10" />
-            <h1 className="font-bold text-xl text-foreground" style={{fontFamily:'Poppins'}}>SemiDone</h1>
+            <h1 className="hidden min-[480px]:block font-bold text-xl text-foreground" style={{fontFamily:'Poppins'}}>SemiDone</h1>
           </Link>
         )}
-        
-        <div 
+
+        <div
           className="flex items-center gap-1 animate-fade-in"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           {/* 用户头像 - 条状模式下隐藏 */}
           {settings.collapseMode !== 'bar' && (
-          <button 
+          <button
             onClick={() => {
               setIsUserProfileOpen(true);
             }}
@@ -181,16 +192,16 @@ export default function Layout() {
             </span>
           </button>
           )}
-          
+
           {/* 折叠按钮 */}
           <button
             onClick={toggleIsCollapsed}
             className={`p-2 rounded-full transition-all duration-200 ${
-              settings.collapseMode === 'bar' 
-                ? 'bg-purple-500/10 text-purple-600 hover:bg-purple-500/20' 
+              settings.collapseMode === 'bar'
+                ? 'bg-purple-500/10 text-purple-600 hover:bg-purple-500/20'
                 : 'hover:bg-accent text-muted-foreground hover:text-foreground'
             }`}
-            title={settings.collapseMode === 'bar' ? '展开窗口' : 
+            title={settings.collapseMode === 'bar' ? '展开窗口' :
                   settings.useCapsuleMode ? '折叠为悬浮球' : '折叠为条状'}
           >
             {settings.collapseMode === 'bar' ? (
@@ -199,13 +210,13 @@ export default function Layout() {
               <ChevronUp className="w-5 h-5" />
             )}
           </button>
-          
+
           {/* 置顶按钮 */}
           <button
             onClick={toggleIsPinned}
             className={`p-2 rounded-full transition-all duration-200 ${
-              settings.isPinned 
-                ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20' 
+              settings.isPinned
+                ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
                 : 'hover:bg-accent text-muted-foreground hover:text-foreground'
             }`}
             title={settings.isPinned ? '取消置顶' : '置顶窗口'}
@@ -216,10 +227,15 @@ export default function Layout() {
               <PinOff className="w-5 h-5" />
             )}
           </button>
-          
+
           {/* 设置按钮 - 只在展开时显示 */}
           {settings.collapseMode === 'expanded' && (
             <>
+              {settings.zenMode?.enabled && <button type="button" onClick={() => void setZenMode({ active: true })}
+                className="p-2 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="进入 Zen 模式" aria-label="进入 Zen 模式" aria-pressed={false}>
+                <ZenIcon className="w-5 h-5" />
+              </button>}
               <Link
                 to="/task-calendar"
                 className="p-2 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
@@ -236,7 +252,7 @@ export default function Layout() {
               </Link>
             </>
           )}
-          
+
           {/* 关闭按钮 */}
           <button
             onClick={() => {
@@ -268,7 +284,7 @@ export default function Layout() {
       )}
 
       {/* User Profile Modal */}
-      <UserProfileModal 
+      <UserProfileModal
         isOpen={isUserProfileOpen}
         onClose={() => setIsUserProfileOpen(false)}
       />

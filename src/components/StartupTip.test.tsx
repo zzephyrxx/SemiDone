@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import StartupTip from './StartupTip';
 
-const WELCOME_STORAGE_KEY = 'welcome_shown_6.0';
+const WELCOME_STORAGE_KEY = 'welcome_shown_6.1.0';
 
 function renderWelcome() {
   render(<StartupTip />);
@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe('StartupTip welcome dialog', () => {
-  it('renders an accessible unified V6 liquid-glass release overview', () => {
+  it('renders an accessible 6.1.0 release overview covering changes since 5.0', () => {
     renderWelcome();
 
     const dialog = screen.getByRole('dialog', { name: '欢迎使用 SemiDone' });
@@ -33,13 +33,13 @@ describe('StartupTip welcome dialog', () => {
     expect(dialog.querySelectorAll('.liquid-glass-modal-surface')).toHaveLength(0);
     expect(screen.queryByTestId('welcome-header-curve')).not.toBeInTheDocument();
 
-    expect(screen.getByText('V6.0 · 液态玻璃首批更新')).toBeVisible();
-    expect(screen.getByText('V6.0 更新内容')).toBeVisible();
-    expect(screen.getByText(/V6\.0 正在持续开发/)).toBeVisible();
+    expect(screen.getByText('V6.1.0 · 2026.10')).toBeVisible();
+    expect(screen.getByText('V6.1.0 更新内容')).toBeVisible();
+    expect(screen.getByText(/5\.0 之后的主要更新/)).toBeVisible();
     expect(screen.getAllByRole('listitem')).toHaveLength(4);
-    expect(screen.getByText(/可与明亮、深色和梦粉主题共同使用/)).toBeVisible();
-    expect(screen.getByText(/支持 1–10 级模糊/)).toBeVisible();
-    expect(screen.getByText(/扩大色散边缘范围/)).toBeVisible();
+    expect(screen.getByText(/新增 Zen 禅模式/)).toBeVisible();
+    expect(screen.getByText(/液态玻璃.*实时预览/)).toBeVisible();
+    expect(screen.getByText(/跨天使用时长/)).toBeVisible();
     expect(screen.getByRole('button', { name: '开始体验' })).toBeVisible();
   });
 
@@ -69,8 +69,9 @@ describe('StartupTip welcome dialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('shows V6 even when the previous version was suppressed', () => {
+  it('shows 6.1.0 even when previous versions were suppressed', () => {
     localStorage.setItem('welcome_shown_5.2.0', 'true');
+    localStorage.setItem('welcome_shown_6.0', 'true');
     renderWelcome();
 
     expect(screen.getByRole('dialog', { name: '欢迎使用 SemiDone' })).toBeVisible();

@@ -1,0 +1,47 @@
+.liquid-glass-preview { margin-top: 14px; min-width: 0; }
+.liquid-glass-preview-scene {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: 14px;
+  background: linear-gradient(130deg, #dbeafe, #e0e7ff 45%, #fce7f3);
+}
+.liquid-glass-preview-backdrop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.liquid-glass-preview-backdrop > span {
+  position: absolute;
+  left: 12px;
+  top: 46px;
+  color: #334155;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.liquid-glass-preview-backdrop > span:last-child { top: 105px; left: 62px; font-size: 15px; letter-spacing: 0.15em; }
+.liquid-glass-preview-orb { position: absolute; width: 125px; height: 125px; border-radius: 50%; }
+.liquid-glass-preview-orb-blue { top: -25px; left: 15%; background: #60a5fa; }
+.liquid-glass-preview-orb-pink { bottom: -35px; right: 8%; background: #f472b6; }
+.liquid-glass-preview-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(260px, calc(100% - 48px));
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.35);
+  color: hsl(var(--foreground));
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.liquid-glass-preview-card.is-dragging { cursor: grabbing; }
+.liquid-glass-preview-card:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 3px; }
+.liquid-glass-preview-card-label { display: block; margin-bottom: 12px; font-size: 11px; font-weight: 600; }
+.liquid-glass-preview-task { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; }
+.liquid-glass-preview-task svg { flex-shrink: 0; }
+.liquid-glass-preview-task-done span { text-decoration: line-through; }
+.dark .liquid-glass-preview-scene { background: linear-gradient(130deg, #172554, #312e81 45%, #701a75); }
+.dark .liquid-glass-preview-backdrop > span { color: #e2e8f0; }

@@ -1,6 +1,7 @@
 import type { Task, Settings, CreateTaskRequest, UpdateTaskRequest, TaskStats, ApiResponse, Theme, UsagePersistedData } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeLiquidGlassSettings } from '../utils/liquidGlassSettings';
+import { DEFAULT_ZEN_MODE_SETTINGS, normalizeZenModeSettings } from '../utils/zenModeSettings';
 
 // localStorage键名常量
 const STORAGE_KEYS = {
@@ -13,6 +14,7 @@ const STORAGE_KEYS = {
 const DEFAULT_SETTINGS: Settings = {
   theme: 'light' as Theme,
   liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
+  zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS },
   notifications: true,
   autoSave: true,
   isPinned: false,
@@ -182,10 +184,12 @@ export const settingsApi = {
     try {
       const settingsJson = localStorage.getItem(STORAGE_KEYS.SETTINGS);
       const storedSettings = safeJsonParse(settingsJson, DEFAULT_SETTINGS);
+      const { minimalMode: legacyZenMode, ...currentSettings } = storedSettings;
       const settings = {
         ...DEFAULT_SETTINGS,
-        ...storedSettings,
+        ...currentSettings,
         liquidGlass: normalizeLiquidGlassSettings(storedSettings.liquidGlass),
+        zenMode: normalizeZenModeSettings(currentSettings.zenMode ?? legacyZenMode),
       };
       return createResponse(settings);
     } catch (error) {

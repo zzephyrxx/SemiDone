@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Settings } from '../types';
 
 const mocks = vi.hoisted(() => ({
+  getSettings: vi.fn(),
+  setZenWindowMode: vi.fn(),
   updateSettings: vi.fn(),
   setAutostartEnabled: vi.fn(),
   invoke: vi.fn(),
@@ -19,10 +21,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../api/tauri', () => ({
   api: {
-    settings: { updateSettings: mocks.updateSettings },
+    settings: { getSettings: mocks.getSettings, updateSettings: mocks.updateSettings },
     autostart: { setAutostartEnabled: mocks.setAutostartEnabled },
   },
 }));
+
+vi.mock('../services/zenWindowService', () => ({ setZenWindowMode: mocks.setZenWindowMode }));
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: mocks.invoke,
@@ -92,6 +96,7 @@ describe('settings action notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.updateSettings.mockResolvedValue({ success: true, data: true });
+    mocks.setZenWindowMode.mockResolvedValue(undefined);
     mocks.setAutostartEnabled.mockResolvedValue({ success: true, data: true });
     mocks.invoke.mockResolvedValue(undefined);
     mocks.setSize.mockResolvedValue(undefined);
@@ -314,6 +319,68 @@ describe('settings action notifications', () => {
       }),
     );
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it('loads older settings with a disabled default Zen mode', async () => {
+    mocks.getSettings.mockResolvedValue({ success: true, data: defaultSettings });
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().settings.zenMode).toMatchObject({
+      enabled: false, backgroundOpacity: 65, rowOpacity: 8,
+    });
+  });
+
+  it('serializes rapid appearance updates and retains the latest colors and mode', async () => {
+    let finishFirst!: (value: { success: boolean }) => void;
+    mocks.updateSettings.mockImplementationOnce(() => new Promise((resolve) => { finishFirst = resolve; }));
+    const first = useSettingsStore.getState().setZenMode({ enabled: true, textColor: '#112233' });
+    await vi.waitFor(() => expect(mocks.updateSettings).toHaveBeenCalledTimes(1));
+    const second = useSettingsStore.getState().setZenMode({ textColor: '#aabbcc', backgroundOpacity: 0 });
+    expect(mocks.updateSettings).toHaveBeenCalledTimes(1);
+    expect(useSettingsStore.getState().settings.zenMode).toMatchObject({
+      enabled: true, textColor: '#aabbcc', backgroundOpacity: 0,
+    });
+    finishFirst({ success: true });
+    await Promise.all([first, second]);
+    expect(mocks.updateSettings).toHaveBeenLastCalledWith(expect.objectContaining({
+      zenMode: expect.objectContaining({ enabled: true, textColor: '#aabbcc', backgroundOpacity: 0 }),
+    }));
+  });
+
+  it('rolls back failed zen-mode saves while preserving an unrelated setting change', async () => {
+    mocks.updateSettings.mockResolvedValue({ success: false, error: '磁盘写入失败' });
+    const save = useSettingsStore.getState().setZenMode({ enabled: true });
+    useSettingsStore.setState((state) => ({ settings: { ...state.settings, theme: 'pink' } }));
+    await save;
+    expect(useSettingsStore.getState().settings.zenMode).toBeUndefined();
+    expect(useSettingsStore.getState().settings.theme).toBe('pink');
+    expect(mocks.toastError).toHaveBeenCalledWith('磁盘写入失败');
+  });
+
+  it('finishes in full mode when Zen is disabled during a pending entry resize', async () => {
+    useSettingsStore.setState((state) => ({ settings: { ...state.settings, zenMode: {
+      enabled: true, active: false, fontSize: 15, textColor: '#ffffff', rowColor: '#ffffff',
+      backgroundColor: '#000000', backgroundOpacity: 65, rowOpacity: 8,
+    } } }));
+    let finishResize!: () => void;
+    mocks.setZenWindowMode.mockImplementationOnce(() => new Promise<void>((resolve) => { finishResize = resolve; }));
+    const enter = useSettingsStore.getState().setZenMode({ active: true });
+    await vi.waitFor(() => expect(mocks.setZenWindowMode).toHaveBeenCalledWith(true));
+    const disable = useSettingsStore.getState().setZenMode({ enabled: false });
+    finishResize();
+    await Promise.all([enter, disable]);
+    expect(useSettingsStore.getState().settings.zenMode).toMatchObject({ enabled: false, active: false });
+    expect(mocks.setZenWindowMode).toHaveBeenLastCalledWith(false);
+  });
+
+  it('migrates the former setting name and retains its colors', async () => {
+    mocks.getSettings.mockResolvedValue({ success: true, data: {
+      ...defaultSettings, minimalMode: { enabled: true, textColor: '#abcdef' },
+    } });
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().settings.zenMode).toMatchObject({
+      enabled: true, active: false, fontSize: 15, textColor: '#abcdef',
+    });
+    expect(useSettingsStore.getState().settings.minimalMode).toBeUndefined();
   });
 
 });
