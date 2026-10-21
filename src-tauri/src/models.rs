@@ -198,10 +198,40 @@ impl Default for LiquidGlassSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ZenModeSettings {
+    pub enabled: bool,
+    pub active: bool,
+    pub font_size: u8,
+    pub text_color: String,
+    pub row_color: String,
+    pub background_color: String,
+    pub background_opacity: u8,
+    pub row_opacity: u8,
+}
+
+impl Default for ZenModeSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            active: false,
+            font_size: 15,
+            text_color: "#f1f5f9".to_string(),
+            row_color: "#ffffff".to_string(),
+            background_color: "#0f172a".to_string(),
+            background_opacity: 65,
+            row_opacity: 8,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub theme: String,
     #[serde(rename = "liquidGlass", default)]
     pub liquid_glass: LiquidGlassSettings,
+    #[serde(rename = "zenMode", alias = "minimalMode", default)]
+    pub zen_mode: ZenModeSettings,
     pub notifications: bool,
     #[serde(rename = "autoSave")]
     pub auto_save: bool,
@@ -248,6 +278,7 @@ impl Default for Settings {
         Self {
             theme: "light".to_string(),
             liquid_glass: LiquidGlassSettings::default(),
+            zen_mode: ZenModeSettings::default(),
             notifications: true,
             auto_save: true,
             is_pinned: false,
@@ -338,5 +369,45 @@ impl<T> ApiResponse<T> {
             data: None,
             error: Some(message),
         }
+    }
+}
+
+#[cfg(test)]
+mod zen_mode_tests {
+    use super::*;
+
+    #[test]
+    fn legacy_settings_load_without_enabling_zen_mode() {
+        let mut legacy = serde_json::to_value(Settings::default()).unwrap();
+        legacy.as_object_mut().unwrap().remove("zenMode");
+        let settings: Settings = serde_json::from_value(legacy).unwrap();
+        assert!(!settings.zen_mode.enabled);
+        assert_eq!(settings.zen_mode.background_opacity, 65);
+    }
+
+    #[test]
+    fn zen_mode_colors_and_transparency_survive_round_trip() {
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value["zenMode"] = serde_json::json!({
+            "enabled": true, "active": true, "fontSize": 24, "textColor": "#aabbcc", "rowColor": "#112233",
+            "backgroundColor": "#224466", "backgroundOpacity": 0, "rowOpacity": 100,
+        });
+        let settings: Settings = serde_json::from_value(value.clone()).unwrap();
+        let saved = serde_json::to_value(settings).unwrap();
+        assert_eq!(saved["zenMode"], value["zenMode"]);
+    }
+
+    #[test]
+    fn previous_settings_name_migrates_to_zen_without_losing_colors() {
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value.as_object_mut().unwrap().remove("zenMode");
+        value["minimalMode"] = serde_json::json!({ "enabled": true, "textColor": "#abcdef" });
+        let settings: Settings = serde_json::from_value(value).unwrap();
+        assert_eq!(settings.zen_mode.text_color, "#abcdef");
+        assert_eq!(settings.zen_mode.font_size, 15);
+        assert!(!settings.zen_mode.active);
+        let saved = serde_json::to_value(settings).unwrap();
+        assert!(saved.get("minimalMode").is_none());
+        assert!(saved["zenMode"]["enabled"].as_bool().unwrap());
     }
 }

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useSettingsStore } from '../store/settingsStore';
+import type { LiquidGlassSettings } from '../types';
 import {
   liquidGlassBlurLevelToPixels,
   normalizeLiquidGlassSettings,
@@ -17,8 +18,6 @@ export default function LiquidGlassRuntime() {
   const settings = useSettingsStore((state) => state.settings.liquidGlass);
   const liquidGlass = normalizeLiquidGlassSettings(settings);
   const blurPixels = liquidGlassBlurLevelToPixels(liquidGlass.blur);
-  const refractionScale = liquidGlass.refraction * 0.34;
-  const dispersionScale = refractionScale * DISPERSION_RANGE_MULTIPLIER;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -35,6 +34,16 @@ export default function LiquidGlassRuntime() {
     };
   }, [blurPixels, liquidGlass.dispersion, liquidGlass.enabled]);
 
+  return <LiquidGlassFilters settings={liquidGlass} />;
+}
+
+export function LiquidGlassFilters({ settings, idPrefix = 'semidone-dialog' }: {
+  settings: LiquidGlassSettings;
+  idPrefix?: string;
+}) {
+  const liquidGlass = normalizeLiquidGlassSettings(settings);
+  const refractionScale = liquidGlass.refraction * 0.34;
+  const dispersionScale = refractionScale * DISPERSION_RANGE_MULTIPLIER;
   return (
     <svg
       aria-hidden="true"
@@ -45,7 +54,7 @@ export default function LiquidGlassRuntime() {
     >
       <defs>
         <filter
-          id="semidone-dialog-refraction"
+          id={`${idPrefix}-refraction`}
           x="-20%"
           y="-20%"
           width="140%"
@@ -73,7 +82,7 @@ export default function LiquidGlassRuntime() {
         </filter>
 
         <filter
-          id="semidone-dialog-chromatic-refraction"
+          id={`${idPrefix}-chromatic-refraction`}
           x="-34%"
           y="-34%"
           width="168%"

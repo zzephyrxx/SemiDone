@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, ExternalLink, Info, QrCode } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { RELEASE_MONTH } from '../../data/release';
 import VersionUpdateBadge, {
   type CheckForUpdate,
   type OpenRelease,
@@ -69,7 +70,7 @@ export default function AboutSettingsSection({
             </a>
           </AboutRow>
           <AboutRow label="更新日期">
-            <span className="tabular-nums">2026.07</span>
+            <span className="tabular-nums">{RELEASE_MONTH}</span>
           </AboutRow>
         </div>
       </section>

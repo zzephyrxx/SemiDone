@@ -9,6 +9,7 @@ import TaskCalendar from './pages/TaskCalendar';
 import StartupTip from './components/StartupTip';
 import LiquidGlassRuntime from './components/LiquidGlassRuntime';
 import UpdateNotifier from './components/UpdateNotifier';
+import { useNativePinMode } from './hooks/useNativePinMode';
 import { useSettingsStore } from './store/settingsStore'
 import { Toaster } from 'sonner'
 
@@ -18,6 +19,13 @@ function App() {
   useEffect(() => {
     loadSettings()
   }, [loadSettings])
+
+  const zenModeActive = settings.zenMode?.enabled === true && settings.zenMode.active && settings.collapseMode === 'expanded';
+  useNativePinMode(zenModeActive || settings.collapseMode !== 'expanded');
+  useEffect(() => {
+    document.documentElement.dataset.zenMode = String(zenModeActive);
+    return () => { delete document.documentElement.dataset.zenMode; };
+  }, [zenModeActive]);
 
   useEffect(() => {
     const root = document.documentElement;

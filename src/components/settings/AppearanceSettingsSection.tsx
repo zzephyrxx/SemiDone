@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import type { ReactElement } from 'react';
 import type { LiquidGlassSettings, Settings, Theme } from '../../types';
+import LiquidGlassPreview from './LiquidGlassPreview';
+import ParameterSlider from './ParameterSlider';
 
 interface AppearanceSettingsSectionProps {
   settings: Settings;
@@ -201,64 +203,31 @@ export default function AppearanceSettingsSection({
               <Waves className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">液态玻璃效果</p>
+              <p className="text-sm font-semibold text-foreground">液态玻璃</p>
               <p className="mt-0.5 text-xs leading-4 text-muted-foreground">应用于常用弹窗，并跟随当前主题</p>
             </div>
             <SettingSwitch
-              label="液态玻璃效果"
+              label="液态玻璃"
               checked={settings.liquidGlass.enabled}
               onChange={() => onLiquidGlassChange({ enabled: !settings.liquidGlass.enabled })}
               accentClass="bg-cyan-600 dark:bg-cyan-500"
             />
           </div>
 
-          {settings.liquidGlass.enabled && (
+          {settings.liquidGlass.enabled && (<>
             <div
               data-testid="liquid-glass-controls"
-              className="mt-3 grid grid-cols-1 gap-3 border-t border-border/70 pt-3 min-[520px]:grid-cols-[1fr_1fr_auto]"
+              className="mt-3 grid gap-2 border-t border-border/70 pt-3"
             >
-              <label className="min-w-0">
-                <span className="mb-1.5 flex items-center justify-between gap-2 text-xs">
-                  <span className="font-medium text-foreground">模糊程度</span>
-                  <output className="tabular-nums text-muted-foreground">
-                    {settings.liquidGlass.blur} / 10
-                  </output>
-                </span>
-                <input
-                  type="range"
-                  aria-label="模糊程度"
-                  min="1"
-                  max="10"
-                  step="1"
-                  value={settings.liquidGlass.blur}
-                  onChange={(event) => onLiquidGlassChange({ blur: Number(event.target.value) })}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary disabled:cursor-not-allowed"
-                />
-              </label>
+              <ParameterSlider label="模糊程度" min={1} max={10} value={settings.liquidGlass.blur} suffix=" / 10"
+                onChange={(blur) => onLiquidGlassChange({ blur })} />
+              <ParameterSlider label="折射强度" min={0} max={100} value={settings.liquidGlass.refraction} suffix="%"
+                onChange={(refraction) => onLiquidGlassChange({ refraction })} />
 
-              <label className="min-w-0">
-                <span className="mb-1.5 flex items-center justify-between gap-2 text-xs">
-                  <span className="font-medium text-foreground">折射强度</span>
-                  <output className="tabular-nums text-muted-foreground">
-                    {settings.liquidGlass.refraction}%
-                  </output>
-                </span>
-                <input
-                  type="range"
-                  aria-label="折射强度"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={settings.liquidGlass.refraction}
-                  onChange={(event) => onLiquidGlassChange({ refraction: Number(event.target.value) })}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary disabled:cursor-not-allowed"
-                />
-              </label>
-
-              <div className="flex min-w-[118px] items-center justify-between gap-3 min-[520px]:border-l min-[520px]:border-border/70 min-[520px]:pl-3">
-                <div>
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                   <p className="text-xs font-medium text-foreground">色散效果</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">边缘轻微分色</p>
+                  <p className="text-[11px] text-muted-foreground">边缘轻微分色</p>
                 </div>
                 <SettingSwitch
                   label="色散效果"
@@ -268,7 +237,8 @@ export default function AppearanceSettingsSection({
                 />
               </div>
             </div>
-          )}
+            <LiquidGlassPreview settings={settings.liquidGlass} />
+          </>)}
         </div>
 
         {settings.transparentEnabled && (

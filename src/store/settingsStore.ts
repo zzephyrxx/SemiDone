@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { LiquidGlassSettings, Settings, Theme } from '../types';
+import type { LiquidGlassSettings, ZenModeSettings, Settings, Theme } from '../types';
 import { api } from '../api/tauri';
 import { toast } from 'sonner';
 import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeLiquidGlassSettings } from '../utils/liquidGlassSettings';
+import { DEFAULT_ZEN_MODE_SETTINGS, normalizeZenModeSettings } from '../utils/zenModeSettings';
+import { setZenWindowMode } from '../services/zenWindowService';
 
 interface SettingsState {
   // 状态
@@ -24,11 +26,13 @@ interface SettingsState {
   applyTransparency: () => Promise<void>;
   toggleAutoStart: () => Promise<void>;
   setLiquidGlass: (updates: Partial<LiquidGlassSettings>) => Promise<void>;
+  setZenMode: (updates: Partial<ZenModeSettings>) => Promise<void>;
 }
 
 const defaultSettings: Settings = {
   theme: 'light',
   liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
+  zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS },
   notifications: true,
   autoSave: true,
   isPinned: false,
@@ -42,7 +46,8 @@ const defaultSettings: Settings = {
   autoStart: false,
 };
 
-let liquidGlassPersistenceQueue: Promise<void> = Promise.resolve();
+let appearancePersistenceQueue: Promise<void> = Promise.resolve();
+let zenModeTransitionQueue: Promise<void> = Promise.resolve();
 
 const EXPANDED_WINDOW_SIZE_CONSTRAINTS = {
   minWidth: 400,
@@ -61,6 +66,52 @@ async function setNativeWindowTopmost(enabled: boolean): Promise<void> {
   await invoke('set_window_topmost', { enabled });
 }
 
+async function updateZenMode(updates: Partial<ZenModeSettings>): Promise<void> {
+  const requested = normalizeZenModeSettings({
+    ...normalizeZenModeSettings(useSettingsStore.getState().settings.zenMode), ...updates,
+  });
+  if (requested.active !== normalizeZenModeSettings(useSettingsStore.getState().settings.zenMode).active) {
+    try {
+      await setZenWindowMode(requested.active);
+    } catch (error) {
+      console.error('Switch Zen window geometry failed:', error);
+      toast.error('切换 Zen 窗口大小失败');
+      return;
+    }
+  }
+  const previous = useSettingsStore.getState().settings.zenMode;
+  const zenMode = normalizeZenModeSettings({
+    ...normalizeZenModeSettings(previous),
+    ...updates,
+  });
+  useSettingsStore.setState((state) => ({ settings: { ...state.settings, zenMode } }));
+
+  const rollbackIfCurrent = async () => {
+    if (useSettingsStore.getState().settings.zenMode !== zenMode) return;
+    useSettingsStore.setState((state) => ({ settings: { ...state.settings, zenMode: previous } }));
+    if (zenMode.active !== normalizeZenModeSettings(previous).active) {
+      try { await setZenWindowMode(normalizeZenModeSettings(previous).active); }
+      catch (error) { console.error('Rollback Zen window geometry failed:', error); }
+    }
+  };
+  // Serialize live color/slider updates so an older write cannot win on disk.
+  const persistenceTask = appearancePersistenceQueue.then(() =>
+    api.settings.updateSettings(useSettingsStore.getState().settings),
+  );
+  appearancePersistenceQueue = persistenceTask.then(() => undefined, () => undefined);
+  try {
+    const response = await persistenceTask;
+    if (!response.success) {
+      await rollbackIfCurrent();
+      toast.error(response.error || '保存 Zen 模式设置失败');
+    }
+  } catch (error) {
+    await rollbackIfCurrent();
+    console.error('Update Zen mode settings error:', error);
+    toast.error('保存 Zen 模式设置失败');
+  }
+}
+
 export const useSettingsStore = create<SettingsState>()(devtools(
   (set, get) => ({
       // 初始状态
@@ -73,10 +124,13 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         try {
           const response = await api.settings.getSettings();
           if (response.success) {
+            const stored: Partial<Settings> = response.data ?? {};
+            const { minimalMode: legacyZenMode, ...storedSettings } = stored;
             const loadedSettings = {
               ...defaultSettings,
-              ...response.data,
+              ...storedSettings,
               liquidGlass: normalizeLiquidGlassSettings(response.data?.liquidGlass),
+              zenMode: normalizeZenModeSettings(storedSettings.zenMode ?? legacyZenMode),
             };
             set({ settings: loadedSettings });
             
@@ -85,16 +139,6 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               document.documentElement.setAttribute('data-theme', loadedSettings.theme);
             }
 
-            // 恢复置顶状态
-            if (loadedSettings.isPinned) {
-              try {
-                await setNativeWindowTopmost(true);
-                console.log('Window pinned state restored');
-              } catch (error) {
-                console.warn('Failed to restore pin state:', error);
-              }
-            }
-            
             // 恢复透明度状态
             if (loadedSettings.transparentEnabled) {
               try {
@@ -143,6 +187,15 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             } catch (error) {
               console.warn('Failed to initialize window state:', error);
             }
+            try {
+              await setZenWindowMode(loadedSettings.zenMode.active, true);
+            } catch (error) {
+              console.error('Restore Zen window geometry failed:', error);
+              set((state) => ({ settings: {
+                ...state.settings, zenMode: { ...loadedSettings.zenMode, active: false },
+              } }));
+              toast.error('恢复 Zen 窗口大小失败，已返回完整模式');
+            }
           } else {
             console.warn('Load settings failed:', response.error);
             set({ settings: defaultSettings });
@@ -151,6 +204,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           console.error('Load settings error:', error);
           set({ settings: defaultSettings });
         } finally {
+          // Synchronize both states, including reloads after imports or fallback defaults.
+          try { await setNativeWindowTopmost(get().settings.isPinned); }
+          catch (error) { console.warn('Failed to restore native pin state:', error); }
           set({ loading: false });
         }
       },
@@ -161,9 +217,21 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           ...currentSettings,
           ...updates,
           ...(updates.liquidGlass ? { liquidGlass: normalizeLiquidGlassSettings(updates.liquidGlass) } : {}),
+          ...(updates.zenMode ? { zenMode: normalizeZenModeSettings(updates.zenMode) } : {}),
         };
         
+        let nativePinChanged = false;
+        const rollbackPin = async () => {
+          if (!nativePinChanged) return;
+          nativePinChanged = false;
+          try { await setNativeWindowTopmost(currentSettings.isPinned); }
+          catch (error) { console.warn('Failed to restore native pin state:', error); }
+        };
         try {
+          if (updates.isPinned !== undefined && updates.isPinned !== currentSettings.isPinned) {
+            await setNativeWindowTopmost(newSettings.isPinned);
+            nativePinChanged = true;
+          }
           const response = await api.settings.updateSettings(newSettings);
           if (response.success) {
             set({ settings: newSettings });
@@ -174,9 +242,11 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             }
           
           } else {
+            await rollbackPin();
             toast.error(response.error || '保存设置失败');
           }
         } catch (error) {
+          await rollbackPin();
           console.error('Update settings error:', error);
           toast.error('保存设置失败');
         }
@@ -206,10 +276,10 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           });
         };
 
-        const persistenceTask = liquidGlassPersistenceQueue.then(() =>
+        const persistenceTask = appearancePersistenceQueue.then(() =>
           api.settings.updateSettings(get().settings),
         );
-        liquidGlassPersistenceQueue = persistenceTask.then(
+        appearancePersistenceQueue = persistenceTask.then(
           () => undefined,
           () => undefined,
         );
@@ -227,6 +297,13 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         }
       },
 
+      setZenMode: (updates: Partial<ZenModeSettings>) => {
+        if (updates.active === undefined && updates.enabled === undefined) return updateZenMode(updates);
+        // Serialize mode switches as well as native resize operations, including rapid disable/exit.
+        const transition = zenModeTransitionQueue.then(() => updateZenMode(updates));
+        zenModeTransitionQueue = transition.catch(() => undefined);
+        return transition;
+      },
       toggleAutoSave: async () => {
         const currentSettings = get().settings;
         await get().updateSettings({ autoSave: !currentSettings.autoSave });

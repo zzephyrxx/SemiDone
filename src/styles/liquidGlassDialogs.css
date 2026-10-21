@@ -69,6 +69,43 @@ html[data-liquid-glass-dialogs='true'][data-liquid-glass-dispersion='true']
     contrast(1.04);
 }
 
+/* 明亮主题的玻璃弹窗使用更深的正文和说明文字，避免灰字被透出的背景吞没。 */
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface {
+  --foreground: 222 47% 11%;
+  --card-foreground: 222 47% 11%;
+  --muted-foreground: 215 25% 27%;
+  --transparent-muted-foreground: 215 25% 27%;
+  color: #0f172a;
+}
+
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface .text-foreground,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface .text-foreground\/80,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface .text-foreground\/70 {
+  color: #0f172a;
+}
+
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface .text-muted-foreground,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface .text-gray-400,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface .text-gray-500,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface .text-gray-600,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface .text-gray-700 {
+  color: #334155 !important;
+  text-shadow: none;
+}
+
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface input,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface textarea,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface select {
+  color: #0f172a;
+}
+
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface input::placeholder,
+html[data-theme='light'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface textarea::placeholder {
+  color: #475569 !important;
+  opacity: 1;
+  text-shadow: none;
+}
+
 html.dark[data-liquid-glass-dialogs='true'] .liquid-glass-modal-overlay,
 html[data-theme='dark'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-overlay {
   background-color: rgba(0, 0, 0, 0.3) !important;
