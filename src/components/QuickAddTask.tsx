@@ -186,6 +186,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
 
         <button
           onClick={onClose}
+          aria-label="关闭新建待办"
           className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
           <X className="w-5 h-5" />
@@ -199,6 +200,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
             <Type className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               ref={titleInputRef}
+              aria-label="待办标题"
               type="text"
               placeholder={settings.theme === 'light' ? '输入待办标题...' : '今天要做什么呢？'}
               value={title}

@@ -1,19 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Plus, Search, X, ListTodo } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useShallow } from 'zustand/react/shallow';
 
 import type { Task } from '../types';
 import TaskItem from '../components/TaskItem';
-import TaskStats, { StatsCollapsedButton } from '../components/TaskStats';
+import TaskStats from '../components/TaskStats';
 import TaskFilter from '../components/TaskFilter';
 import QuickAddTask from '../components/QuickAddTask';
 import CelebrationAnimation from '../components/CelebrationAnimation';
 import UsageButton from '../components/UsageButton';
 
-const VIRTUAL_ROW_HEIGHT = 95;
-const EDITING_ROW_HEIGHT = 280;
+const VIRTUAL_ROW_HEIGHT = 104;
+const EDITING_ROW_HEIGHT = 300;
 const VIRTUAL_OVERSCAN = 6;
 
 interface VirtualizedTaskListProps {
@@ -59,16 +59,21 @@ function VirtualizedTaskList({ tasks, editingTaskId, resetKey }: VirtualizedTask
   const editingIndex = editingTaskId ? tasks.findIndex((task) => task.id === editingTaskId) : -1;
   const extraEditingHeight = editingIndex >= 0 ? EDITING_ROW_HEIGHT - VIRTUAL_ROW_HEIGHT : 0;
   const totalHeight = tasks.length * VIRTUAL_ROW_HEIGHT + extraEditingHeight;
-  const visibleCount = Math.max(1, Math.ceil(containerHeight / VIRTUAL_ROW_HEIGHT));
-  const startIndex = Math.max(0, Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_OVERSCAN);
-  const endIndex = Math.min(tasks.length, startIndex + visibleCount + VIRTUAL_OVERSCAN * 2);
+  const indexAtOffset = (offset: number) => {
+    if (editingIndex < 0 || offset < editingIndex * VIRTUAL_ROW_HEIGHT) return Math.floor(offset / VIRTUAL_ROW_HEIGHT);
+    if (offset < editingIndex * VIRTUAL_ROW_HEIGHT + EDITING_ROW_HEIGHT) return editingIndex;
+    return Math.floor((offset - extraEditingHeight) / VIRTUAL_ROW_HEIGHT);
+  };
+  const startIndex = Math.max(0, Math.min(tasks.length - 1, indexAtOffset(scrollTop)) - VIRTUAL_OVERSCAN);
+  const endIndex = Math.min(tasks.length, indexAtOffset(scrollTop + containerHeight) + VIRTUAL_OVERSCAN + 1);
   const visibleTasks = tasks.slice(startIndex, endIndex);
   const offsetY = startIndex * VIRTUAL_ROW_HEIGHT + (editingIndex >= 0 && editingIndex < startIndex ? extraEditingHeight : 0);
 
   return (
     <div
       ref={setContainer}
-      className="flex-grow overflow-y-auto pr-1"
+      className="home-task-list flex-grow min-h-0 overflow-y-auto"
+      aria-label="待办列表"
       onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
@@ -82,7 +87,8 @@ function VirtualizedTaskList({ tasks, editingTaskId, resetKey }: VirtualizedTask
             return (
               <div
                 key={task.id}
-                className={`pr-1 pb-1 ${isEditing ? 'h-[215px]' : 'h-[95px] overflow-hidden'}`}
+                className={`home-task-row ${isEditing ? 'is-editing' : ''}`}
+                style={{ height: isEditing ? EDITING_ROW_HEIGHT : VIRTUAL_ROW_HEIGHT }}
               >
                 <TaskItem task={task} />
               </div>
@@ -125,11 +131,34 @@ export default function Home() {
 
   const { settings } = useSettingsStore();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const quickAddDialog = useRef<HTMLDivElement>(null);
+  const newTaskButton = useRef<HTMLButtonElement>(null);
+  const restoreNewTaskFocus = useCallback(() => newTaskButton.current?.focus(), []);
   const taskListResetKey = `${filter}\u0000${searchQuery}\u0000${sortConfig.field}\u0000${sortConfig.order}`;
 
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  useEffect(() => {
+    if (!showQuickAdd) return;
+    const handleDialogKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowQuickAdd(false);
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(quickAddDialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled):not([type="hidden"]), textarea:not(:disabled), select:not(:disabled), a[href]') ?? [])
+        .filter(control => !control.closest('[hidden], .hidden') && control.tabIndex !== -1);
+      if (!controls?.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', handleDialogKey);
+    return () => {
+      document.removeEventListener('keydown', handleDialogKey);
+      restoreNewTaskFocus();
+    };
+  }, [showQuickAdd, restoreNewTaskFocus]);
 
   if (loading) {
     return (
@@ -158,77 +187,60 @@ export default function Home() {
     }
   };
 
-  const getEmptyStateIcon = () => {
-    if (settings.theme === 'pink') {
-      return '🌸';
-    }
-    return '📋';
-  };
-
   return (
-    <div className="flex flex-col h-full p-2 bg-transparent text-foreground">
-      {/* Stats Section */}
-      {statsBarCollapsed ? (
-        // 折叠状态：UsageButton 和 折叠按钮在同一行
-        <div className="flex-shrink-0 mb-2 flex items-center gap-2">
-          <div className="flex-1">
-            <UsageButton />
-          </div>
-          <StatsCollapsedButton collapsed={statsBarCollapsed} onCollapsedChange={setStatsBarCollapsed} />
-        </div>
-      ) : (
-        // 展开状态：TaskStats 独占一行，UsageButton 在下面
-        <>
-          <div className="flex-shrink-0 mb-2">
-            <TaskStats collapsed={statsBarCollapsed} onCollapsedChange={setStatsBarCollapsed} />
-          </div>
-          <div className="flex-shrink-0 mb-2">
-            <UsageButton />
-          </div>
-        </>
-      )}
+    <div className="home-page flex flex-col h-full min-h-0 bg-transparent text-foreground">
+      <header className="page-heading">
+        <div><p className="page-eyebrow">{new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date())}</p>
+          <h1>我的待办</h1></div>
+        <span className="page-heading-icon" aria-hidden="true"><ListTodo size={22} strokeWidth={1.7} /></span>
+      </header>
+      <section className="home-overview" aria-label="任务与使用概览">
+        <TaskStats collapsed={statsBarCollapsed} onCollapsedChange={setStatsBarCollapsed} />
+        <UsageButton />
+      </section>
 
       {/* Search and Add Task Row */}
-      <div className="flex-shrink-0 flex gap-2 mb-2">
-        <div className="flex-1 relative">
+      <div className="home-toolbar flex-shrink-0 flex gap-2">
+        <div className="home-search flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder={settings.theme === 'light' ? '搜索待办...' : '搜索待办...'}
+            placeholder="搜索待办…"
+            aria-label="搜索待办"
             value={searchQuery}
             onChange={(e) => useTaskStore.getState().setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder-muted-foreground text-sm"
+            className="w-full pl-10 pr-9 py-2 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-foreground placeholder-muted-foreground text-sm"
           />
           {searchQuery && (
             <button
               onClick={() => useTaskStore.getState().setSearchQuery('')}
+              aria-label="清除搜索"
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={15} />
             </button>
           )}
         </div>
         <button
+          ref={newTaskButton}
           onClick={() => setShowQuickAdd(true)}
-          className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-1 shadow-sm text-sm flex-shrink-0"
+          className="home-add-button px-3 py-2 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-1.5 text-sm font-medium flex-shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>{settings.theme === 'pink' ? '新建待办' : '添加待办'}</span>
+          <span>新建待办</span>
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex-shrink-0 mb-2">
+      <div className="home-filters flex-shrink-0">
         <TaskFilter />
       </div>
 
       {/* Task List */}
       {filteredTasks.length === 0 ? (
-        <div className="flex-grow overflow-y-auto pr-1">
+        <div className="home-empty flex-grow overflow-y-auto">
           <div className="text-center py-8">
-            <div className="text-4xl mb-3">{getEmptyStateIcon()}</div>
+            <div className="home-empty-icon" aria-hidden="true"><ListTodo size={28} strokeWidth={1.5} /></div>
             <p className="text-muted-foreground mb-3">
               {getEmptyStateMessage()}
             </p>
@@ -254,6 +266,7 @@ export default function Home() {
       {showQuickAdd && (
         <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div
+            ref={quickAddDialog}
             role="dialog"
             aria-modal="true"
             aria-label="新建待办"

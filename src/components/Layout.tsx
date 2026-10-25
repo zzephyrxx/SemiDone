@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, Link } from 'react-router-dom';
-import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays } from 'lucide-react';
+import { Outlet, Link, NavLink } from 'react-router-dom';
+import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays, ListTodo, ChartNoAxesCombined } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../store/settingsStore';
 import { useUsageStore } from '../store/usageStore';
@@ -121,7 +121,7 @@ export default function Layout() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className={`h-screen flex flex-col overflow-hidden ${settings.collapseMode === 'expanded' ? 'workspace-shell' : ''}`}>
       {/* Header - 自定义标题栏 */}
       <div
         className="flex-shrink-0 h-[65px] bg-background border-b border-border flex items-center justify-between px-4 select-none titlebar"
@@ -165,11 +165,11 @@ export default function Layout() {
         ) : (
           <Link
             to="/"
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="workspace-brand flex items-center gap-2 hover:opacity-80 transition-opacity"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10" />
-            <h1 className="hidden min-[480px]:block font-bold text-xl text-foreground" style={{fontFamily:'Poppins'}}>SemiDone</h1>
+            <span className="workspace-wordmark font-semibold text-foreground">SemiDone<span className="workspace-brand-caption">事半</span></span>
           </Link>
         )}
 
@@ -183,7 +183,7 @@ export default function Layout() {
             onClick={() => {
               setIsUserProfileOpen(true);
             }}
-            className="flex items-center gap-2 mr-2 p-1 rounded-lg hover:bg-accent transition-colors"
+            className="workspace-profile flex items-center gap-2 p-1 rounded-lg hover:bg-accent transition-colors"
             title="用户资料"
           >
             {getUserAvatarDisplay()}
@@ -236,20 +236,6 @@ export default function Layout() {
                 title="进入 Zen 模式" aria-label="进入 Zen 模式" aria-pressed={false}>
                 <ZenIcon className="w-5 h-5" />
               </button>}
-              <Link
-                to="/task-calendar"
-                className="p-2 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                title="任务视图"
-              >
-                <CalendarDays className="w-5 h-5" />
-              </Link>
-              <Link
-                to="/settings"
-                className="p-2 rounded-full hover:bg-accent transition-colors"
-                title="设置"
-              >
-                <Settings className="w-5 h-5" />
-              </Link>
             </>
           )}
 
@@ -278,8 +264,27 @@ export default function Layout() {
 
       {/* Content Area */}
       {settings.collapseMode === 'expanded' && (
-        <div className="flex-grow bg-background overflow-y-auto">
-          <Outlet />
+        <div className="workspace-body">
+          <aside className="workspace-navigation">
+            <nav className="workspace-nav" aria-label="主导航">
+              {[
+                { to: '/', label: '待办', title: '我的待办', icon: ListTodo },
+                { to: '/task-calendar', label: '日历', title: '任务视图', icon: CalendarDays },
+                { to: '/usage-stats', label: '统计', title: '使用统计', icon: ChartNoAxesCombined },
+                { to: '/settings', label: '设置', title: '设置', icon: Settings },
+              ].map(({ to, label, title, icon: Icon }) => (
+                <NavLink key={to} to={to} end={to === '/'} title={title}
+                  className={({ isActive }) => `workspace-nav-link ${isActive ? 'is-active' : ''}`}>
+                  <Icon size={19} strokeWidth={1.8} />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </nav>
+            <div className="workspace-nav-footer"><span className="workspace-status-dot" />本地保存，安心专注</div>
+          </aside>
+          <main className="workspace-content">
+            <Outlet />
+          </main>
         </div>
       )}
 

@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import Layout from './Layout';
 
 const mocks = vi.hoisted(() => ({
@@ -60,6 +60,19 @@ afterEach(() => {
 });
 
 describe('Layout header', () => {
+  it('navigates between workspace pages and marks the current destination', () => {
+    mocks.settings.collapseMode = 'expanded';
+    render(<MemoryRouter><Routes><Route path="/" element={<Layout />}>
+      <Route index element={<p>待办内容</p>} />
+      <Route path="settings" element={<p>设置内容</p>} />
+    </Route></Routes></MemoryRouter>);
+    expect(screen.getByRole('link', { name: '待办' })).toHaveAttribute('aria-current', 'page');
+    fireEvent.click(screen.getByRole('link', { name: '设置' }));
+    expect(screen.getByText('设置内容')).toBeVisible();
+    expect(screen.getByRole('link', { name: '设置' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: '待办' })).not.toHaveAttribute('aria-current');
+  });
+
   it('rotates the bar-mode quote every five seconds', () => {
     render(<MemoryRouter><Layout /></MemoryRouter>);
     expect(screen.getByText('第一条名言')).toBeVisible();

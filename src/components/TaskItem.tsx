@@ -261,6 +261,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         {/* 完成状态按钮 */}
         <button
           onClick={handleToggleComplete}
+          aria-label={task.completed ? `标记未完成：${task.title}` : `完成待办：${task.title}`}
           className={`
             flex-shrink-0 transition-all duration-200 pt-1
             ${task.completed
@@ -434,7 +435,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
             /* 显示模式 */
             <div className="flex flex-col justify-between min-h-[4.5rem]">
               {/* 上半部分: 标题和右侧信息 */}
-              <div className="flex items-center justify-between">
+              <div className="task-card-top flex items-center justify-between">
                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
                   {task.isPinned && (
                     <button
@@ -485,8 +486,8 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
               </div>
 
               {/* 下半部分: 底部信息 */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3 text-xs text-muted-foreground">
+              <div className="task-card-bottom flex items-center justify-between gap-2">
+                <div className="task-card-metadata flex items-center gap-2 text-xs text-muted-foreground">
                   {/* 截止日期 */}
                   {task.dueDate && (
                     <div className={`
@@ -516,7 +517,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                   )}
 
                   {/* 创建时间 */}
-                  <div className="flex items-center space-x-1">
+                  <div className="task-created-at flex items-center space-x-1">
                     <Clock className="w-4 h-4" />
                     <span>创建于 {formatDueDate(task.createdAt)}</span>
                   </div>

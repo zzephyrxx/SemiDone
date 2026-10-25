@@ -6,6 +6,7 @@ import "./styles/liquidGlassDialogs.css";
 import "./styles/liquidGlassPreview.css";
 import "./styles/parameterSlider.css";
 import "./styles/zenMode.css";
+import "./styles/workspace.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
