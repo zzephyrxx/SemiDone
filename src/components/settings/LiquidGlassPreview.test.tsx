@@ -28,6 +28,7 @@ describe('liquid-glass parameter preview', () => {
   it('drags the miniature within the scene and keeps its position when parameters change', () => {
     vi.stubGlobal('PointerEvent', MouseEvent);
     render(<EditableAppearance />);
+    fireEvent.click(screen.getByText('液态玻璃配置'));
     const card = screen.getByRole('group', { name: '可拖动的玻璃预览小窗' });
     const scene = card.parentElement!;
     Object.defineProperties(scene, { clientWidth: { value: 400 }, clientHeight: { value: 180 } });
@@ -57,6 +58,8 @@ describe('liquid-glass parameter preview', () => {
 
   it('updates the real blur, refraction and dispersion filters with the sliders', () => {
     render(<EditableAppearance />);
+    expect(screen.queryByRole('figure', { name: '液态玻璃实时预览' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('液态玻璃配置'));
     const preview = screen.getByRole('figure', { name: '液态玻璃实时预览' });
     const card = preview.querySelector<HTMLElement>('.liquid-glass-preview-card')!;
     expect(card.style.backdropFilter).toContain('blur(11.11px)');
@@ -70,6 +73,14 @@ describe('liquid-glass parameter preview', () => {
     expect(card.style.backdropFilter).not.toContain('chromatic-refraction');
     expect(within(preview).getByText(/折射 100% · 色散关/)).toBeVisible();
     fireEvent.click(screen.getByRole('switch', { name: '液态玻璃' }));
+    expect(screen.queryByText('液态玻璃配置')).not.toBeInTheDocument();
     expect(screen.queryByRole('figure', { name: '液态玻璃实时预览' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('switch', { name: '液态玻璃' }));
+    expect(screen.getByText('液态玻璃配置').closest('details')).not.toHaveAttribute('open');
+    expect(screen.queryByRole('figure', { name: '液态玻璃实时预览' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('液态玻璃配置'));
+    expect(screen.getByRole('slider', { name: '模糊程度' })).toHaveValue('9');
+    expect(screen.getByRole('slider', { name: '折射强度' })).toHaveValue('100');
+    expect(screen.getByRole('switch', { name: '色散效果' })).not.toBeChecked();
   });
 });

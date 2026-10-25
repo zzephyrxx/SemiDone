@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: Settings = {
   isCollapsed: false,
   collapseMode: 'expanded',
   useCapsuleMode: false,
+  closeToTray: true,
 };
 
 // 辅助函数：安全的JSON解析
@@ -190,6 +191,7 @@ export const settingsApi = {
         ...currentSettings,
         liquidGlass: normalizeLiquidGlassSettings(storedSettings.liquidGlass),
         zenMode: normalizeZenModeSettings(currentSettings.zenMode ?? legacyZenMode),
+        closeToTray: currentSettings.closeToTray !== false,
       };
       return createResponse(settings);
     } catch (error) {

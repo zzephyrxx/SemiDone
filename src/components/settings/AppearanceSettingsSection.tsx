@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   Sun,
   Waves,
+  Minimize2,
 } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import type { LiquidGlassSettings, Settings, Theme } from '../../types';
@@ -24,6 +25,7 @@ interface AppearanceSettingsSectionProps {
   onTransparencyToggle: (enabled: boolean) => void;
   onTransparencyLevelChange: (level: number) => void;
   onToggleCapsuleMode: () => void;
+  onCloseToTrayChange?: (enabled: boolean) => void;
 }
 
 const THEMES: Theme[] = ['light', 'dark', 'pink'];
@@ -108,6 +110,7 @@ export default function AppearanceSettingsSection({
   onTransparencyToggle,
   onTransparencyLevelChange,
   onToggleCapsuleMode,
+  onCloseToTrayChange,
 }: AppearanceSettingsSectionProps) {
   const transparencyDisabled = settings.theme !== 'dark' && !settings.transparentEnabled;
   const [glassExpanded, setGlassExpanded] = useState(false);
@@ -198,6 +201,17 @@ export default function AppearanceSettingsSection({
               onChange={onToggleCapsuleMode}
               accentClass="bg-violet-500"
             />
+          )}
+        />
+
+        <SettingTile
+          icon={<Minimize2 className="h-5 w-5 text-primary" />}
+          iconClass="bg-primary/10"
+          title="关闭到托盘"
+          description="关闭窗口后继续运行，从托盘恢复；关闭此项后退出应用"
+          control={(
+            <SettingSwitch label="关闭到托盘" checked={settings.closeToTray !== false}
+              onChange={() => onCloseToTrayChange?.(settings.closeToTray === false)} accentClass="bg-primary" />
           )}
         />
 

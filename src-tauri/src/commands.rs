@@ -117,11 +117,15 @@ pub async fn get_settings(storage: StorageState<'_>) -> Result<ApiResponse<Setti
 pub async fn update_settings(
     settings: Settings,
     storage: StorageState<'_>,
+    lifecycle: State<'_, crate::window_lifecycle::WindowLifecycle>,
 ) -> Result<ApiResponse<Settings>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
     match storage.save_settings(&settings) {
-        Ok(_) => Ok(ApiResponse::success(settings)),
+        Ok(_) => {
+            lifecycle.set_close_to_tray(settings.close_to_tray);
+            Ok(ApiResponse::success(settings))
+        }
         Err(e) => Ok(ApiResponse::error(format!("保存设置失败: {}", e))),
     }
 }
@@ -188,7 +192,10 @@ pub async fn import_data(
 }
 
 #[tauri::command]
-pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<bool>, String> {
+pub async fn clear_all_data(
+    storage: StorageState<'_>,
+    lifecycle: State<'_, crate::window_lifecycle::WindowLifecycle>,
+) -> Result<ApiResponse<bool>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
     // 1. 清空 tasks.json
@@ -202,6 +209,7 @@ pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<boo
     if let Err(e) = storage.save_settings(&default_settings) {
         return Ok(ApiResponse::error(format!("重置设置失败: {}", e)));
     }
+    lifecycle.set_close_to_tray(default_settings.close_to_tray);
     println!("[Clear] settings.json 已重置");
 
     if let Err(e) = storage.clear_usage_data() {
@@ -224,6 +232,13 @@ pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<boo
     println!("[Clear] 所有数据已清除");
 
     Ok(ApiResponse::success(true))
+}
+
+#[tauri::command]
+pub async fn close_main_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    // Emit the same native close request as Alt+F4. Do not call app.exit here:
+    // that bypasses CloseRequested and destroys the tray and its window.
+    window.close().map_err(|error| error.to_string())
 }
 
 #[tauri::command]

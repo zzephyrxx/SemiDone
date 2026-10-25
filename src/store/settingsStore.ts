@@ -44,6 +44,7 @@ const defaultSettings: Settings = {
   isEdgeSnapped: false,
   edgePosition: 'right',
   autoStart: false,
+  closeToTray: true,
 };
 
 let appearancePersistenceQueue: Promise<void> = Promise.resolve();
@@ -131,6 +132,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               ...storedSettings,
               liquidGlass: normalizeLiquidGlassSettings(response.data?.liquidGlass),
               zenMode: normalizeZenModeSettings(storedSettings.zenMode ?? legacyZenMode),
+              closeToTray: storedSettings.closeToTray !== false,
             };
             set({ settings: loadedSettings });
             

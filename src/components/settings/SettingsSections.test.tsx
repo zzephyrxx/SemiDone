@@ -40,6 +40,18 @@ const currentResult: UpdateCheckResult = {
 };
 
 describe('settings page sections', () => {
+  it('shows close-to-tray enabled for old settings and allows disabling it', () => {
+    const onCloseToTrayChange = vi.fn();
+    render(<AppearanceSettingsSection settings={settings}
+      onThemeChange={vi.fn()} onLiquidGlassChange={vi.fn()} onToggleAutoStart={vi.fn()}
+      onTransparencyToggle={vi.fn()} onTransparencyLevelChange={vi.fn()} onToggleCapsuleMode={vi.fn()}
+      onCloseToTrayChange={onCloseToTrayChange} />);
+    const toggle = screen.getByRole('switch', { name: '关闭到托盘' });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(onCloseToTrayChange).toHaveBeenCalledWith(false);
+  });
+
   it('keeps appearance actions controlled by the page', () => {
     const onThemeChange = vi.fn();
     const onToggleAutoStart = vi.fn();
@@ -64,6 +76,9 @@ describe('settings page sections', () => {
     expect(glassSwitch).toBeChecked();
     expect(glassSwitch).toHaveClass('bg-cyan-600', 'dark:bg-cyan-500');
 
+    expect(within(section).queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
+    expect(within(section).queryByTestId('liquid-glass-controls')).not.toBeInTheDocument();
+    fireEvent.click(within(section).getByText('液态玻璃配置'));
     const blurSlider = within(section).getByRole('slider', { name: '模糊程度' });
     expect(blurSlider).toHaveValue('6');
     expect(blurSlider).toHaveAttribute('min', '1');
@@ -75,6 +90,10 @@ describe('settings page sections', () => {
     fireEvent.change(blurSlider, { target: { value: '9' } });
     fireEvent.change(screen.getByRole('slider', { name: '折射强度' }), { target: { value: '60' } });
     fireEvent.click(screen.getByRole('switch', { name: '色散效果' }));
+    fireEvent.click(within(section).getByText('液态玻璃配置'));
+    expect(within(section).queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
+    fireEvent.click(within(section).getByText('液态玻璃配置'));
+    expect(within(section).getByRole('slider', { name: '模糊程度' })).toHaveValue('6');
     fireEvent.click(glassSwitch);
 
     expect(onThemeChange).toHaveBeenCalledWith('dark');
@@ -106,6 +125,7 @@ describe('settings page sections', () => {
 
     const section = screen.getByRole('region', { name: '外观与交互' });
     expect(within(section).getByRole('switch', { name: '液态玻璃' })).not.toBeChecked();
+    expect(within(section).queryByText('液态玻璃配置')).not.toBeInTheDocument();
     expect(within(section).queryByTestId('liquid-glass-controls')).not.toBeInTheDocument();
     expect(within(section).queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
     expect(within(section).queryByRole('slider', { name: '折射强度' })).not.toBeInTheDocument();

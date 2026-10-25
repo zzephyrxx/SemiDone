@@ -257,12 +257,18 @@ pub struct Settings {
     pub edge_position: String,
     #[serde(rename = "autoStart", default)]
     pub auto_start: bool,
+    #[serde(rename = "closeToTray", default = "default_close_to_tray")]
+    pub close_to_tray: bool,
     #[serde(rename = "dataDir", skip_serializing_if = "Option::is_none")]
     pub data_dir: Option<String>,
 }
 
 fn default_collapse_mode() -> String {
     "expanded".to_string()
+}
+
+fn default_close_to_tray() -> bool {
+    true
 }
 
 fn default_transparent_level() -> u8 {
@@ -292,6 +298,7 @@ impl Default for Settings {
             is_edge_snapped: false,
             edge_position: default_edge_position(),
             auto_start: false,
+            close_to_tray: true,
             data_dir: None,
         }
     }

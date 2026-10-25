@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink } from 'react-router-dom';
 import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays, ListTodo, ChartNoAxesCombined } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
+import { toast } from 'sonner';
 import { useSettingsStore } from '../store/settingsStore';
 import { useUsageStore } from '../store/usageStore';
 import UserProfileModal from './UserProfileModal';
@@ -43,6 +44,19 @@ export default function Layout() {
   }, [quotes.length, settings.collapseMode, settings.theme]);
 
   const handleCloseApp = () => {
+    if (settings.closeToTray !== false) {
+      if (!isTauri()) {
+        toast.info('关闭到托盘仅在桌面应用中可用');
+        return;
+      }
+      // Route every window shape through Rust's native close policy.
+      // exit_app bypasses CloseRequested and destroys the tray as well.
+      void invoke('close_main_window').catch((error) => {
+        console.error('Failed to close window to tray:', error);
+        toast.error('关闭到托盘失败，请重试');
+      });
+      return;
+    }
     setShowCloseConfirm(true);
   };
 
@@ -51,7 +65,7 @@ export default function Layout() {
       await invoke('exit_app');
     } catch (error) {
       console.error('Failed to close app:', error);
-      window.close();
+      toast.error('退出应用失败，请重试或从托盘退出');
     }
   };
 
@@ -242,7 +256,7 @@ export default function Layout() {
           {/* 关闭按钮 */}
           <button
             onClick={() => {
-              if (settings.collapseMode === 'bar') {
+              if (settings.collapseMode === 'bar' && settings.closeToTray === false) {
                 // 条状模式下点击：先展开窗口，再弹出关闭确认
                 toggleIsCollapsed();
                 // 延迟弹出确认对话框，等待窗口展开动画完成
@@ -255,7 +269,7 @@ export default function Layout() {
               }
             }}
             className="p-2 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
-            title={settings.collapseMode === 'bar' ? '展开并关闭应用' : '关闭应用'}
+            title={settings.closeToTray !== false ? '关闭到托盘' : settings.collapseMode === 'bar' ? '展开并关闭应用' : '关闭应用'}
           >
             <X className="w-4 h-4" />
           </button>

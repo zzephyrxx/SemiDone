@@ -212,6 +212,7 @@ export default function Other() {
             onTransparencyToggle={(enabled) => void handleTransparencyToggle(enabled)}
             onTransparencyLevelChange={(level) => void handleTransparencyLevelChange(level)}
             onToggleCapsuleMode={() => void toggleCapsuleMode()}
+            onCloseToTrayChange={(closeToTray) => void updateSettings({ closeToTray })}
           />
           </div>
           <div id="settings-zen"><ZenModeSettingsSection /></div>

@@ -37,6 +37,7 @@ public/zfbdashang.jpg
 /docs/*
 !/docs/更新日志.md
 !/docs/v7.0-prototype.md
+!/docs/v7.0-tray-fix.md
 
 # OS generated files
 .DS_Store

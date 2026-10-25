@@ -124,6 +124,22 @@ describe('settings action notifications', () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
+  it('loads an absent close-to-tray preference as enabled and preserves an explicit false', async () => {
+    mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings } });
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().settings.closeToTray).toBe(true);
+    mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings, closeToTray: false } });
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().settings.closeToTray).toBe(false);
+  });
+
+  it('does not change close-to-tray when saving the preference fails', async () => {
+    useSettingsStore.setState({ settings: { ...defaultSettings, closeToTray: true } });
+    mocks.updateSettings.mockResolvedValue({ success: false, error: 'disk full' });
+    await useSettingsStore.getState().updateSettings({ closeToTray: false });
+    expect(useSettingsStore.getState().settings.closeToTray).toBe(true);
+  });
+
   it('toggles autostart without a success popup', async () => {
     await useSettingsStore.getState().toggleAutoStart();
 

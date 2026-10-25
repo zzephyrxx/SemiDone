@@ -2,6 +2,7 @@ mod commands;
 mod models;
 mod single_instance;
 mod storage;
+mod window_lifecycle;
 mod window_pinning;
 
 use single_instance::ensure_single_instance;
@@ -13,6 +14,7 @@ use tauri::{
     Manager, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
+use window_lifecycle::WindowLifecycle;
 use window_pinning::{show_main_window, WindowPinning};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -25,6 +27,10 @@ pub fn run() {
 
     // 初始化存储
     let storage = Storage::new().expect("Failed to initialize storage");
+    let close_to_tray = storage
+        .load_settings()
+        .map(|settings| settings.close_to_tray)
+        .unwrap_or(true);
 
     // 创建系统托盘菜单将在setup中处理
 
@@ -33,6 +39,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .manage(Mutex::new(storage))
         .manage(WindowPinning::default())
+        .manage(WindowLifecycle::new(close_to_tray))
         .on_window_event(|window, event| {
             if window.label() != "main" {
                 return;
@@ -40,14 +47,18 @@ pub fn run() {
             let pinning = window.state::<WindowPinning>();
             match event {
                 WindowEvent::CloseRequested { api, .. } => {
+                    if !window.state::<WindowLifecycle>().close_to_tray() {
+                        return;
+                    }
+                    // Keep the window/WebView alive. Only the explicit quit
+                    // action exits the process while this preference is on.
+                    api.prevent_close();
                     pinning.set_hidden(true);
                     if let Err(error) = window.hide() {
                         log::warn!("Failed to hide window: {error}");
                         pinning.set_hidden(false);
                     }
-                    api.prevent_close();
                 }
-                WindowEvent::Focused(true) => pinning.set_hidden(false),
                 WindowEvent::Destroyed => pinning.stop(),
                 _ => {}
             }
@@ -69,6 +80,7 @@ pub fn run() {
             commands::import_data,
             commands::clear_all_data,
             commands::exit_app,
+            commands::close_main_window,
             commands::get_data_dir_path,
             commands::open_file_with_system,
             commands::open_file_by_path,
@@ -107,6 +119,7 @@ pub fn run() {
                 .tooltip("事半·SemiDone")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
+                .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => show_main_window(app),
                     "quit" => app.exit(0),
