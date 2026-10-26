@@ -42,14 +42,17 @@ export default function ClearCacheDialog({ isOpen, onClose, onConfirm }: ClearCa
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+        className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
         onClick={handleClose}
       />
       
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div 
-          className="bg-card border border-border rounded-lg shadow-2xl max-w-md w-full"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="clear-cache-title"
+          className="liquid-glass-modal-surface bg-card border border-border rounded-lg shadow-2xl max-w-md w-full"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -58,7 +61,7 @@ export default function ClearCacheDialog({ isOpen, onClose, onConfirm }: ClearCa
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
-              <h2 className="text-xl font-semibold text-foreground">清除缓存</h2>
+              <h2 id="clear-cache-title" className="text-xl font-semibold text-foreground">清除缓存</h2>
             </div>
             <button
               onClick={handleClose}

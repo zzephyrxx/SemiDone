@@ -2,6 +2,7 @@ mod commands;
 mod models;
 mod single_instance;
 mod storage;
+mod window_pinning;
 
 use single_instance::ensure_single_instance;
 use std::sync::Mutex;
@@ -12,6 +13,7 @@ use tauri::{
     Manager, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
+use window_pinning::{show_main_window, WindowPinning};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -44,9 +46,10 @@ pub fn run() {
                     eprintln!("Failed to hide window after close request: {error}");
                 }
             }
-            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
+            commands::set_window_topmost,
+            commands::set_window_pin_mode,
             commands::get_tasks,
             commands::set_window_topmost,
             commands::reassert_window_topmost,

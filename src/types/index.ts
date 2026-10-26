@@ -60,8 +60,30 @@ export interface Task {
 }
 
 // 设置数据结构
+export interface LiquidGlassSettings {
+  enabled: boolean;
+  blur: number;
+  refraction: number;
+  dispersion: boolean;
+}
+
+export interface ZenModeSettings {
+  enabled: boolean;
+  active: boolean;
+  fontSize: number;
+  textColor: string;
+  rowColor: string;
+  backgroundColor: string;
+  backgroundOpacity: number;
+  rowOpacity: number;
+}
+
 export interface Settings {
   theme: Theme;
+  liquidGlass: LiquidGlassSettings;
+  zenMode?: ZenModeSettings;
+  // Read-only migration source for settings saved before the Zen rename.
+  minimalMode?: Partial<ZenModeSettings>;
   notifications: boolean;
   autoSave: boolean;
   isPinned: boolean;

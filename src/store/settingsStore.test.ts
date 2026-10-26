@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Settings } from '../types';
 
 const mocks = vi.hoisted(() => ({
+  getSettings: vi.fn(),
+  setZenWindowMode: vi.fn(),
   updateSettings: vi.fn(),
   setAutostartEnabled: vi.fn(),
   invoke: vi.fn(),
@@ -19,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../api/tauri', () => ({
   api: {
-    settings: { updateSettings: mocks.updateSettings },
+    settings: { getSettings: mocks.getSettings, updateSettings: mocks.updateSettings },
     autostart: { setAutostartEnabled: mocks.setAutostartEnabled },
   },
 }));
@@ -69,6 +71,12 @@ import { useSettingsStore } from './settingsStore';
 
 const defaultSettings: Settings = {
   theme: 'light',
+  liquidGlass: {
+    enabled: true,
+    blur: 6,
+    refraction: 42,
+    dispersion: true,
+  },
   notifications: true,
   autoSave: true,
   isPinned: false,
@@ -86,6 +94,7 @@ describe('settings action notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.updateSettings.mockResolvedValue({ success: true, data: true });
+    mocks.setZenWindowMode.mockResolvedValue(undefined);
     mocks.setAutostartEnabled.mockResolvedValue({ success: true, data: true });
     mocks.invoke.mockResolvedValue(undefined);
     mocks.setSize.mockResolvedValue(undefined);

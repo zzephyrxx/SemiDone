@@ -252,8 +252,13 @@ export default function Home() {
 
       {/* 快速添加待办弹窗 */}
       {showQuickAdd && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-lg">
+        <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="新建待办"
+            className="liquid-glass-modal-shell w-full max-w-lg"
+          >
             <QuickAddTask onClose={() => setShowQuickAdd(false)} />
           </div>
         </div>

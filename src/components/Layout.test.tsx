@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     useCapsuleMode: false,
     username: '',
     avatar: undefined as string | undefined,
+    zenMode: undefined as { enabled: boolean; active: boolean } | undefined,
   },
   toggleIsPinned: vi.fn(),
   toggleIsCollapsed: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock('../store/settingsStore', () => ({
     settings: mocks.settings,
     toggleIsPinned: mocks.toggleIsPinned,
     toggleIsCollapsed: mocks.toggleIsCollapsed,
+    setZenMode: mocks.setZenMode,
   }),
 }));
 
@@ -45,6 +47,8 @@ vi.mock('@tauri-apps/api/window', () => ({
 }));
 vi.mock('./UserProfileModal', () => ({ default: () => null }));
 vi.mock('./CloseConfirmDialog', () => ({ default: () => null }));
+vi.mock('./ZenMode', () => ({ default: () => <div>Zen 视图</div> }));
+vi.mock('../utils/windowDragging', () => ({ startWindowDragging: vi.fn() }));
 
 beforeEach(() => {
   localStorage.clear();

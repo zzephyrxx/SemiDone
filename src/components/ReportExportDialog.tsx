@@ -124,12 +124,17 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
   const previewStats = getPreviewStats();
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="report-export-title"
+        className="liquid-glass-modal-surface bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center gap-2">
             <FileDown className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-semibold text-foreground">导出周/月报</h2>
+            <h2 id="report-export-title" className="text-xl font-semibold text-foreground">导出周/月报</h2>
           </div>
           <button
             onClick={onClose}

@@ -63,11 +63,16 @@ export default function UserProfileModal({ isOpen, onClose }: UserProfileModalPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background border border-border rounded-lg shadow-lg w-80 p-4">
+    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="user-profile-title"
+        className="liquid-glass-modal-surface bg-background border border-border rounded-lg shadow-lg w-80 p-4"
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">用户资料</h2>
+          <h2 id="user-profile-title" className="text-lg font-semibold text-foreground">用户资料</h2>
           <button
             onClick={onClose}
             className="p-1 rounded-full hover:bg-accent transition-colors"

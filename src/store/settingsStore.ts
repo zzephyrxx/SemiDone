@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { Settings, Theme } from '../types';
+import type { LiquidGlassSettings, ZenModeSettings, Settings, Theme } from '../types';
 import { api } from '../api/tauri';
 import { toast } from 'sonner';
+import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeLiquidGlassSettings } from '../utils/liquidGlassSettings';
+import { DEFAULT_ZEN_MODE_SETTINGS, normalizeZenModeSettings } from '../utils/zenModeSettings';
+import { setZenWindowMode } from '../services/zenWindowService';
 
 interface SettingsState {
   // 状态
@@ -22,10 +25,14 @@ interface SettingsState {
   setTransparency: (enabled: boolean, level?: number) => Promise<void>;
   applyTransparency: () => Promise<void>;
   toggleAutoStart: () => Promise<void>;
+  setLiquidGlass: (updates: Partial<LiquidGlassSettings>) => Promise<void>;
+  setZenMode: (updates: Partial<ZenModeSettings>) => Promise<void>;
 }
 
 const defaultSettings: Settings = {
   theme: 'light',
+  liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
+  zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS },
   notifications: true,
   autoSave: true,
   isPinned: false,
@@ -68,7 +75,14 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         try {
           const response = await api.settings.getSettings();
           if (response.success) {
-            const loadedSettings = { ...defaultSettings, ...response.data };
+            const stored: Partial<Settings> = response.data ?? {};
+            const { minimalMode: legacyZenMode, ...storedSettings } = stored;
+            const loadedSettings = {
+              ...defaultSettings,
+              ...storedSettings,
+              liquidGlass: normalizeLiquidGlassSettings(response.data?.liquidGlass),
+              zenMode: normalizeZenModeSettings(storedSettings.zenMode ?? legacyZenMode),
+            };
             set({ settings: loadedSettings });
             
             // 应用主题
@@ -134,6 +148,15 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             } catch (error) {
               console.warn('Failed to initialize window state:', error);
             }
+            try {
+              await setZenWindowMode(loadedSettings.zenMode.active, true);
+            } catch (error) {
+              console.error('Restore Zen window geometry failed:', error);
+              set((state) => ({ settings: {
+                ...state.settings, zenMode: { ...loadedSettings.zenMode, active: false },
+              } }));
+              toast.error('恢复 Zen 窗口大小失败，已返回完整模式');
+            }
           } else {
             console.warn('Load settings failed:', response.error);
             set({ settings: defaultSettings });
@@ -142,15 +165,34 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           console.error('Load settings error:', error);
           set({ settings: defaultSettings });
         } finally {
+          // Synchronize both states, including reloads after imports or fallback defaults.
+          try { await setNativeWindowTopmost(get().settings.isPinned); }
+          catch (error) { console.warn('Failed to restore native pin state:', error); }
           set({ loading: false });
         }
       },
       
       updateSettings: async (updates: Partial<Settings>) => {
         const currentSettings = get().settings;
-        const newSettings = { ...currentSettings, ...updates };
+        const newSettings = {
+          ...currentSettings,
+          ...updates,
+          ...(updates.liquidGlass ? { liquidGlass: normalizeLiquidGlassSettings(updates.liquidGlass) } : {}),
+          ...(updates.zenMode ? { zenMode: normalizeZenModeSettings(updates.zenMode) } : {}),
+        };
         
+        let nativePinChanged = false;
+        const rollbackPin = async () => {
+          if (!nativePinChanged) return;
+          nativePinChanged = false;
+          try { await setNativeWindowTopmost(currentSettings.isPinned); }
+          catch (error) { console.warn('Failed to restore native pin state:', error); }
+        };
         try {
+          if (updates.isPinned !== undefined && updates.isPinned !== currentSettings.isPinned) {
+            await setNativeWindowTopmost(newSettings.isPinned);
+            nativePinChanged = true;
+          }
           const response = await api.settings.updateSettings(newSettings);
           if (response.success) {
             set({ settings: newSettings });
@@ -161,9 +203,11 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             }
           
           } else {
+            await rollbackPin();
             toast.error(response.error || '保存设置失败');
           }
         } catch (error) {
+          await rollbackPin();
           console.error('Update settings error:', error);
           toast.error('保存设置失败');
         }
@@ -172,7 +216,55 @@ export const useSettingsStore = create<SettingsState>()(devtools(
       setTheme: async (theme: Theme) => {
         await get().updateSettings({ theme });
       },
-      
+
+      setLiquidGlass: async (updates: Partial<LiquidGlassSettings>) => {
+        const previousSettings = get().settings;
+        const liquidGlass = normalizeLiquidGlassSettings({
+          ...previousSettings.liquidGlass,
+          ...updates,
+        });
+        const nextSettings = { ...previousSettings, liquidGlass };
+        set({ settings: nextSettings });
+
+        const rollbackIfCurrent = () => {
+          const currentSettings = get().settings;
+          if (currentSettings.liquidGlass !== liquidGlass) return;
+          set({
+            settings: {
+              ...currentSettings,
+              liquidGlass: previousSettings.liquidGlass,
+            },
+          });
+        };
+
+        const persistenceTask = appearancePersistenceQueue.then(() =>
+          api.settings.updateSettings(get().settings),
+        );
+        appearancePersistenceQueue = persistenceTask.then(
+          () => undefined,
+          () => undefined,
+        );
+
+        try {
+          const response = await persistenceTask;
+          if (!response.success) {
+            rollbackIfCurrent();
+            toast.error(response.error || '保存液态玻璃设置失败');
+          }
+        } catch (error) {
+          rollbackIfCurrent();
+          console.error('Update liquid glass settings error:', error);
+          toast.error('保存液态玻璃设置失败');
+        }
+      },
+
+      setZenMode: (updates: Partial<ZenModeSettings>) => {
+        if (updates.active === undefined && updates.enabled === undefined) return updateZenMode(updates);
+        // Serialize mode switches as well as native resize operations, including rapid disable/exit.
+        const transition = zenModeTransitionQueue.then(() => updateZenMode(updates));
+        zenModeTransitionQueue = transition.catch(() => undefined);
+        return transition;
+      },
       toggleAutoSave: async () => {
         const currentSettings = get().settings;
         await get().updateSettings({ autoSave: !currentSettings.autoSave });
@@ -187,10 +279,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           
           // 先更新本地状态，再保存到后端
           set({ settings: { ...currentSettings, isPinned: newPinnedState } });
-          
           // 应用主题变化（如果需要）
           document.documentElement.setAttribute('data-theme', currentSettings.theme);
-          
+
           // 异步保存到后端，不阻塞UI
           try {
             await api.settings.updateSettings({ ...currentSettings, isPinned: newPinnedState });

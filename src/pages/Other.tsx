@@ -8,6 +8,7 @@ import ClearCacheDialog from '../components/ClearCacheDialog';
 import ReportExportDialog from '../components/ReportExportDialog';
 import AboutSettingsSection from '../components/settings/AboutSettingsSection';
 import AppearanceSettingsSection from '../components/settings/AppearanceSettingsSection';
+import ZenModeSettingsSection from '../components/settings/ZenModeSettingsSection';
 import DataDirectoryDialog from '../components/settings/DataDirectoryDialog';
 import DataSettingsSection from '../components/settings/DataSettingsSection';
 import { api } from '../api/tauri';
@@ -15,6 +16,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useTaskStore } from '../store/taskStore';
 import { useUsageStore } from '../store/usageStore';
 import type { Theme } from '../types';
+import { APP_VERSION } from '../data/release';
 
 const BROWSER_DATA_DIR = '浏览器本地存储';
 
@@ -23,11 +25,12 @@ export default function Other() {
     settings,
     updateSettings,
     setTransparency,
+    setLiquidGlass,
     toggleCapsuleMode,
     toggleAutoStart,
   } = useSettingsStore();
   const { loadTasks } = useTaskStore();
-  const [appVersion, setAppVersion] = useState('');
+  const [appVersion, setAppVersion] = useState(APP_VERSION);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [dataDir, setDataDir] = useState('');
@@ -38,10 +41,10 @@ export default function Other() {
   useEffect(() => {
     const loadPageData = async () => {
       try {
-        setAppVersion(await getVersion());
+        if (isTauri()) setAppVersion(await getVersion());
       } catch (error) {
         console.error('Failed to get app version:', error);
-        setAppVersion('N/A');
+        setAppVersion(APP_VERSION);
       }
 
       if (!isTauri()) {
@@ -200,11 +203,13 @@ export default function Other() {
           <AppearanceSettingsSection
             settings={settings}
             onThemeChange={(theme) => void handleThemeChange(theme)}
+            onLiquidGlassChange={(updates) => void setLiquidGlass(updates)}
             onToggleAutoStart={() => void toggleAutoStart()}
             onTransparencyToggle={(enabled) => void handleTransparencyToggle(enabled)}
             onTransparencyLevelChange={(level) => void handleTransparencyLevelChange(level)}
             onToggleCapsuleMode={() => void toggleCapsuleMode()}
           />
+          <ZenModeSettingsSection />
           <DataSettingsSection
             dataDir={dataDir}
             onOpenDirectory={() => void handleOpenDataFolder()}

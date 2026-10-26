@@ -21,6 +21,13 @@ function App() {
     loadSettings()
   }, [loadSettings])
 
+  const zenModeActive = settings.zenMode?.enabled === true && settings.zenMode.active && settings.collapseMode === 'expanded';
+  useNativePinMode(zenModeActive || settings.collapseMode !== 'expanded');
+  useEffect(() => {
+    document.documentElement.dataset.zenMode = String(zenModeActive);
+    return () => { delete document.documentElement.dataset.zenMode; };
+  }, [zenModeActive]);
+
   useEffect(() => {
     const root = document.documentElement;
 
@@ -40,6 +47,7 @@ function App() {
 
   return (
     <>
+      <LiquidGlassRuntime />
       <Router>
         <Routes>
           <Route path="/" element={<Layout />}>

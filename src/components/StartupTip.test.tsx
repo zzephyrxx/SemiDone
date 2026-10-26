@@ -48,7 +48,7 @@ describe('StartupTip welcome dialog', () => {
     renderWelcome();
 
     fireEvent.click(screen.getByRole('checkbox', { name: '本版本不再显示' }));
-    fireEvent.click(screen.getByRole('button', { name: '开始使用' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始体验' }));
 
     expect(localStorage.getItem(WELCOME_STORAGE_KEY)).toBe('true');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

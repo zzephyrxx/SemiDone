@@ -192,6 +192,18 @@ pub fn reassert_window_topmost(
 }
 
 #[tauri::command]
+pub async fn set_window_topmost(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
+    let pinning = window.state::<crate::window_pinning::WindowPinning>().inner().clone();
+    pinning.configure(window, Some(enabled), None)
+}
+
+#[tauri::command]
+pub async fn set_window_pin_mode(window: tauri::WebviewWindow, compact: bool) -> Result<(), String> {
+    let pinning = window.state::<crate::window_pinning::WindowPinning>().inner().clone();
+    pinning.configure(window, None, Some(compact))
+}
+
+#[tauri::command]
 pub async fn get_tasks(storage: StorageState<'_>) -> Result<ApiResponse<Vec<Task>>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
