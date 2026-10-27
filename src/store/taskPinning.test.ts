@@ -24,7 +24,7 @@ describe('task pinning order', () => {
       .toEqual(['pinned-new', 'pinned-old', 'normal-new']);
   });
 
-  it('keeps normal completed cards at the end of the all view', () => {
+  it('keeps completed cards only in the completed filter, including pinned cards', () => {
     const tasks = [
       task({ id: 'normal-completed', title: '普通已完成', completed: true }),
       task({ id: 'normal-pending', title: '普通未完成' }),
@@ -32,6 +32,11 @@ describe('task pinning order', () => {
     ];
 
     expect(getFilteredTasks(tasks, 'all', '', { field: 'createdAt', order: 'desc' }).map(item => item.id))
-      .toEqual(['pinned-completed', 'normal-pending', 'normal-completed']);
+      .toEqual(['normal-pending']);
+    expect(getFilteredTasks(tasks, 'completed', '', { field: 'createdAt', order: 'desc' }).map(item => item.id))
+      .toEqual(['pinned-completed', 'normal-completed']);
+    const today = new Date().toISOString();
+    expect(getFilteredTasks(tasks.map(item => ({ ...item, dueDate: today })), 'today', '', { field: 'createdAt', order: 'desc' }).map(item => item.id))
+      .toEqual(['normal-pending']);
   });
 });

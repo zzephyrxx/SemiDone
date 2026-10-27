@@ -2,11 +2,15 @@
 import '@testing-library/jest-dom/vitest';
 import { useState } from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Settings } from '../../types';
 import AppearanceSettingsSection from './AppearanceSettingsSection';
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+beforeEach(() => {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 0; });
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
+});
 
 const initialSettings: Settings = {
   theme: 'light', liquidGlass: { enabled: true, blur: 6, refraction: 42, dispersion: true },
@@ -28,7 +32,6 @@ describe('liquid-glass parameter preview', () => {
   it('drags the miniature within the scene and keeps its position when parameters change', () => {
     vi.stubGlobal('PointerEvent', MouseEvent);
     render(<EditableAppearance />);
-    fireEvent.click(screen.getByText('液态玻璃配置'));
     const card = screen.getByRole('group', { name: '可拖动的玻璃预览小窗' });
     const scene = card.parentElement!;
     Object.defineProperties(scene, { clientWidth: { value: 400 }, clientHeight: { value: 180 } });
@@ -38,9 +41,9 @@ describe('liquid-glass parameter preview', () => {
     fireEvent.pointerDown(card, { button: 0, clientX: 200, clientY: 90 });
     fireEvent.pointerMove(card, { clientX: 225, clientY: 105 });
     expect(card.style.translate).toBe('25px 15px');
-    fireEvent.change(screen.getByRole('slider', { name: '模糊程度' }), { target: { value: '9' } });
+    fireEvent.click(screen.getByRole('button', { name: /极致/ }));
     expect(card.style.translate).toBe('25px 15px');
-    expect(card.style.backdropFilter).toContain('blur(17.78px)');
+    expect(card.style.getPropertyValue('--surface-filter')).toContain('blur(3.06px)');
     fireEvent.pointerMove(card, { clientX: 1000, clientY: 1000 });
     expect(card.style.translate).toBe('62px 27px');
     fireEvent.pointerUp(card);
@@ -56,31 +59,21 @@ describe('liquid-glass parameter preview', () => {
     expect(card).not.toHaveClass('is-dragging');
   });
 
-  it('updates the real blur, refraction and dispersion filters with the sliders', () => {
+  it('switches the actual preview material with presets and preserves selection across disabling glass', () => {
     render(<EditableAppearance />);
-    expect(screen.queryByRole('figure', { name: '液态玻璃实时预览' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('液态玻璃配置'));
     const preview = screen.getByRole('figure', { name: '液态玻璃实时预览' });
     const card = preview.querySelector<HTMLElement>('.liquid-glass-preview-card')!;
-    expect(card.style.backdropFilter).toContain('blur(11.11px)');
-    expect(card.style.backdropFilter).toContain('chromatic-refraction');
-    fireEvent.change(screen.getByRole('slider', { name: '模糊程度' }), { target: { value: '9' } });
-    expect(card.style.backdropFilter).toContain('blur(17.78px)');
-    fireEvent.change(screen.getByRole('slider', { name: '折射强度' }), { target: { value: '100' } });
-    const displacement = preview.querySelector('filter[id$="-refraction"] feDisplacementMap');
-    expect(Number(displacement?.getAttribute('scale'))).toBe(34);
-    fireEvent.click(screen.getByRole('switch', { name: '色散效果' }));
-    expect(card.style.backdropFilter).not.toContain('chromatic-refraction');
-    expect(within(preview).getByText(/折射 100% · 色散关/)).toBeVisible();
+    expect(card.style.getPropertyValue('--surface-filter')).toBe('blur(8.15px)');
+    expect(screen.queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /极致/ }));
+    expect(card.style.getPropertyValue('--surface-filter')).toContain('blur(3.06px)');
+    expect(card.style.getPropertyValue('--surface-filter')).toContain('chromatic-refraction');
+    expect(within(preview).getByText('极致预设')).toBeVisible();
     fireEvent.click(screen.getByRole('switch', { name: '液态玻璃' }));
-    expect(screen.queryByText('液态玻璃配置')).not.toBeInTheDocument();
-    expect(screen.queryByRole('figure', { name: '液态玻璃实时预览' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('figure')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('switch', { name: '液态玻璃' }));
-    expect(screen.getByText('液态玻璃配置').closest('details')).not.toHaveAttribute('open');
-    expect(screen.queryByRole('figure', { name: '液态玻璃实时预览' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('液态玻璃配置'));
-    expect(screen.getByRole('slider', { name: '模糊程度' })).toHaveValue('9');
-    expect(screen.getByRole('slider', { name: '折射强度' })).toHaveValue('100');
-    expect(screen.getByRole('switch', { name: '色散效果' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: /极致/ })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /标准/ }));
+    expect(screen.getByText('标准预设')).toBeVisible();
   });
 });

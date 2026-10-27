@@ -1,5 +1,4 @@
 import {
-  ChevronDown,
   Circle,
   Eye,
   Heart,
@@ -8,13 +7,15 @@ import {
   Rocket,
   SlidersHorizontal,
   Sun,
-  Waves,
+  Droplet,
+  Sparkles,
   Minimize2,
 } from 'lucide-react';
-import { useState, type ReactElement } from 'react';
+import { type ReactElement } from 'react';
 import type { LiquidGlassSettings, Settings, Theme } from '../../types';
-import LiquidGlassPreview from './LiquidGlassPreview';
-import ParameterSlider from './ParameterSlider';
+import GlassControls from './GlassControls';
+import { AnimatedCollapse } from '../../ui/Disclosure';
+import { FontSizeControls, TransparencyControls } from './InterfaceControls';
 
 interface AppearanceSettingsSectionProps {
   settings: Settings;
@@ -26,6 +27,8 @@ interface AppearanceSettingsSectionProps {
   onTransparencyLevelChange: (level: number) => void;
   onToggleCapsuleMode: () => void;
   onCloseToTrayChange?: (enabled: boolean) => void;
+  onFontScaleChange?: (value: number) => void;
+  onAnimationsChange?: (enabled: boolean) => void;
 }
 
 const THEMES: Theme[] = ['light', 'dark', 'pink'];
@@ -111,9 +114,10 @@ export default function AppearanceSettingsSection({
   onTransparencyLevelChange,
   onToggleCapsuleMode,
   onCloseToTrayChange,
+  onFontScaleChange,
+  onAnimationsChange,
 }: AppearanceSettingsSectionProps) {
   const transparencyDisabled = settings.theme !== 'dark' && !settings.transparentEnabled;
-  const [glassExpanded, setGlassExpanded] = useState(false);
 
   return (
     <section
@@ -173,6 +177,7 @@ export default function AppearanceSettingsSection({
           )}
         />
 
+        <div className="setting-control-group" data-testid="transparency-setting">
         <SettingTile
           icon={<Eye className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
           iconClass="bg-cyan-500/10"
@@ -188,6 +193,10 @@ export default function AppearanceSettingsSection({
             />
           )}
         />
+          <AnimatedCollapse open={settings.transparentEnabled === true}>
+            <TransparencyControls value={settings.transparentLevel ?? 100} onCommit={onTransparencyLevelChange} />
+          </AnimatedCollapse>
+        </div>
 
         <SettingTile
           icon={<Circle className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
@@ -218,17 +227,16 @@ export default function AppearanceSettingsSection({
         <div className="min-[480px]:col-span-2 rounded-xl border border-border/80 bg-background/35 p-3 transition-colors hover:border-primary/25">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-              <Waves className="h-5 w-5 text-primary" />
+              <Droplet className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">液态玻璃</p>
-              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">应用于常用弹窗，并跟随当前主题</p>
+              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">仅用于悬浮导航、关键弹窗与实时预览</p>
             </div>
             <SettingSwitch
               label="液态玻璃"
               checked={settings.liquidGlass.enabled}
               onChange={() => {
-                setGlassExpanded(false);
                 onLiquidGlassChange({ enabled: !settings.liquidGlass.enabled });
               }}
               accentClass="bg-cyan-600 dark:bg-cyan-500"
@@ -236,68 +244,16 @@ export default function AppearanceSettingsSection({
           </div>
 
           {settings.liquidGlass.enabled && (
-            <details open={glassExpanded} className="group mt-3 rounded-xl border border-border/70">
-              <summary
-                onClick={(event) => {
-                  event.preventDefault();
-                  setGlassExpanded((open) => !open);
-                }}
-                className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium text-foreground [&::-webkit-details-marker]:hidden"
-              >
-                液态玻璃配置
-                <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
-              </summary>
-              {glassExpanded && (
-                <div className="px-2 pb-2">
-                  <div data-testid="liquid-glass-controls" className="grid gap-2">
-                    <ParameterSlider label="模糊程度" min={1} max={10} value={settings.liquidGlass.blur} suffix=" / 10"
-                      onChange={(blur) => onLiquidGlassChange({ blur })} />
-                    <ParameterSlider label="折射强度" min={0} max={100} value={settings.liquidGlass.refraction} suffix="%"
-                      onChange={(refraction) => onLiquidGlassChange({ refraction })} />
-
-                    <div className="flex min-w-0 items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                        <p className="text-xs font-medium text-foreground">色散效果</p>
-                        <p className="text-[11px] text-muted-foreground">边缘轻微分色</p>
-                      </div>
-                      <SettingSwitch
-                        label="色散效果"
-                        checked={settings.liquidGlass.dispersion}
-                        onChange={() => onLiquidGlassChange({ dispersion: !settings.liquidGlass.dispersion })}
-                        accentClass="bg-cyan-600 dark:bg-cyan-500"
-                      />
-                    </div>
-                  </div>
-                  <LiquidGlassPreview settings={settings.liquidGlass} />
-                </div>
-              )}
-            </details>
+            <GlassControls settings={settings.liquidGlass} onCommit={onLiquidGlassChange} />
           )}
         </div>
 
-        {settings.transparentEnabled && (
-          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-2.5 min-[480px]:col-span-2">
-            <div className="mb-2 flex items-center justify-between text-xs">
-              <label htmlFor="transparency-level" className="font-medium text-foreground">
-                窗口透明度
-              </label>
-              <span className="tabular-nums text-muted-foreground">
-                {settings.transparentLevel ?? 100}%
-              </span>
-            </div>
-            <input
-              id="transparency-level"
-              type="range"
-              aria-label="透明度"
-              min="1"
-              max="100"
-              step="1"
-              value={settings.transparentLevel ?? 100}
-              onChange={(event) => onTransparencyLevelChange(Number(event.target.value))}
-              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-cyan-500/15 accent-cyan-500"
-            />
-          </div>
-        )}
+        <SettingTile icon={<Sparkles className="h-5 w-5 text-primary" />} iconClass="bg-primary/10"
+          title="界面动效" description="独立控制导航跟手、任务退场、弹窗与页面过渡；以此开关为准"
+          control={<SettingSwitch label="界面动效" checked={settings.animationsEnabled !== false}
+            onChange={() => onAnimationsChange?.(settings.animationsEnabled === false)} accentClass="bg-primary" />} />
+        <FontSizeControls value={settings.fontScale ?? 100} onCommit={value => onFontScaleChange?.(value)} />
+
       </div>
     </section>
   );

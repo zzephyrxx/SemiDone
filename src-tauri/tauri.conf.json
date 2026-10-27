@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "identifier": "com.tauri.windows-todo",
   "productName": "事半·SemiDone",
-  "version": "6.1.0",
+  "version": "7.0.0",
   "build": {
     "beforeDevCommand": "vite",
     "beforeBuildCommand": "npm run build",

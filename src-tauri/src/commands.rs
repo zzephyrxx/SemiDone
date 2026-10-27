@@ -2,7 +2,6 @@ use crate::models::*;
 use crate::storage::Storage;
 use std::sync::Mutex;
 use tauri::{Manager, State};
-use tauri_plugin_autostart::ManagerExt;
 
 type StorageState<'a> = State<'a, Mutex<Storage>>;
 
@@ -571,17 +570,9 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
 
 #[tauri::command]
 pub async fn get_autostart_enabled(app: tauri::AppHandle) -> Result<ApiResponse<bool>, String> {
-    println!("[Autostart] get_autostart_enabled called");
-    let autostart_manager = app.autolaunch();
-    match autostart_manager.is_enabled() {
-        Ok(enabled) => {
-            println!("[Autostart] is_enabled = {}", enabled);
-            Ok(ApiResponse::success(enabled))
-        }
-        Err(e) => {
-            println!("[Autostart] is_enabled error: {}", e);
-            Ok(ApiResponse::error(format!("获取自启动状态失败: {}", e)))
-        }
+    match crate::autostart::is_enabled(&app) {
+        Ok(enabled) => Ok(ApiResponse::success(enabled)),
+        Err(error) => Ok(ApiResponse::error(format!("获取自启动状态失败: {error}"))),
     }
 }
 
@@ -590,27 +581,9 @@ pub async fn set_autostart_enabled(
     app: tauri::AppHandle,
     enabled: bool,
 ) -> Result<ApiResponse<bool>, String> {
-    println!(
-        "[Autostart] set_autostart_enabled called with enabled = {}",
-        enabled
-    );
-    let autostart_manager = app.autolaunch();
-    let result = if enabled {
-        println!("[Autostart] calling enable()");
-        autostart_manager.enable()
-    } else {
-        println!("[Autostart] calling disable()");
-        autostart_manager.disable()
-    };
-    match result {
-        Ok(_) => {
-            println!("[Autostart] success!");
-            Ok(ApiResponse::success(enabled))
-        }
-        Err(e) => {
-            println!("[Autostart] error: {}", e);
-            Ok(ApiResponse::error(format!("设置自启动状态失败: {}", e)))
-        }
+    match crate::autostart::set_enabled(&app, enabled) {
+        Ok(actual) => Ok(ApiResponse::success(actual)),
+        Err(error) => Ok(ApiResponse::error(format!("设置自启动状态失败: {error}"))),
     }
 }
 

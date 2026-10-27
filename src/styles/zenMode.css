@@ -1,7 +1,7 @@
 /* Zen只对背景使用透明度，保持文字和控件清晰。 */
 html[data-zen-mode='true'] {
   /* Zen 窗口外圆角：调整此值即可修改圆角大小。 */
-  --zen-window-radius: 8px;
+  --zen-window-radius: var(--window-radius, 20px);
 }
 
 /* 所有窗口内容共用一次圆角裁切；留 1px 透明边缘，避免右、下边缘裁断抗锯齿。 */
@@ -37,7 +37,7 @@ html[data-zen-mode='true'] #root {
   gap: 8px;
   cursor: move;
 }
-.zen-drag-label { flex: 1; font-size: 12px; letter-spacing: 0.03em; white-space: nowrap; cursor: move; }
+.zen-drag-label { flex: 1; font-size: calc(12px * var(--ui-font-scale, 1)); letter-spacing: 0.03em; white-space: nowrap; cursor: move; }
 .zen-toolbar-actions { display: flex; gap: 3px; }
 .zen-toolbar-actions button,
 .zen-appearance-heading button {
@@ -94,14 +94,14 @@ html[data-zen-mode='true'] #root {
 .zen-task-toggle:has(input:focus-visible) { outline: 2px solid #8b5cf6; outline-offset: 2px; }
 .zen-task-toggle input:disabled { cursor: wait; }
 .zen-task-progress { stroke-dasharray: 42 9; transform-origin: center; }
-.zen-task-toggle.is-saving .zen-task-progress { animation: zen-task-spin 325ms linear infinite; }
+.zen-task-toggle.is-saving .zen-task-progress { animation: zen-task-spin 163ms linear infinite; }
 .zen-task-check { opacity: 0; stroke-dasharray: 1; stroke-dashoffset: 1; }
-.zen-task-toggle.is-exiting .zen-task-progress { opacity: 0; transition: opacity 100ms ease; }
-.zen-task-toggle.is-exiting .zen-task-check { opacity: 1; animation: zen-task-check 150ms ease-out both; }
+.zen-task-toggle.is-exiting .zen-task-progress { opacity: 0; transition: opacity 50ms ease; }
+.zen-task-toggle.is-exiting .zen-task-check { opacity: 1; animation: zen-task-check 75ms ease-out both; }
 @keyframes zen-task-spin { to { transform: rotate(360deg); } }
 @keyframes zen-task-check { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-.zen-task-title { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: var(--zen-font-size); line-height: 1.5; }
-.zen-empty { padding: 20px 12px; text-align: center; font-size: 13px; }
+.zen-task-title { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: calc(var(--zen-font-size) * var(--ui-font-scale, 1)); line-height: 1.5; }
+.zen-empty { padding: 20px 12px; text-align: center; font-size: calc(13px * var(--ui-font-scale, 1)); }
 
 /* 禅模式配置保持不透明，使用小窗口时可独立滚动。 */
 .zen-appearance-panel {
@@ -119,15 +119,15 @@ html[data-zen-mode='true'] #root {
   color: #334155;
 }
 .zen-appearance-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.zen-appearance-heading h2 { font-size: 13px; font-weight: 600; }
+.zen-appearance-heading h2 { font-size: calc(13px * var(--ui-font-scale, 1)); font-weight: 600; }
 .zen-appearance { padding: 12px; border-radius: 10px; background: #f8fafc; color: #334155; }
 .zen-color-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.zen-color-field { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 12px; }
+.zen-color-field { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: calc(12px * var(--ui-font-scale, 1)); }
 .zen-color-trigger { display: block; width: 100%; height: 30px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px; background: #fff; cursor: pointer; }
 .zen-color-trigger > span { display: block; width: 100%; height: 100%; border-radius: 3px; }
 .zen-color-trigger[aria-expanded='true'] { border-color: #7c3aed; box-shadow: 0 0 0 1px #7c3aed; }
 .zen-color-picker { margin-top: 10px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; }
-.zen-color-picker-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; font-size: 12px; }
+.zen-color-picker-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; font-size: calc(12px * var(--ui-font-scale, 1)); }
 .zen-color-picker-heading button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 5px; background: #f1f5f9; color: #334155; cursor: pointer; }
 .zen-color-plane { position: relative; height: 96px; margin: 5px; border-radius: 4px; touch-action: none; cursor: crosshair; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); }
 .zen-color-plane:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 3px; }
@@ -139,9 +139,9 @@ html[data-zen-mode='true'] #root {
 .zen-color-swatches { display: flex; gap: 7px; padding: 4px 0 8px; }
 .zen-color-swatches button { flex: 1; min-width: 0; height: 18px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; }
 .zen-color-swatches button[aria-pressed='true'] { outline: 2px solid #7c3aed; outline-offset: 1px; }
-.zen-color-hex { display: flex; align-items: center; gap: 8px; font-size: 11px; }
-.zen-color-hex input { min-width: 0; width: 100%; height: 28px; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 6px; background: #fff; color: #334155; font-size: 12px; }
-.zen-color-value { font-size: 10px; font-variant-numeric: tabular-nums; }
+.zen-color-hex { display: flex; align-items: center; gap: 8px; font-size: calc(11px * var(--ui-font-scale, 1)); }
+.zen-color-hex input { min-width: 0; width: 100%; height: 28px; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 6px; background: #fff; color: #334155; font-size: calc(12px * var(--ui-font-scale, 1)); }
+.zen-color-value { font-size: calc(10px * var(--ui-font-scale, 1)); font-variant-numeric: tabular-nums; }
 .zen-appearance { --parameter-accent: #7c3aed; }
 .zen-appearance .parameter-slider + .zen-color-grid,
 .zen-appearance .zen-color-grid + .parameter-slider,
@@ -155,14 +155,14 @@ html[data-zen-mode='true'] #root {
   background: repeating-conic-gradient(#cbd5e1 0% 25%, #e2e8f0 0% 50%) 0 / 12px 12px;
 }
 .zen-preview { padding: 12px; background: var(--zen-background); color: var(--zen-text); }
-.zen-preview-row { display: flex; align-items: center; gap: 10px; border-radius: 6px; padding: 9px; background: var(--zen-row); font-size: var(--zen-font-size); overflow-wrap: anywhere; }
-.zen-appearance-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 10px; }
+.zen-preview-row { display: flex; align-items: center; gap: 10px; border-radius: 6px; padding: 9px; background: var(--zen-row); font-size: calc(var(--zen-font-size) * var(--ui-font-scale, 1)); overflow-wrap: anywhere; }
+.zen-appearance-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: calc(10px * var(--ui-font-scale, 1)); }
 .zen-appearance-footer button { display: flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #6d28d9; cursor: pointer; }
-.zen-task-row.is-exiting { pointer-events: none; animation: zen-task-exit 750ms cubic-bezier(0.4, 0, 0.8, 1) both; }
+.zen-task-row.is-exiting { pointer-events: none; animation: zen-task-exit 375ms cubic-bezier(0.4, 0, 0.8, 1) both; }
 .zen-task-row.is-exiting .zen-task-title {
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  animation: zen-task-strike 225ms ease-out both;
+  animation: zen-task-strike 113ms ease-out both;
 }
 @keyframes zen-task-strike { from { text-decoration-color: transparent; } to { text-decoration-color: currentColor; } }
 @keyframes zen-task-exit {
@@ -170,9 +170,9 @@ html[data-zen-mode='true'] #root {
   100% { transform: translateX(calc(100% + 32px)); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .zen-task-toggle.is-saving .zen-task-progress { animation: zen-task-pulse 325ms ease-in-out infinite; }
-  .zen-task-row.is-exiting { animation-name: zen-task-fade; animation-duration: 500ms; }
-  .zen-task-row.is-exiting .zen-task-title { animation-duration: 175ms; }
+  html:not([data-ui-motion='true']) .zen-task-toggle.is-saving .zen-task-progress { animation: zen-task-pulse 163ms ease-in-out infinite; }
+  html:not([data-ui-motion='true']) .zen-task-row.is-exiting { animation-name: zen-task-fade; animation-duration: 250ms; }
+  html:not([data-ui-motion='true']) .zen-task-row.is-exiting .zen-task-title { animation-duration: 88ms; }
 }
 @keyframes zen-task-pulse { 50% { opacity: 0.35; } }
 @keyframes zen-task-fade { 0%, 45% { opacity: 1; } 100% { opacity: 0; } }
@@ -197,8 +197,8 @@ html[data-zen-mode='true'] .welcome-dialog {
 html[data-zen-mode='true'] .welcome-dialog-header { gap: 9px; padding-right: 28px; }
 html[data-zen-mode='true'] .welcome-dialog-icon { width: 32px; height: 32px; border-radius: 10px; }
 html[data-zen-mode='true'] .welcome-dialog-icon svg { width: 18px; height: 18px; }
-html[data-zen-mode='true'] .welcome-dialog-header h2 { font-size: 16px; line-height: 1.3; }
-html[data-zen-mode='true'] .welcome-dialog-header p { margin-top: 3px; font-size: 11px; }
+html[data-zen-mode='true'] .welcome-dialog-header h2 { font-size: calc(16px * var(--ui-font-scale, 1)); line-height: 1.3; }
+html[data-zen-mode='true'] .welcome-dialog-header p { margin-top: 3px; font-size: calc(11px * var(--ui-font-scale, 1)); }
 html[data-zen-mode='true'] .welcome-dialog-dismiss {
   top: 8px;
   right: 8px;
@@ -215,19 +215,19 @@ html[data-zen-mode='true'] .close-dialog-body {
 }
 html[data-zen-mode='true'] .welcome-dialog-body { margin-top: 12px; padding-right: 3px; }
 html[data-zen-mode='true'] .welcome-dialog-release-heading { gap: 8px; }
-html[data-zen-mode='true'] .welcome-dialog-release-heading h3 { font-size: 12px; }
+html[data-zen-mode='true'] .welcome-dialog-release-heading h3 { font-size: calc(12px * var(--ui-font-scale, 1)); }
 html[data-zen-mode='true'] .welcome-dialog-release-heading > span { padding: 3px 7px; }
-html[data-zen-mode='true'] .welcome-dialog-intro { margin-top: 6px; font-size: 11px; line-height: 1.6; }
+html[data-zen-mode='true'] .welcome-dialog-intro { margin-top: 6px; font-size: calc(11px * var(--ui-font-scale, 1)); line-height: 1.6; }
 html[data-zen-mode='true'] .welcome-dialog-highlights { margin-top: 8px; }
-html[data-zen-mode='true'] .welcome-dialog-highlights li { gap: 8px; padding: 8px 0; font-size: 12px; line-height: 1.5; }
+html[data-zen-mode='true'] .welcome-dialog-highlights li { gap: 8px; padding: 8px 0; font-size: calc(12px * var(--ui-font-scale, 1)); line-height: 1.5; }
 html[data-zen-mode='true'] .welcome-dialog-highlights li > span:first-child { margin-top: 6px; width: 4px; height: 4px; }
 html[data-zen-mode='true'] .welcome-dialog-footer { margin-top: 10px; gap: 8px; }
-html[data-zen-mode='true'] .welcome-dialog-footer label > span { font-size: 11px; }
+html[data-zen-mode='true'] .welcome-dialog-footer label > span { font-size: calc(11px * var(--ui-font-scale, 1)); }
 html[data-zen-mode='true'] .welcome-dialog-footer > button {
   min-width: 84px;
   padding: 7px 12px;
   border-radius: 9px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
   line-height: 16px;
   box-shadow: none;
 }
@@ -239,13 +239,13 @@ html[data-zen-mode='true'] .close-dialog {
 html[data-zen-mode='true'] .close-dialog-header { flex-shrink: 0; margin-bottom: 10px; }
 html[data-zen-mode='true'] .close-dialog-icon { width: 26px; height: 26px; }
 html[data-zen-mode='true'] .close-dialog-icon svg { width: 14px; height: 14px; }
-html[data-zen-mode='true'] .close-dialog-header h3 { font-size: 15px; line-height: 1.4; }
+html[data-zen-mode='true'] .close-dialog-header h3 { font-size: calc(15px * var(--ui-font-scale, 1)); line-height: 1.4; }
 html[data-zen-mode='true'] .close-dialog-dismiss { display: grid; place-items: center; width: 26px; height: 26px; }
 html[data-zen-mode='true'] .close-dialog-body { margin-bottom: 12px; }
-html[data-zen-mode='true'] .close-dialog-body p { font-size: 12px; line-height: 1.5; }
-html[data-zen-mode='true'] .close-dialog-body p + p { margin-top: 4px; font-size: 11px; }
+html[data-zen-mode='true'] .close-dialog-body p { font-size: calc(12px * var(--ui-font-scale, 1)); line-height: 1.5; }
+html[data-zen-mode='true'] .close-dialog-body p + p { margin-top: 4px; font-size: calc(11px * var(--ui-font-scale, 1)); }
 html[data-zen-mode='true'] .close-dialog-footer { flex-shrink: 0; gap: 6px; }
-html[data-zen-mode='true'] .close-dialog-footer button { min-height: 30px; padding: 6px 10px; border-radius: 8px; font-size: 12px; line-height: 18px; }
+html[data-zen-mode='true'] .close-dialog-footer button { min-height: 30px; padding: 6px 10px; border-radius: 8px; font-size: calc(12px * var(--ui-font-scale, 1)); line-height: 18px; }
 html[data-zen-mode='true'] .close-dialog-footer svg { width: 13px; height: 13px; }
 @media (max-height: 220px) {
   html[data-zen-mode='true'] .welcome-dialog { padding: 12px; }

@@ -17,16 +17,15 @@ afterEach(cleanup);
 describe('Zen mode settings', () => {
   it('starts with collapsed configuration and enables the entry without entering Zen', async () => {
     const { container } = render(<ZenModeSettingsSection />);
-    const configuration = container.querySelector('details')!;
-    expect(configuration).not.toHaveAttribute('open');
+    expect(container.querySelector('details')).toBeNull();
     const toggle = screen.getByRole('switch', { name: '启用 Zen 模式' });
     expect(toggle).not.toBeChecked();
-    fireEvent.click(screen.getByText('Zen 模式配置'));
-    expect(configuration).not.toHaveAttribute('open');
+    expect(screen.queryByText('Zen 模式配置')).not.toBeInTheDocument();
     expect(screen.queryByRole('slider', { name: '字体大小' })).not.toBeInTheDocument();
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).toBeChecked());
     expect(useSettingsStore.getState().settings.zenMode).toMatchObject({ enabled: true, active: false });
+    const configuration = container.querySelector('details')!;
     expect(configuration).not.toHaveAttribute('open');
     fireEvent.click(screen.getByText('Zen 模式配置'));
     expect(configuration).toHaveAttribute('open');
@@ -38,10 +37,15 @@ describe('Zen mode settings', () => {
     expect(screen.getByRole('region', { name: '文字颜色调色盘' })).toBeVisible();
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle).not.toBeChecked());
-    expect(configuration).not.toHaveAttribute('open');
-    fireEvent.click(screen.getByText('Zen 模式配置'));
-    expect(configuration).not.toHaveAttribute('open');
+    expect(container.querySelector('details')).toBeNull();
+    expect(screen.queryByText('Zen 模式配置')).not.toBeInTheDocument();
     expect(screen.queryByRole('slider', { name: '字体大小' })).not.toBeInTheDocument();
     expect(useSettingsStore.getState().settings.zenMode?.fontSize).toBe(22);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(container.querySelector('details')).not.toHaveAttribute('open');
+    expect(screen.queryByRole('slider', { name: '字体大小' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Zen 模式配置'));
+    expect(screen.getByRole('slider', { name: '字体大小' })).toHaveValue('22');
   });
 });

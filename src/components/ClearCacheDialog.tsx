@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle, Trash2 } from 'lucide-react';
+import { useDialogMotion } from '../ui/useDialogMotion';
+import { Surface } from '../ui/Surface';
 
 interface ClearCacheDialogProps {
   isOpen: boolean;
@@ -12,7 +14,8 @@ export default function ClearCacheDialog({ isOpen, onClose, onConfirm }: ClearCa
   const [isClearing, setIsClearing] = useState(false);
   const CONFIRM_PHRASE = '确认清除所有记录';
 
-  if (!isOpen) return null;
+  const { root, present } = useDialogMotion(isOpen);
+  if (!present) return null;
 
   const handleConfirm = async () => {
     if (confirmText !== CONFIRM_PHRASE) return;
@@ -39,7 +42,7 @@ export default function ClearCacheDialog({ isOpen, onClose, onConfirm }: ClearCa
   const isConfirmValid = confirmText === CONFIRM_PHRASE;
 
   return (
-    <>
+    <div ref={root} className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div 
         className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
@@ -48,8 +51,8 @@ export default function ClearCacheDialog({ isOpen, onClose, onConfirm }: ClearCa
       
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div 
-          role="alertdialog"
+        <Surface role="dialog"
+          htmlRole="alertdialog"
           aria-modal="true"
           aria-labelledby="clear-cache-title"
           className="liquid-glass-modal-surface bg-card border border-border rounded-lg shadow-2xl max-w-md w-full"
@@ -146,8 +149,8 @@ export default function ClearCacheDialog({ isOpen, onClose, onConfirm }: ClearCa
               )}
             </button>
           </div>
-        </div>
+        </Surface>
       </div>
-    </>
+    </div>
   );
 }

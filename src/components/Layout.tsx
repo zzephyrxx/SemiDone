@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, Link, NavLink } from 'react-router-dom';
+import React, { useState, useRef } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays, ListTodo, ChartNoAxesCombined } from 'lucide-react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
@@ -11,37 +11,38 @@ import FloatingBall from './FloatingBall';
 import ZenMode from './ZenMode';
 import ZenIcon from './icons/ZenIcon';
 import { startWindowDragging } from '../utils/windowDragging';
-import { getQuotesByTheme } from '../data/quotes';
+import { useRotatingQuote } from '../hooks/useRotatingQuote';
+import { useShallow } from 'zustand/react/shallow';
+import { Surface } from '../ui/Surface';
+import { useSelectionIndicator } from '../ui/SelectionIndicator';
+import { PageTransition } from '../ui/PageTransition';
+
+const INACTIVE_CLOCK = { isActive: false, currentMode: 'work', timeLeft: 0, cycle: 0 };
 
 export default function Layout() {
+  const nav = useRef<HTMLElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-  const [quoteIndex, setQuoteIndex] = useState(() => {
-    // 从localStorage获取上次的索引，如果不存在则从0开始
-    const saved = localStorage.getItem('quoteIndex');
-    const parsed = saved ? Number.parseInt(saved, 10) : 0;
-    return Number.isFinite(parsed) ? parsed : 0;
+
+
+  const settings = useSettingsStore(useShallow(state => ({
+    theme: state.settings.theme, avatar: state.settings.avatar, username: state.settings.username,
+    collapseMode: state.settings.collapseMode, isPinned: state.settings.isPinned,
+    useCapsuleMode: state.settings.useCapsuleMode, zenMode: state.settings.zenMode,
+    closeToTray: state.settings.closeToTray,
+  })));
+  const toggleIsPinned = useSettingsStore(state => state.toggleIsPinned);
+  const toggleIsCollapsed = useSettingsStore(state => state.toggleIsCollapsed);
+  const setZenMode = useSettingsStore(state => state.setZenMode);
+  useSelectionIndicator(nav, `${location.pathname}:${settings.collapseMode}:${settings.zenMode?.active}`, item => {
+    const destination = item.dataset.navTo;
+    if (destination) navigate(destination);
   });
-
-  const { settings, toggleIsPinned, toggleIsCollapsed, setZenMode } = useSettingsStore();
-  const { pomodoro, formatTime } = useUsageStore();
-  const quotes = getQuotesByTheme(settings.theme);
-  const currentQuote = quotes[quoteIndex % quotes.length] ?? '';
-
-  // 轮播励志名言
-  useEffect(() => {
-    if (settings.collapseMode === 'bar') {
-      const timer = setInterval(() => {
-        setQuoteIndex((previousIndex) => {
-          const nextIndex = (previousIndex + 1) % quotes.length;
-          localStorage.setItem('quoteIndex', String(nextIndex));
-          return nextIndex;
-        });
-      }, 5000); // 5秒切换一次
-
-      return () => clearInterval(timer);
-    }
-  }, [quotes.length, settings.collapseMode, settings.theme]);
+  const pomodoro = useUsageStore(state => settings.collapseMode === 'bar' ? state.pomodoro : INACTIVE_CLOCK);
+  const formatTime = useUsageStore(state => state.formatTime);
+  const currentQuote = useRotatingQuote(settings.theme, settings.collapseMode === 'bar');
 
   const handleCloseApp = () => {
     if (settings.closeToTray !== false) {
@@ -55,6 +56,10 @@ export default function Layout() {
         console.error('Failed to close window to tray:', error);
         toast.error('关闭到托盘失败，请重试');
       });
+      return;
+    }
+    if (settings.collapseMode !== 'expanded') {
+      void Promise.resolve(toggleIsCollapsed()).then(() => setShowCloseConfirm(true)).catch(() => toast.error('请先展开窗口再退出应用'));
       return;
     }
     setShowCloseConfirm(true);
@@ -117,7 +122,7 @@ export default function Layout() {
 
         {/* Close Confirmation Dialog */}
         <CloseConfirmDialog
-          isOpen={showCloseConfirm}
+          isOpen={false}
           onConfirm={confirmClose}
           onCancel={cancelClose}
         />
@@ -255,19 +260,7 @@ export default function Layout() {
 
           {/* 关闭按钮 */}
           <button
-            onClick={() => {
-              if (settings.collapseMode === 'bar' && settings.closeToTray === false) {
-                // 条状模式下点击：先展开窗口，再弹出关闭确认
-                toggleIsCollapsed();
-                // 延迟弹出确认对话框，等待窗口展开动画完成
-                setTimeout(() => {
-                  handleCloseApp();
-                }, 300);
-              } else {
-                // 展开状态下点击关闭应用
-                handleCloseApp();
-              }
-            }}
+            onClick={handleCloseApp}
             className="p-2 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
             title={settings.closeToTray !== false ? '关闭到托盘' : settings.collapseMode === 'bar' ? '展开并关闭应用' : '关闭应用'}
           >
@@ -280,24 +273,28 @@ export default function Layout() {
       {settings.collapseMode === 'expanded' && (
         <div className="workspace-body">
           <aside className="workspace-navigation">
-            <nav className="workspace-nav" aria-label="主导航">
+            <Surface role="navigation">
+            <nav ref={nav} className="workspace-nav ui-selection-host" aria-label="主导航">
+              <span className="ui-selection-indicator ui-selection-indicator--fill" aria-hidden="true" />
+              <span className="ui-selection-indicator ui-selection-indicator--optics" aria-hidden="true"><Surface role="selection" /></span>
               {[
                 { to: '/', label: '待办', title: '我的待办', icon: ListTodo },
                 { to: '/task-calendar', label: '日历', title: '任务视图', icon: CalendarDays },
                 { to: '/usage-stats', label: '统计', title: '使用统计', icon: ChartNoAxesCombined },
                 { to: '/settings', label: '设置', title: '设置', icon: Settings },
               ].map(({ to, label, title, icon: Icon }) => (
-                <NavLink key={to} to={to} end={to === '/'} title={title}
+                <NavLink key={to} to={to} end={to === '/'} title={title} data-nav-to={to} draggable={false}
                   className={({ isActive }) => `workspace-nav-link ${isActive ? 'is-active' : ''}`}>
                   <Icon size={19} strokeWidth={1.8} />
                   <span>{label}</span>
                 </NavLink>
               ))}
             </nav>
+            </Surface>
             <div className="workspace-nav-footer"><span className="workspace-status-dot" />本地保存，安心专注</div>
           </aside>
-          <main className="workspace-content">
-            <Outlet />
+          <main className={`workspace-content ${location.pathname === '/' ? 'workspace-content--home' : ''}`}>
+            <PageTransition />
           </main>
         </div>
       )}
@@ -310,7 +307,7 @@ export default function Layout() {
 
       {/* Close Confirmation Dialog */}
       <CloseConfirmDialog
-        isOpen={showCloseConfirm}
+        isOpen={showCloseConfirm && settings.collapseMode === 'expanded'}
         onConfirm={confirmClose}
         onCancel={cancelClose}
       />

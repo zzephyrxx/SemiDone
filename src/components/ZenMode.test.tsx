@@ -22,7 +22,7 @@ beforeEach(async () => {
   localStorage.clear();
   await api.settings.updateSettings(useSettingsStore.getState().settings);
   useSettingsStore.setState((state) => ({ settings: {
-    ...state.settings, theme: 'pink', zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS, enabled: true, active: true },
+    ...state.settings, theme: 'pink', animationsEnabled: true, zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS, enabled: true, active: true },
   } }));
   useTaskStore.setState({
     tasks: [], filter: 'completed', searchQuery: '不匹配的搜索', loading: false,
@@ -68,31 +68,32 @@ describe('Zen mode', () => {
     expect(checkbox).toHaveAttribute('aria-busy', 'true');
     expect(checkbox.closest('li')).not.toHaveClass('is-exiting');
     expect(screen.queryByText('保存中…')).not.toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(324));
+    act(() => vi.advanceTimersByTime(162));
     expect(checkbox).not.toBeChecked();
     act(() => vi.advanceTimersByTime(1));
     expect(checkbox).toBeChecked();
     expect(screen.getByText('任务已完成')).toBeInTheDocument();
     expect(checkbox.closest('li')).toHaveClass('is-exiting');
-    act(() => vi.advanceTimersByTime(500));
+    act(() => vi.advanceTimersByTime(250));
     expect(screen.getByText(pending.title)).toBeVisible();
     fireEvent.animationEnd(screen.getByText(pending.title));
     expect(screen.getByText(pending.title)).toBeVisible();
-    act(() => vi.advanceTimersByTime(376));
+    act(() => vi.advanceTimersByTime(189));
     expect(screen.queryByText(pending.title)).not.toBeInTheDocument();
     expect(screen.getByText('没有未完成的待办')).toBeVisible();
   });
 
-  it('also leaves a visible completion pause when reduced motion is requested', async () => {
+  it('also leaves a visible completion pause when interface animation is disabled', async () => {
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })));
+    useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: false } }));
     render(<ZenMode onClose={vi.fn()} />);
     const checkbox = await screen.findByRole('checkbox', { name: '完成：整理实验结果' });
     vi.useFakeTimers();
     await act(async () => { fireEvent.click(checkbox); });
-    act(() => vi.advanceTimersByTime(325));
-    act(() => vi.advanceTimersByTime(350));
+    act(() => vi.advanceTimersByTime(163));
+    act(() => vi.advanceTimersByTime(175));
     expect(screen.getByText(pending.title)).toBeVisible();
-    act(() => vi.advanceTimersByTime(276));
+    act(() => vi.advanceTimersByTime(139));
     expect(screen.queryByText(pending.title)).not.toBeInTheDocument();
   });
 
@@ -106,11 +107,11 @@ describe('Zen mode', () => {
     fireEvent.click(checkbox);
     expect(api.tasks.updateTask).toHaveBeenCalledOnce();
     expect(checkbox).toBeDisabled();
-    act(() => vi.advanceTimersByTime(650));
+    act(() => vi.advanceTimersByTime(326));
     expect(checkbox).not.toBeChecked();
     expect(checkbox).toHaveAttribute('aria-busy', 'true');
     await act(async () => { resolveSave({ success: true, data: { ...pending, completed: true } }); });
-    act(() => vi.advanceTimersByTime(324));
+    act(() => vi.advanceTimersByTime(162));
     expect(checkbox).not.toBeChecked();
     act(() => vi.advanceTimersByTime(1));
     expect(checkbox).toBeChecked();

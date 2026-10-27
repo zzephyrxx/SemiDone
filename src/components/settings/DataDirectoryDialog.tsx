@@ -1,3 +1,5 @@
+import { useDialogMotion } from '../../ui/useDialogMotion';
+
 interface DataDirectoryDialogProps {
   isOpen: boolean;
   currentDataDir: string;
@@ -17,10 +19,11 @@ export default function DataDirectoryDialog({
   onConfirm,
   onCancel,
 }: DataDirectoryDialogProps) {
-  if (!isOpen) return null;
+  const { root, present } = useDialogMotion(isOpen);
+  if (!present) return null;
 
   return (
-    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div ref={root} className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div
         role="dialog"
         aria-modal="true"

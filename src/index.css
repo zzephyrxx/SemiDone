@@ -1175,7 +1175,7 @@ body.transparent-mode [role="alertdialog"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-glass-control {
+  html:not([data-ui-motion='true']) .liquid-glass-control {
     transform: none !important;
     transition: none;
   }

@@ -2,10 +2,14 @@ import { useEffect } from 'react';
 import { Clock, Timer, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUsageStore } from '../store/usageStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export default function UsageButton() {
   const navigate = useNavigate();
-  const { stats, isTrackingEnabled, formatMinutes, loadUsageData, calculateStats, pomodoro, formatTime } = useUsageStore();
+  const { today, isTrackingEnabled, formatMinutes, loadUsageData, calculateStats, pomodoro, formatTime } = useUsageStore(useShallow(state => ({
+    today: state.stats.today, isTrackingEnabled: state.isTrackingEnabled, formatMinutes: state.formatMinutes,
+    loadUsageData: state.loadUsageData, calculateStats: state.calculateStats, pomodoro: state.pomodoro, formatTime: state.formatTime,
+  })));
 
   useEffect(() => {
     void loadUsageData();
@@ -21,7 +25,7 @@ export default function UsageButton() {
       title={pomodoro.isActive ? '番茄钟聚焦模式 - 点击查看详情' : '查看使用时长统计'}>
       {pomodoro.isActive ? <Timer size={15} /> : <Clock size={15} />}
       <span>{pomodoro.isActive ? mode : '今日使用'}</span>
-      <strong>{pomodoro.isActive ? formatTime(pomodoro.timeLeft) : formatMinutes(stats.today)}</strong>
+      <strong>{pomodoro.isActive ? formatTime(pomodoro.timeLeft) : formatMinutes(today)}</strong>
       <span className="usage-summary-state">{pomodoro.isActive ? `第 ${pomodoro.cycle + 1} 个番茄钟` : isTrackingEnabled ? '正在记录' : '记录已暂停'}</span>
       <ChevronRight size={14} />
     </button>

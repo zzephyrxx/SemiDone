@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, BarChart3, TrendingUp, Trophy } from 'lucide-react';
 import { useUsageStore } from '../store/usageStore';
+import { useDialogMotion } from '../ui/useDialogMotion';
 
 interface UsageDetailsModalProps {
   isOpen: boolean;
@@ -20,7 +21,8 @@ export default function UsageDetailsModal({ isOpen, onClose }: UsageDetailsModal
     }
   }, [isOpen, selectedPeriod, getUsageDetails, loadUsageData]);
 
-  if (!isOpen) return null;
+  const { root, present } = useDialogMotion(isOpen);
+  if (!present) return null;
 
   const totalDaysWithUsage = usageDetails.filter(d => d.totalMinutes > 0).length;
   const averageUsage = totalDaysWithUsage > 0 
@@ -30,8 +32,8 @@ export default function UsageDetailsModal({ isOpen, onClose }: UsageDetailsModal
   const totalSessions = usageDetails.reduce((sum, d) => sum + d.sessions, 0);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-background border border-border rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div ref={root} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div role="dialog" aria-modal="true" aria-label="使用详情" className="bg-background border border-border rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-primary" />
@@ -115,7 +117,7 @@ export default function UsageDetailsModal({ isOpen, onClose }: UsageDetailsModal
             </h3>
             
             <div className="space-y-2">
-              {usageDetails.slice().reverse().map((detail, index) => {
+              {usageDetails.slice().reverse().map(detail => {
                 const date = new Date(detail.date);
                 const isToday = detail.date === new Date().toISOString().split('T')[0];
                 const percentage = maxDayUsage > 0 ? (detail.totalMinutes / maxDayUsage) * 100 : 0;

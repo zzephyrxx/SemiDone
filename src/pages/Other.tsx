@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { isTauri } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { ArrowLeft, Palette, Database, Info } from 'lucide-react';
+import { Palette, Database, Info } from 'lucide-react';
+import PageBackHeader from '../ui/PageBackHeader';
 import ZenIcon from '../components/icons/ZenIcon';
 import { toast } from 'sonner';
 import ClearCacheDialog from '../components/ClearCacheDialog';
@@ -30,7 +31,7 @@ export default function Other() {
     toggleCapsuleMode,
     toggleAutoStart,
   } = useSettingsStore();
-  const { loadTasks } = useTaskStore();
+  const loadTasks = useTaskStore(state => state.loadTasks);
   const [appVersion, setAppVersion] = useState(APP_VERSION);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -83,6 +84,7 @@ export default function Other() {
   };
 
   const handleTransparencyLevelChange = async (level: number) => {
+    if (!useSettingsStore.getState().settings.transparentEnabled) return;
     document.documentElement.style.setProperty('--window-opacity', String(level / 100));
     await setTransparency(true, level);
   };
@@ -180,19 +182,9 @@ export default function Other() {
   };
 
   return (
-    <div className="settings-page">
+    <div className="workspace-page settings-page">
+      <PageBackHeader onBack={() => window.history.back()} />
       <div className="settings-container">
-        <header className="page-heading">
-          <div><p className="page-eyebrow">按你的习惯，调整每一处</p><h1>设置</h1></div>
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="settings-back"
-            aria-label="返回"
-          >
-            <ArrowLeft size={16} /><span>返回</span>
-          </button>
-        </header>
         <nav className="settings-index" aria-label="设置分组">
           {[{ id: 'appearance', label: '外观', icon: Palette }, { id: 'zen', label: 'Zen', icon: ZenIcon },
             { id: 'data', label: '数据', icon: Database }, { id: 'about', label: '关于', icon: Info }].map(({ id, label, icon: Icon }) => (
@@ -206,6 +198,8 @@ export default function Other() {
           <AppearanceSettingsSection
             settings={settings}
             onThemeChange={(theme) => void handleThemeChange(theme)}
+            onFontScaleChange={(fontScale) => void updateSettings({ fontScale })}
+            onAnimationsChange={(animationsEnabled) => void updateSettings({ animationsEnabled })}
             onLiquidGlassChange={(updates) => void setLiquidGlass(updates)}
             onToggleAutoStart={() => void toggleAutoStart()}
             autoStartAvailable={isTauri() && !import.meta.env.DEV}

@@ -12,6 +12,8 @@ import { isTauri } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { toast } from 'sonner';
+import { useDialogMotion } from '../ui/useDialogMotion';
+import { Surface } from '../ui/Surface';
 
 interface ReportExportDialogProps {
   isOpen: boolean;
@@ -31,7 +33,8 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
   });
   const [exporting, setExporting] = useState(false);
 
-  if (!isOpen) return null;
+  const { root, present } = useDialogMotion(isOpen);
+  if (!present) return null;
 
   const handleExport = async () => {
     setExporting(true);
@@ -124,9 +127,9 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
   const previewStats = getPreviewStats();
 
   return (
-    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div
-        role="dialog"
+    <div ref={root} className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Surface role="dialog"
+        htmlRole="dialog"
         aria-modal="true"
         aria-labelledby="report-export-title"
         className="liquid-glass-modal-surface bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
@@ -302,7 +305,7 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
             {exporting ? '导出中...' : '导出报告'}
           </button>
         </div>
-      </div>
+      </Surface>
     </div>
   );
 }

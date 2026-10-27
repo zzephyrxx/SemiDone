@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import StartupTip from './StartupTip';
 
-const WELCOME_STORAGE_KEY = 'welcome_shown_6.1.0';
+const WELCOME_STORAGE_KEY = 'welcome_shown_7.0.0';
 
 function renderWelcome() {
   render(<StartupTip />);
@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe('StartupTip welcome dialog', () => {
-  it('renders the approved 6.1.0 release overview', () => {
+  it('renders the approved 7.0.0 release overview', () => {
     renderWelcome();
 
     const dialog = screen.getByRole('dialog', { name: '欢迎使用 SemiDone' });
@@ -33,10 +33,17 @@ describe('StartupTip welcome dialog', () => {
     expect(dialog.querySelectorAll('.liquid-glass-modal-surface')).toHaveLength(0);
     expect(screen.queryByTestId('welcome-header-curve')).not.toBeInTheDocument();
 
-    expect(screen.getByText('V6.1.0 · 2026.10')).toBeVisible();
-    expect(screen.getByText('V6.1.0 更新内容')).toBeVisible();
+    expect(screen.getByText('V7.0.0 · 2026.10')).toBeVisible();
+    expect(screen.getByText('V7.0.0 更新内容')).toBeVisible();
     expect(screen.queryByText(/5\.0.*主要更新/)).not.toBeInTheDocument();
-    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual(["新增液态玻璃 UI，视觉更有质感。","新增 Zen（禅·极简模式），极致简约，回归记事本。","修复使用 Win+D 等方式返回桌面后，窗口置顶效果丢失的问题。","修复使用时长跨天统计和重复累计问题。","修复其他若干已知问题。"]);
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      '全新 V7 界面：窄窗顶部悬浮导航，宽屏左侧悬浮导航。',
+      '液态玻璃提供标准、极致两档预设，导航文字与图标保持清晰。',
+      '新增任务完成淡化右滑、导航拖动选择和列表补位动效，支持全局字号与动效开关。',
+      '关闭窗口默认收起到托盘，可从托盘恢复窗口或明确退出应用。',
+      '关闭与公告弹窗支持拖动，条状和悬浮球模式下不再显示遮挡弹窗。',
+      '修复完成任务时出现横向滚动条的问题，移除全部完成浮动提示。',
+    ]);
     expect(screen.getByRole('button', { name: '开始体验' })).toBeVisible();
   });
 
@@ -66,9 +73,10 @@ describe('StartupTip welcome dialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('shows 6.1.0 even when previous versions were suppressed', () => {
+  it('shows 7.0.0 even when previous versions were suppressed', () => {
     localStorage.setItem('welcome_shown_5.2.0', 'true');
     localStorage.setItem('welcome_shown_6.0', 'true');
+    localStorage.setItem('welcome_shown_6.1.0', 'true');
     renderWelcome();
 
     expect(screen.getByRole('dialog', { name: '欢迎使用 SemiDone' })).toBeVisible();

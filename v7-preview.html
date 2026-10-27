@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SemiDone V7 · 第一版审阅</title>
+  <title>SemiDone V7 · 悬浮导航与全局玻璃审阅</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #eaeaf0; color: #30313e; font: 13px 'Segoe UI', 'Microsoft YaHei UI', sans-serif; }
@@ -18,14 +18,14 @@
     .divider { width: 1px; height: 22px; background: #d7d9e5; margin: 0 3px; }
     p { margin: 11px 0 0; color: #747888; font-size: 11px; line-height: 1.6; }
     main { padding: 24px; overflow: auto; }
-    .viewport { width: 550px; height: 900px; margin: 0 auto; border-radius: 18px; overflow: hidden; outline: 1px solid #d4d5e0; box-shadow: 0 8px 40px #30313e12; background: white; }
+    .viewport { width: 550px; height: 900px; margin: 0 auto; border-radius: 20px; overflow: hidden; outline: 1px solid #d4d5e0; box-shadow: 0 8px 40px #30313e12; background: white; }
     iframe { display: block; width: 100%; height: 100%; border: 0; }
     #dimensions { color: #747888; font-size: 11px; margin-left: 4px; font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body>
   <header>
-    <div class="heading"><h1>SemiDone · V7 外观原型</h1><span class="tag">第一版</span></div>
+    <div class="heading"><h1>SemiDone · V7 交互与材质</h1><span class="tag">修订版</span></div>
     <div class="controls">
       <button type="button" data-width="400" data-height="700" aria-pressed="false">最小窗口</button>
       <button type="button" data-width="550" data-height="900" aria-pressed="true">日常窄窗</button>
@@ -35,13 +35,23 @@
       <button type="button" data-page="/settings" aria-pressed="false">设置</button>
       <a href="/" target="_blank" rel="noopener">独立打开 ↗</a>
       <span id="dimensions">550 × 900</span>
+      <span id="motion-status" style="font-size:11px;color:#747888" role="status">正在检查动效状态</span>
+      <span id="motion-last" style="font-size:11px;color:#747888" role="status">等待完成任务或拖动导航</span>
     </div>
-    <p>可在设置中切换明亮、深色、梦粉及可选玻璃。这里使用浏览器演示数据，与桌面端数据独立；置顶、自启和窗口形态需在桌面端验证。</p>
+    <p>先完成一条待办，观察先淡化、再向右滑出与列表补位，完成记录只在「已完成」查看。按住导航拖动，松手切页；点击标签也会移动滑块。新建弹窗支持进出动画，页面切换短暂淡入。设置中的界面动效开关独立控制全部动画，优先于系统减少动效；关闭即停。这里使用独立浏览器数据；GPU 效果、DPI 与桌面窗口形态仍需桌面实测。</p>
   </header>
   <main><div class="viewport" id="viewport"><iframe id="app" title="SemiDone 可交互原型" src="/"></iframe></div></main>
   <script>
     const viewport = document.getElementById('viewport');
     const app = document.getElementById('app');
+    function motionStatus() {
+      try {
+        const root = app.contentDocument.documentElement;
+        const reduced = app.contentWindow.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.getElementById('motion-status').textContent = `界面动效：${root.dataset.uiMotion === 'true' ? '生效' : '未生效'} · 系统减少动效：${reduced ? '开' : '关'}`;
+      } catch { /* The iframe is still loading. */ }
+    }
+    setInterval(motionStatus, 1000);
     document.querySelectorAll('[data-width]').forEach(button => {
       button.addEventListener('click', () => {
         viewport.style.width = button.dataset.width + 'px';
@@ -54,6 +64,20 @@
       button.addEventListener('click', () => { app.src = button.dataset.page; });
     });
     app.addEventListener('load', () => {
+      motionStatus();
+      const last = document.getElementById('motion-last');
+      app.contentDocument.addEventListener('animationstart', event => {
+        if (event.animationName === 'ui-task-exit') last.textContent = '任务退场：浏览器已开始播放';
+      });
+      app.contentDocument.addEventListener('animationend', event => {
+        if (event.animationName === 'ui-task-exit') last.textContent = `任务退场：播放完成 ${Math.round(event.elapsedTime * 1000)}ms`;
+      });
+      app.contentDocument.addEventListener('pointermove', event => {
+        if (event.target.closest('.ui-selection-host')?.dataset.navDragging === 'true') last.textContent = '导航：跟手拖动中，松手切页';
+      });
+      app.contentDocument.addEventListener('pointerup', event => {
+        if (event.target.closest('.ui-selection-host')) last.textContent = '导航：已松手，吸附到目标标签';
+      });
       const path = app.contentWindow.location.pathname;
       document.querySelectorAll('[data-page]').forEach(item => item.setAttribute('aria-pressed', String(item.dataset.page === path)));
     });

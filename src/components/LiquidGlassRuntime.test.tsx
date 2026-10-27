@@ -12,7 +12,7 @@ beforeEach(() => {
       liquidGlass: {
         enabled: true,
         blur: 6,
-        refraction: 42,
+        refraction: 42, rimWidth: .55,
         dispersion: true,
       },
     },
@@ -37,19 +37,29 @@ describe('LiquidGlassRuntime', () => {
     const refractionDisplacement = container.querySelector(
       '#semidone-dialog-refraction feDisplacementMap',
     );
-    expect(Number(refractionDisplacement?.getAttribute('scale'))).toBeCloseTo(14.28, 2);
+    const bendReach = Number(refractionDisplacement?.getAttribute('scale'));
+    expect(bendReach).toBeGreaterThan(43); expect(bendReach).toBeLessThanOrEqual(43.2);
 
     const chromaticFilter = container.querySelector(
       '#semidone-dialog-chromatic-refraction',
     );
-    expect(chromaticFilter).toHaveAttribute('x', '-34%');
-    expect(chromaticFilter).toHaveAttribute('y', '-34%');
-    expect(chromaticFilter).toHaveAttribute('width', '168%');
-    expect(chromaticFilter).toHaveAttribute('height', '168%');
+    expect(chromaticFilter).toHaveAttribute('x', '-50%');
+    expect(chromaticFilter).toHaveAttribute('y', '-50%');
+    expect(chromaticFilter).toHaveAttribute('width', '200%');
+    expect(chromaticFilter).toHaveAttribute('height', '200%');
+    expect(chromaticFilter).toHaveAttribute('color-interpolation-filters', 'sRGB');
+    expect(chromaticFilter).toHaveAttribute('primitiveUnits', 'userSpaceOnUse');
+    expect(chromaticFilter?.querySelector('feImage')).toHaveAttribute('width', '320');
+    expect(chromaticFilter?.querySelector('feImage')).toHaveAttribute('height', '240');
 
     const chromaticDisplacements = chromaticFilter?.querySelectorAll('feDisplacementMap');
     expect(chromaticDisplacements).toHaveLength(3);
-    expect(Number(chromaticDisplacements?.[0]?.getAttribute('scale'))).toBeCloseTo(23.59, 2);
+    expect(Number(chromaticDisplacements?.[0]?.getAttribute('scale'))).toBe(bendReach);
+    expect(Number(chromaticDisplacements?.[1]?.getAttribute('scale'))).toBeCloseTo(bendReach * 1.16);
+    expect(chromaticFilter?.querySelector('feComposite[in="rgb"]')).toHaveAttribute('in2', 'face');
+    expect(chromaticFilter?.querySelector('feComposite[result="clearFace"]')).toHaveAttribute('operator', 'out');
+    expect(chromaticFilter?.querySelector('feComposite[result="coloredRim"]')).toHaveAttribute('in2', 'rimMask');
+    expect(chromaticFilter?.querySelector('feBlend, feFlood')).toBeNull();
   });
 
   it('updates the root switches without rebuilding dialog components', () => {

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import { APP_VERSION, RELEASE_HIGHLIGHTS, RELEASE_MONTH } from '../data/release';
+import { useDialogMotion } from '../ui/useDialogMotion';
+import { Surface } from '../ui/Surface';
+import { useDraggableDialog } from '../ui/useDraggableDialog';
 
 const WELCOME_STORAGE_KEY = `welcome_shown_${APP_VERSION}`;
 
@@ -8,6 +11,8 @@ export default function StartupTip() {
   const [show, setShow] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const primaryActionRef = useRef<HTMLButtonElement>(null);
+  const { root, present } = useDialogMotion(show);
+  const drag = useDraggableDialog(present);
 
   useEffect(() => {
     if (localStorage.getItem(WELCOME_STORAGE_KEY)) return;
@@ -16,7 +21,7 @@ export default function StartupTip() {
   }, []);
 
   useEffect(() => {
-    if (!show) return;
+    if (!show || !present) return;
 
     primaryActionRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -25,26 +30,27 @@ export default function StartupTip() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [show]);
+  }, [show, present]);
 
   const handleClose = () => {
     if (dontShowAgain) localStorage.setItem(WELCOME_STORAGE_KEY, 'true');
     setShow(false);
   };
 
-  if (!show) return null;
+  if (!present) return null;
 
   return (
     <div
+      ref={root}
       data-no-overlay
       className="welcome-dialog-overlay liquid-glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-2.5"
     >
-      <div
-        role="dialog"
+      <Surface role="dialog" elementRef={drag.surface}
+        htmlRole="dialog"
         aria-modal="true"
         aria-labelledby="welcome-dialog-title"
         data-glass-layout="unified"
-        className="welcome-dialog liquid-glass-modal-surface relative flex max-h-[92vh] w-[min(440px,calc(100vw-20px))] flex-col overflow-hidden rounded-[26px] border border-border/70 bg-card p-5 text-foreground shadow-[0_18px_48px_rgba(15,23,42,0.16)] animate-scale-in motion-reduce:animate-none"
+        className="welcome-dialog liquid-glass-modal-surface relative flex max-h-[92vh] w-[min(440px,calc(100vw-20px))] flex-col overflow-hidden rounded-[26px] border border-border/70 bg-card p-5 text-foreground shadow-[0_18px_48px_rgba(15,23,42,0.16)]"
         style={{ fontFamily: '"Segoe UI Variable", "Microsoft YaHei UI", sans-serif' }}
       >
         <div
@@ -61,7 +67,7 @@ export default function StartupTip() {
           <X className="h-[17px] w-[17px]" />
         </button>
 
-        <header className="welcome-dialog-header flex shrink-0 items-start gap-3.5 pr-10">
+        <header {...drag.handle} aria-label="拖动公告弹窗" className="dialog-drag-handle welcome-dialog-header flex shrink-0 items-start gap-3.5 pr-10">
           <div className="welcome-dialog-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 shadow-[inset_0_1px_0_rgba(255,255,255,.55)]">
             <Sparkles className="h-6 w-6 text-primary" strokeWidth={1.8} />
           </div>
@@ -125,7 +131,7 @@ export default function StartupTip() {
             开始体验
           </button>
         </footer>
-      </div>
+      </Surface>
     </div>
   );
 }

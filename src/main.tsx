@@ -7,6 +7,8 @@ import "./styles/liquidGlassPreview.css";
 import "./styles/parameterSlider.css";
 import "./styles/zenMode.css";
 import "./styles/workspace.css";
+import "./styles/ui.css";
+import "./styles/liquidGlassSurfaces.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

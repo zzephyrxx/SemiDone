@@ -12,8 +12,9 @@ export default function ZenModeSettingsSection() {
   const [expanded, setExpanded] = useState(false);
   return (
     <section aria-labelledby="zen-mode-settings-title" className="card card-shadow rounded-2xl p-3">
-      <div className="mb-3 flex items-center gap-3 px-1">
-        <ZenIcon variant={settings.enabled ? 'on' : 'off'} className={`h-5 w-5 shrink-0 ${settings.enabled ? 'text-violet-500' : 'text-muted-foreground'}`} />
+      <div className={`flex items-center gap-3 px-1 ${settings.enabled ? 'mb-3' : ''}`}>
+        <ZenIcon variant={settings.enabled ? 'on' : 'off'} size={22}
+          className={settings.enabled ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500 dark:text-slate-400'} />
         <div className="min-w-0 flex-1">
           <h2 id="zen-mode-settings-title" className="text-base font-semibold text-foreground">Zen 模式</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">只看未完成待办，背景透明、文字清晰</p>
@@ -28,20 +29,20 @@ export default function ZenModeSettingsSection() {
           <span className={`absolute left-0.5 top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform ${settings.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
         </button>
       </div>
-      <details open={settings.enabled && expanded} className="group rounded-xl border border-border/70">
-        <summary aria-disabled={!settings.enabled} tabIndex={settings.enabled ? 0 : -1}
+      {settings.enabled && <details open={expanded} className="group rounded-xl border border-border/70">
+        <summary
           onClick={(event) => {
             event.preventDefault();
-            if (settings.enabled) setExpanded((open) => !open);
+            setExpanded((open) => !open);
           }}
-          className={`flex list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium [&::-webkit-details-marker]:hidden ${settings.enabled ? 'cursor-pointer text-foreground' : 'cursor-not-allowed text-muted-foreground opacity-60'}`}>
+          className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium text-foreground [&::-webkit-details-marker]:hidden">
           Zen 模式配置
           <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
         </summary>
-        {settings.enabled && expanded && <div className="px-2 pb-2">
+        {expanded && <div className="px-2 pb-2">
           <ZenModeAppearance settings={settings} onChange={(updates) => void setZenMode(updates)} />
         </div>}
-      </details>
+      </details>}
     </section>
   );
 }

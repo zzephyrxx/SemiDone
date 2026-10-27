@@ -2,9 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import type { TaskFilter as TaskFilterType, SortField } from '../types';
+import { useShallow } from 'zustand/react/shallow';
 
 export default function TaskFilter() {
-  const { filter, searchQuery, setFilter, stats, filteredTasks, sortConfig, setSortConfig } = useTaskStore();
+  const { filter, searchQuery, setFilter, total, filteredCount, sortConfig, setSortConfig } = useTaskStore(useShallow(state => ({
+    filter: state.filter, searchQuery: state.searchQuery, setFilter: state.setFilter, total: state.stats.total,
+    filteredCount: state.filteredTasks.length, sortConfig: state.sortConfig, setSortConfig: state.setSortConfig,
+  })));
   const [showSortMenu, setShowSortMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -71,7 +75,7 @@ export default function TaskFilter() {
   };
 
   const currentFilterLabel = filterOptions.find(opt => opt.value === filter)?.label || '全部';
-  const currentFilterCount = filter === 'all' ? (stats.total || 0) : filteredTasks.length;
+  const currentFilterCount = filter === 'all' ? total : filteredCount;
 
   return (
     <div className="task-filter space-y-2">
@@ -102,7 +106,7 @@ export default function TaskFilter() {
       <div className="task-filter-summary flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {filter === 'all' ? (
-            <>全部 · {stats.total || 0} 个待办</>
+            <>全部 · {total || 0} 个待办</>
           ) : (
             <>{currentFilterLabel} · {currentFilterCount} 个待办</>
           )}

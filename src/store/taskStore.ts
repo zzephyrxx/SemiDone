@@ -4,6 +4,8 @@ import type { Task, TaskStats, CreateTaskRequest, UpdateTaskRequest, TaskFilter,
 import { api } from '../api/tauri';
 import { toast } from 'sonner';
 
+const completingTaskIds = new Set<string>();
+
 // 本地计算任务统计（避免每次调用 Rust API）
 const computeLocalStats = (tasks: Task[]): TaskStats => {
   const now = new Date();
@@ -19,7 +21,7 @@ const computeLocalStats = (tasks: Task[]): TaskStats => {
       if (!task.completed && dueDateStr < todayStr) {
         overdue++;
       }
-      if (dueDateStr === todayStr) {
+      if (!task.completed && dueDateStr === todayStr) {
         todayCount++;
       }
     }
@@ -180,7 +182,6 @@ export const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery:
 
   const filtered: Task[] = [];
   const pinned: Task[] = [];
-  const completedInAll: Task[] = [];
 
   for (const task of tasks) {
     let matchesFilter = false;
@@ -196,10 +197,10 @@ export const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery:
         matchesFilter = !task.completed && !!task.dueDate && task.dueDate.split('T')[0] < todayStr;
         break;
       case 'today':
-        matchesFilter = !!task.dueDate && task.dueDate.split('T')[0] === todayStr;
+        matchesFilter = !task.completed && !!task.dueDate && task.dueDate.split('T')[0] === todayStr;
         break;
       default:
-        matchesFilter = true;
+        matchesFilter = !task.completed;
         break;
     }
 
@@ -219,8 +220,6 @@ export const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery:
 
     if (task.isPinned) {
       pinned.push(task);
-    } else if (filter === 'all' && task.completed) {
-      completedInAll.push(task);
     } else {
       filtered.push(task);
     }
@@ -249,7 +248,7 @@ export const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery:
 
   const sortedPinned = sortTasks(pinned);
   const sorted = sortTasks(filtered);
-  return filter === 'all' ? [...sortedPinned, ...sorted, ...completedInAll] : [...sortedPinned, ...sorted];
+  return [...sortedPinned, ...sorted];
 };
 
 export const useTaskStore = create<TaskState>()(devtools(
@@ -363,8 +362,9 @@ export const useTaskStore = create<TaskState>()(devtools(
     
     toggleTaskComplete: async (id: string) => {
       const task = get().tasks.find(t => t.id === id);
-      if (!task) return;
-
+      if (!task || completingTaskIds.has(id)) return;
+      completingTaskIds.add(id);
+      try {
       const wasCompleted = task.completed;
 
       // 处理循环任务：完成时创建下一个周期任务
@@ -409,37 +409,19 @@ export const useTaskStore = create<TaskState>()(devtools(
 
         // 先完成当前任务（清除 recurrence 使其变成普通任务），再创建下一个
         await get().updateTask(id, { completed: true, recurrence: null, clearRecurrence: true });
+        if (!get().tasks.find(item => item.id === id)?.completed) return;
         await createNextRecurrenceTask();
       } else {
         await get().updateTask(id, { completed: !task.completed });
       }
 
-      // Show celebration when completing a task
-      if (!wasCompleted) {
-        // Check if this will be the last task to complete
+      if (!wasCompleted && get().tasks.find(item => item.id === id)?.completed) {
         const currentTasks = get().tasks;
-        const pendingTasks = currentTasks.filter(t => !t.completed);
-
-        if (pendingTasks.length === 0 && currentTasks.length > 0) {
-          // This is the last task - show only all complete animation
-          get().showCelebration('🏅 恭喜！所有待办都完成了！🏅', true);
-        } else {
-          // Regular task completion
-          const celebrationMessages = [
-            '太棒了！又完成一个待办 🎉',
-            '干得漂亮！继续保持 ✨',
-            '待办完成！你真厉害 🌟',
-            '又一个目标达成！👏',
-            '完成得很好！加油 💪',
-            '高效收尾！待办清单又轻了一步 📉',
-            '待办搞定！离目标又近一截 🚀',
-            '利落完成！这份执行力超赞 👍',
-            '又清一项！节奏把握得刚刚好 ⏱️'
-          ];
-          const randomMessage = celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)];
-          get().showCelebration(randomMessage);
+        if (currentTasks.length > 0 && currentTasks.every(item => item.completed)) {
+          get().showCelebration('所有待办已完成', true);
         }
       }
+      } finally { completingTaskIds.delete(id); }
     },
     
     setFilter: (filter: TaskFilter) => {

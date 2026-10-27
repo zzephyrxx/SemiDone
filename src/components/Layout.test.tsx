@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../store/settingsStore', () => ({
-  useSettingsStore: () => ({
+  useSettingsStore: (selector: (state: { settings: typeof mocks.settings; toggleIsPinned: typeof mocks.toggleIsPinned; toggleIsCollapsed: typeof mocks.toggleIsCollapsed; setZenMode: typeof mocks.setZenMode }) => unknown) => selector({
     settings: mocks.settings,
     toggleIsPinned: mocks.toggleIsPinned,
     toggleIsCollapsed: mocks.toggleIsCollapsed,
@@ -35,7 +35,7 @@ vi.mock('../store/settingsStore', () => ({
 }));
 
 vi.mock('../store/usageStore', () => ({
-  useUsageStore: () => ({
+  useUsageStore: (selector: (state: { pomodoro: { isActive: boolean; currentMode: string; timeLeft: number; cycle: number }; formatTime: () => string }) => unknown) => selector({
     pomodoro: { isActive: false, currentMode: 'work', timeLeft: 1500, cycle: 0 },
     formatTime: () => '25:00',
   }),
@@ -105,6 +105,18 @@ describe('Layout header', () => {
     expect(mocks.invoke).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '确认退出' }));
     expect(mocks.invoke).toHaveBeenCalledWith('exit_app');
+  });
+
+  it.each(['bar', 'floating'])('expands %s mode before presenting an explicit exit confirmation', async mode => {
+    mocks.settings.collapseMode = mode; mocks.settings.closeToTray = false;
+    const view = render(<MemoryRouter><Layout /></MemoryRouter>);
+    await act(async () => { fireEvent.click(mode === 'floating' ? screen.getByRole('button', { name: '关闭悬浮球' }) : screen.getByTitle('展开并关闭应用')); });
+    expect(mocks.toggleIsCollapsed).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(mocks.invoke).not.toHaveBeenCalled();
+    mocks.settings.collapseMode = 'expanded';
+    view.rerender(<MemoryRouter><Layout /></MemoryRouter>);
+    expect(screen.getByRole('alertdialog')).toBeVisible();
   });
 
   it('reports hide failures without falling back to process exit or browser close', async () => {

@@ -76,31 +76,15 @@ describe('settings page sections', () => {
     expect(glassSwitch).toBeChecked();
     expect(glassSwitch).toHaveClass('bg-cyan-600', 'dark:bg-cyan-500');
 
+    expect(within(section).getByRole('group', { name: '液态玻璃预设' })).toBeVisible();
     expect(within(section).queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
-    expect(within(section).queryByTestId('liquid-glass-controls')).not.toBeInTheDocument();
-    fireEvent.click(within(section).getByText('液态玻璃配置'));
-    const blurSlider = within(section).getByRole('slider', { name: '模糊程度' });
-    expect(blurSlider).toHaveValue('6');
-    expect(blurSlider).toHaveAttribute('min', '1');
-    expect(blurSlider).toHaveAttribute('max', '10');
-    expect(within(section).getByRole('slider', { name: '折射强度' })).toHaveValue('42');
-
     fireEvent.click(screen.getByRole('button', { name: /深色/ }));
     fireEvent.click(screen.getByRole('switch', { name: /开机自启动/ }));
-    fireEvent.change(blurSlider, { target: { value: '9' } });
-    fireEvent.change(screen.getByRole('slider', { name: '折射强度' }), { target: { value: '60' } });
-    fireEvent.click(screen.getByRole('switch', { name: '色散效果' }));
-    fireEvent.click(within(section).getByText('液态玻璃配置'));
-    expect(within(section).queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
-    fireEvent.click(within(section).getByText('液态玻璃配置'));
-    expect(within(section).getByRole('slider', { name: '模糊程度' })).toHaveValue('6');
+    fireEvent.click(screen.getByRole('button', { name: /极致/ }));
     fireEvent.click(glassSwitch);
-
     expect(onThemeChange).toHaveBeenCalledWith('dark');
     expect(onToggleAutoStart).toHaveBeenCalledOnce();
-    expect(onLiquidGlassChange).toHaveBeenCalledWith({ blur: 9 });
-    expect(onLiquidGlassChange).toHaveBeenCalledWith({ refraction: 60 });
-    expect(onLiquidGlassChange).toHaveBeenCalledWith({ dispersion: false });
+    expect(onLiquidGlassChange).toHaveBeenCalledWith({ enabled: true, preset: 'extreme', blur: 4, refraction: 0, strength: 0, rimWidth: .5, magnify: .07, dispersion: true });
     expect(onLiquidGlassChange).toHaveBeenCalledWith({ enabled: false });
   });
 
@@ -128,7 +112,7 @@ describe('settings page sections', () => {
     expect(within(section).queryByText('液态玻璃配置')).not.toBeInTheDocument();
     expect(within(section).queryByTestId('liquid-glass-controls')).not.toBeInTheDocument();
     expect(within(section).queryByRole('slider', { name: '模糊程度' })).not.toBeInTheDocument();
-    expect(within(section).queryByRole('slider', { name: '折射强度' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('slider', { name: '扭曲强度' })).not.toBeInTheDocument();
     expect(within(section).queryByRole('switch', { name: '色散效果' })).not.toBeInTheDocument();
   });
 

@@ -65,6 +65,11 @@ export interface LiquidGlassSettings {
   blur: number;
   refraction: number;
   dispersion: boolean;
+  /** Optional in older saved settings; normalized before rendering. */
+  strength?: number;
+  rimWidth?: number;
+  magnify?: number;
+  preset?: 'standard' | 'extreme';
 }
 
 export interface ZenModeSettings {
@@ -80,6 +85,8 @@ export interface ZenModeSettings {
 
 export interface Settings {
   theme: Theme;
+  fontScale?: number;
+  animationsEnabled?: boolean;
   liquidGlass: LiquidGlassSettings;
   zenMode?: ZenModeSettings;
   // Read-only migration source for settings saved before the Zen rename.

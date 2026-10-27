@@ -40,6 +40,8 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
     }))
   );
   const [isHovered, setIsHovered] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const completionPending = useRef(false);
   const isEditing = editingTaskId === task.id;
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
@@ -87,9 +89,13 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
     }
   }, [isEditing, task.title, task.description, task.priority, task.dueDate]);
 
-  const handleToggleComplete = (e: React.MouseEvent) => {
+  const handleToggleComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleTaskComplete(task.id);
+    if (completionPending.current) return;
+    completionPending.current = true;
+    setIsCompleting(true);
+    try { await toggleTaskComplete(task.id); }
+    finally { completionPending.current = false; setIsCompleting(false); }
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -229,7 +235,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
   return (
     <div
       className={`
-        group relative p-2 rounded-lg border transition-all duration-200 cursor-pointer task-card
+        group relative p-2 rounded-lg border transition-all duration-200 cursor-pointer task-card ${isEditing ? 'is-editing' : ''}
         ${task.completed
           ? 'bg-gradient-to-r from-emerald-50/80 to-green-50/80 border-emerald-200/60 shadow-inner completed'
           : isOverdue
@@ -261,6 +267,8 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         {/* 完成状态按钮 */}
         <button
           onClick={handleToggleComplete}
+          disabled={isCompleting}
+          aria-busy={isCompleting}
           aria-label={task.completed ? `标记未完成：${task.title}` : `完成待办：${task.title}`}
           className={`
             flex-shrink-0 transition-all duration-200 pt-1
@@ -284,16 +292,17 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         <div className="flex-1 min-w-0">
           {isEditing ? (
             /* 编辑模式 */
-            <div className="flex flex-col h-full">
-              <div className="flex-grow space-y-3">
+            <div className="task-edit-form flex flex-col">
+              <div className="space-y-3">
                 {/* 标题编辑 */}
                 <div className="relative">
                   <Type className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
+                    aria-label="待办标题"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-base font-medium bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="task-title-input w-full pl-9 pr-3 py-2 font-medium bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="待办标题"
                     maxLength={100}
                     onClick={(e) => e.stopPropagation()}
@@ -304,9 +313,10 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                 <div className="relative">
                   <FileText className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                   <textarea
+                    aria-label="待办描述"
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                    className="task-description-input w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                     placeholder="待办描述"
                     rows={2}
                     maxLength={500}
@@ -450,7 +460,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                   )}
                   <h3
                     className={`
-                      flex-1 min-w-0 text-base font-medium leading-6 transition-all duration-200
+                      flex-1 min-w-0 text-base font-medium leading-6 transition-colors duration-200
                       whitespace-nowrap overflow-hidden text-ellipsis mt-1
                       ${task.completed
                         ? 'line-through text-emerald-700/80 decoration-emerald-400 decoration-2'

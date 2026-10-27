@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "SemiDone"
-version = "6.1.0"
+version = "7.0.0"
 dependencies = [
  "base64 0.21.7",
  "chrono",

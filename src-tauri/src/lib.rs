@@ -1,3 +1,4 @@
+mod autostart;
 mod commands;
 mod models;
 mod single_instance;
@@ -103,6 +104,9 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
+            if let Err(error) = autostart::refresh_existing_registration(app.handle()) {
+                log::warn!("Failed to refresh autostart registration: {error}");
+            }
             if let Some(window) = app.get_webview_window("main") {
                 app.state::<WindowPinning>()
                     .start(window)
