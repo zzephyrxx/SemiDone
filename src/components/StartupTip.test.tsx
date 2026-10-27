@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import StartupTip from './StartupTip';
 
-const WELCOME_STORAGE_KEY = 'welcome_shown_6.1.0';
+const WELCOME_STORAGE_KEY = 'welcome_shown_5.2.0';
 
 function renderWelcome() {
   render(<StartupTip />);
@@ -22,22 +22,26 @@ afterEach(() => {
 });
 
 describe('StartupTip welcome dialog', () => {
-  it('renders the approved 6.1.0 release overview', () => {
+  it('renders an accessible 5.2 release overview with the signature header curve', () => {
     renderWelcome();
 
     const dialog = screen.getByRole('dialog', { name: '欢迎使用 SemiDone' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveAttribute('data-glass-layout', 'unified');
     expect(dialog.parentElement).toHaveAttribute('data-no-overlay');
-    expect(dialog).toHaveClass('liquid-glass-modal-surface');
-    expect(dialog.querySelectorAll('.liquid-glass-modal-surface')).toHaveLength(0);
-    expect(screen.queryByTestId('welcome-header-curve')).not.toBeInTheDocument();
-
-    expect(screen.getByText('V6.1.0 · 2026.10')).toBeVisible();
-    expect(screen.getByText('V6.1.0 更新内容')).toBeVisible();
-    expect(screen.queryByText(/5\.0.*主要更新/)).not.toBeInTheDocument();
-    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual(["新增液态玻璃 UI，视觉更有质感。","新增 Zen（禅·极简模式），极致简约，回归记事本。","修复使用 Win+D 等方式返回桌面后，窗口置顶效果丢失的问题。","修复使用时长跨天统计和重复累计问题。","修复其他若干已知问题。"]);
-    expect(screen.getByRole('button', { name: '开始体验' })).toBeVisible();
+    expect(dialog.parentElement).not.toHaveClass('bg-[#0077B6]/30');
+    expect(dialog.parentElement).not.toHaveClass('backdrop-blur-[3px]');
+    expect(dialog).toHaveClass('shadow-[0_14px_36px_rgba(15,23,42,0.12)]');
+    expect(dialog).not.toHaveClass('shadow-[0_24px_70px_rgba(0,119,182,0.3)]');
+    expect(screen.getByText('v5.1.0 + v5.2.0 更新内容')).toBeVisible();
+    expect(screen.getAllByRole('listitem')).toHaveLength(7);
+    expect(screen.getByText('当前版本已是最新时，设置页会明确显示“已是最新”')).toBeVisible();
+    expect(screen.getByText('发现新版本时，仅在设置页提供更新入口，不再弹出提示')).toBeVisible();
+    expect(screen.getByText('修复 Windows 显示桌面后窗口置顶失效的问题')).toBeVisible();
+    expect(screen.getByText('减少了误选、误拖、意外选中文字等异常操作')).toBeVisible();
+    expect(screen.getByText('移除了应用内无效的右键功能')).toBeVisible();
+    expect(screen.getByText('修复了已完成任务仍显示逾期时间的问题')).toBeVisible();
+    expect(screen.getByText('增加了悬浮球模式下超出边界的判定逻辑')).toBeVisible();
+    expect(screen.getByTestId('welcome-header-curve')).toBeVisible();
   });
 
   it('remembers the choice when starting with “本版本不再显示” selected', () => {
@@ -66,9 +70,8 @@ describe('StartupTip welcome dialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('shows 6.1.0 even when previous versions were suppressed', () => {
-    localStorage.setItem('welcome_shown_5.2.0', 'true');
-    localStorage.setItem('welcome_shown_6.0', 'true');
+  it('shows the new release even when the previous version was suppressed', () => {
+    localStorage.setItem('welcome_shown_5.0.1', 'true');
     renderWelcome();
 
     expect(screen.getByRole('dialog', { name: '欢迎使用 SemiDone' })).toBeVisible();

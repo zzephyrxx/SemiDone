@@ -1,75 +1,111 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { useState } from 'react';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Settings } from '../../types';
-import AppearanceSettingsSection from './AppearanceSettingsSection';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import LiquidGlassPreview from './LiquidGlassPreview';
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(cleanup);
 
-const initialSettings: Settings = {
-  theme: 'light', liquidGlass: { enabled: true, blur: 6, refraction: 42, dispersion: true },
-  notifications: true, autoSave: true, isPinned: false, isCollapsed: false,
-  collapseMode: 'expanded', useCapsuleMode: false,
-};
+const methodIds = ['css', 'noise', 'edge', 'chromatic', 'interactive'] as const;
 
-function EditableAppearance() {
-  const [settings, setSettings] = useState(initialSettings);
-  return <AppearanceSettingsSection settings={settings}
-    onLiquidGlassChange={(updates) => setSettings((current) => ({
-      ...current, liquidGlass: { ...current.liquidGlass, ...updates },
-    }))}
-    onThemeChange={vi.fn()} onToggleAutoStart={vi.fn()} onTransparencyToggle={vi.fn()}
-    onTransparencyLevelChange={vi.fn()} onToggleCapsuleMode={vi.fn()} />;
-}
+describe('LiquidGlassPreview', () => {
+  it('renders all five reference implementations and their SVG filters', () => {
+    render(<LiquidGlassPreview />);
 
-describe('liquid-glass parameter preview', () => {
-  it('drags the miniature within the scene and keeps its position when parameters change', () => {
-    vi.stubGlobal('PointerEvent', MouseEvent);
-    render(<EditableAppearance />);
-    const card = screen.getByRole('group', { name: '可拖动的玻璃预览小窗' });
-    const scene = card.parentElement!;
-    Object.defineProperties(scene, { clientWidth: { value: 400 }, clientHeight: { value: 180 } });
-    Object.defineProperties(card, { offsetWidth: { value: 260 }, offsetHeight: { value: 110 } });
-    card.setPointerCapture = vi.fn();
-    card.releasePointerCapture = vi.fn();
-    fireEvent.pointerDown(card, { button: 0, clientX: 200, clientY: 90 });
-    fireEvent.pointerMove(card, { clientX: 225, clientY: 105 });
-    expect(card.style.translate).toBe('25px 15px');
-    fireEvent.change(screen.getByRole('slider', { name: '模糊程度' }), { target: { value: '9' } });
-    expect(card.style.translate).toBe('25px 15px');
-    expect(card.style.backdropFilter).toContain('blur(17.78px)');
-    fireEvent.pointerMove(card, { clientX: 1000, clientY: 1000 });
-    expect(card.style.translate).toBe('62px 27px');
-    fireEvent.pointerUp(card);
-    expect(card).not.toHaveClass('is-dragging');
-    fireEvent.pointerMove(card, { clientX: -1000, clientY: -1000 });
-    expect(card.style.translate).toBe('62px 27px');
-    fireEvent.keyDown(card, { key: 'ArrowLeft' });
-    expect(card.style.translate).toBe('54px 27px');
-    fireEvent.pointerDown(card, { button: 0, clientX: 200, clientY: 90 });
-    fireEvent.pointerMove(card, { clientX: -1000, clientY: -1000 });
-    expect(card.style.translate).toBe('-62px -27px');
-    fireEvent.pointerCancel(card);
-    expect(card).not.toHaveClass('is-dragging');
+    expect(screen.getByRole('heading', { name: '液态玻璃效果预览' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '切换演示背景' })).toBeVisible();
+    ['磨砂玻璃', '液态玻璃', '边缘折射玻璃', '色散玻璃', '交互式液态玻璃'].forEach(
+      (title) => expect(screen.getByRole('heading', { name: title })).toBeVisible(),
+    );
+    expect(screen.queryByText('最稳妥')).not.toBeInTheDocument();
+    expect(screen.queryByText('兼容性：较高')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId(/^liquid-preview-glass-/)).toHaveLength(5);
+    expect(document.getElementById('preview-global-noise-filter')).toBeInTheDocument();
+    expect(document.getElementById('preview-edge-filter')).toBeInTheDocument();
+    expect(document.getElementById('preview-chromatic-filter')).toBeInTheDocument();
+    expect(document.getElementById('preview-interactive-filter')).toBeInTheDocument();
   });
 
-  it('updates the real blur, refraction and dispersion filters with the sliders', () => {
-    render(<EditableAppearance />);
-    const preview = screen.getByRole('figure', { name: '液态玻璃实时预览' });
-    const card = preview.querySelector<HTMLElement>('.liquid-glass-preview-card')!;
-    expect(card.style.backdropFilter).toContain('blur(11.11px)');
-    expect(card.style.backdropFilter).toContain('chromatic-refraction');
-    fireEvent.change(screen.getByRole('slider', { name: '模糊程度' }), { target: { value: '9' } });
-    expect(card.style.backdropFilter).toContain('blur(17.78px)');
-    fireEvent.change(screen.getByRole('slider', { name: '折射强度' }), { target: { value: '100' } });
-    const displacement = preview.querySelector('filter[id$="-refraction"] feDisplacementMap');
-    expect(Number(displacement?.getAttribute('scale'))).toBe(34);
-    fireEvent.click(screen.getByRole('switch', { name: '色散效果' }));
-    expect(card.style.backdropFilter).not.toContain('chromatic-refraction');
-    expect(within(preview).getByText(/折射 100% · 色散关/)).toBeVisible();
-    fireEvent.click(screen.getByRole('switch', { name: '液态玻璃' }));
-    expect(screen.queryByRole('figure', { name: '液态玻璃实时预览' })).not.toBeInTheDocument();
+  it('keeps an independent bounded drag position for every glass pane', () => {
+    render(<LiquidGlassPreview />);
+
+    methodIds.forEach((methodId, index) => {
+      const scene = screen.getByTestId(`liquid-preview-scene-${methodId}`);
+      const glass = screen.getByTestId(`liquid-preview-glass-${methodId}`);
+      Object.defineProperty(scene, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({
+          x: 0,
+          y: 0,
+          width: 480,
+          height: 270,
+          top: 0,
+          right: 480,
+          bottom: 270,
+          left: 0,
+          toJSON: () => ({}),
+        }),
+      });
+      Object.defineProperty(glass, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({
+          x: 120,
+          y: 60,
+          width: 240,
+          height: 150,
+          top: 60,
+          right: 360,
+          bottom: 210,
+          left: 120,
+          toJSON: () => ({}),
+        }),
+      });
+
+      const dx = 24 + index * 5;
+      const dy = 12 + index * 3;
+      fireEvent.pointerDown(glass, {
+        button: 0,
+        pointerId: index + 1,
+        clientX: 180,
+        clientY: 120,
+      });
+      fireEvent.pointerMove(glass, {
+        pointerId: index + 1,
+        clientX: 180 + dx,
+        clientY: 120 + dy,
+      });
+      expect(glass.style.transform).toContain(`translate(${dx}px, ${dy}px)`);
+      fireEvent.pointerUp(glass, {
+        pointerId: index + 1,
+        clientX: 180 + dx,
+        clientY: 120 + dy,
+      });
+    });
+
+    const positions = methodIds.map(
+      (methodId) => screen.getByTestId(`liquid-preview-glass-${methodId}`).style.transform,
+    );
+    expect(new Set(positions).size).toBe(5);
+  });
+
+  it('updates the shared preview controls without moving the fixed container', () => {
+    render(<LiquidGlassPreview />);
+
+    fireEvent.change(screen.getByRole('slider', { name: '液态玻璃全局模糊' }), {
+      target: { value: '18' },
+    });
+    fireEvent.change(screen.getByRole('slider', { name: '液态玻璃折射强度' }), {
+      target: { value: '1.5' },
+    });
+    fireEvent.change(screen.getByRole('slider', { name: '液态玻璃圆角程度' }), {
+      target: { value: '56' },
+    });
+
+    expect(screen.getByText('18px')).toBeVisible();
+    expect(screen.getByText('1.50×')).toBeVisible();
+    expect(screen.getByText('56px')).toBeVisible();
+    expect(
+      screen.getByTestId('liquid-preview-glass-edge').style.borderRadius,
+    ).toBe('56px');
   });
 });

@@ -46,9 +46,6 @@ const defaultSettings: Settings = {
   autoStart: false,
 };
 
-let appearancePersistenceQueue: Promise<void> = Promise.resolve();
-let zenModeTransitionQueue: Promise<void> = Promise.resolve();
-
 const EXPANDED_WINDOW_SIZE_CONSTRAINTS = {
   minWidth: 400,
   minHeight: 700,
@@ -64,52 +61,6 @@ const fixedWindowSizeConstraints = (width: number, height: number) => ({
 async function setNativeWindowTopmost(enabled: boolean): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core');
   await invoke('set_window_topmost', { enabled });
-}
-
-async function updateZenMode(updates: Partial<ZenModeSettings>): Promise<void> {
-  const requested = normalizeZenModeSettings({
-    ...normalizeZenModeSettings(useSettingsStore.getState().settings.zenMode), ...updates,
-  });
-  if (requested.active !== normalizeZenModeSettings(useSettingsStore.getState().settings.zenMode).active) {
-    try {
-      await setZenWindowMode(requested.active);
-    } catch (error) {
-      console.error('Switch Zen window geometry failed:', error);
-      toast.error('切换 Zen 窗口大小失败');
-      return;
-    }
-  }
-  const previous = useSettingsStore.getState().settings.zenMode;
-  const zenMode = normalizeZenModeSettings({
-    ...normalizeZenModeSettings(previous),
-    ...updates,
-  });
-  useSettingsStore.setState((state) => ({ settings: { ...state.settings, zenMode } }));
-
-  const rollbackIfCurrent = async () => {
-    if (useSettingsStore.getState().settings.zenMode !== zenMode) return;
-    useSettingsStore.setState((state) => ({ settings: { ...state.settings, zenMode: previous } }));
-    if (zenMode.active !== normalizeZenModeSettings(previous).active) {
-      try { await setZenWindowMode(normalizeZenModeSettings(previous).active); }
-      catch (error) { console.error('Rollback Zen window geometry failed:', error); }
-    }
-  };
-  // Serialize live color/slider updates so an older write cannot win on disk.
-  const persistenceTask = appearancePersistenceQueue.then(() =>
-    api.settings.updateSettings(useSettingsStore.getState().settings),
-  );
-  appearancePersistenceQueue = persistenceTask.then(() => undefined, () => undefined);
-  try {
-    const response = await persistenceTask;
-    if (!response.success) {
-      await rollbackIfCurrent();
-      toast.error(response.error || '保存 Zen 模式设置失败');
-    }
-  } catch (error) {
-    await rollbackIfCurrent();
-    console.error('Update Zen mode settings error:', error);
-    toast.error('保存 Zen 模式设置失败');
-  }
 }
 
 export const useSettingsStore = create<SettingsState>()(devtools(
@@ -138,7 +89,17 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             if (loadedSettings.theme) {
               document.documentElement.setAttribute('data-theme', loadedSettings.theme);
             }
-
+            
+            // 恢复置顶状态
+            if (loadedSettings.isPinned) {
+              try {
+                await setNativeWindowTopmost(true);
+                console.log('Window pinned state restored');
+              } catch (error) {
+                console.warn('Failed to restore pin state:', error);
+              }
+            }
+            
             // 恢复透明度状态
             if (loadedSettings.transparentEnabled) {
               try {

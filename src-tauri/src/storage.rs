@@ -522,30 +522,28 @@ mod tests {
             data_dir: data_dir.clone(),
         };
         let mut original_task = Task::new(
-                "长期关注事项".into(),
-                None,
-                None,
-                None,
-                None,
-                None,
-                true,
-                Some("recurrence-parent".into()),
-            );
+            "长期关注事项".into(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            true,
+            Some("recurrence-parent".into()),
+        );
         original_task.recurrence_child_created = true;
-        let task = storage
-            .add_task(original_task)
-            .expect("create task");
+        let task = storage.add_task(original_task).expect("create task");
 
-        let pin: UpdateTaskRequest = serde_json::from_value(json!({ "isPinned": true }))
-            .expect("deserialize pin update");
+        let pin: UpdateTaskRequest =
+            serde_json::from_value(json!({ "isPinned": true })).expect("deserialize pin update");
         storage.update_task(&task.id, &pin).expect("pin task");
         let reloaded = storage.load_tasks().expect("reload tasks");
         assert!(reloaded[0].is_pinned);
         assert!(reloaded[0].is_recurrence_child);
         assert!(reloaded[0].recurrence_child_created);
 
-        let unpin: UpdateTaskRequest = serde_json::from_value(json!({ "isPinned": false }))
-            .expect("deserialize unpin update");
+        let unpin: UpdateTaskRequest =
+            serde_json::from_value(json!({ "isPinned": false })).expect("deserialize unpin update");
         let updated = storage
             .update_task(&task.id, &unpin)
             .expect("unpin task")

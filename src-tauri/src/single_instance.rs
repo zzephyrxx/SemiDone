@@ -1,11 +1,11 @@
 use std::sync::Mutex;
 
 #[cfg(target_os = "windows")]
+use windows::core::PCWSTR;
+#[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, HANDLE};
 #[cfg(target_os = "windows")]
-use windows::Win32::System::Threading::{CreateMutexW};
-#[cfg(target_os = "windows")]
-use windows::core::PCWSTR;
+use windows::Win32::System::Threading::CreateMutexW;
 
 #[cfg(target_os = "windows")]
 #[derive(Debug)]
@@ -28,7 +28,10 @@ impl SingleInstance {
         #[cfg(target_os = "windows")]
         {
             let mutex_name = format!("Global\\{}_SingleInstance", app_name);
-            let wide_name: Vec<u16> = mutex_name.encode_utf16().chain(std::iter::once(0)).collect();
+            let wide_name: Vec<u16> = mutex_name
+                .encode_utf16()
+                .chain(std::iter::once(0))
+                .collect();
 
             unsafe {
                 let handle = CreateMutexW(None, true, PCWSTR(wide_name.as_ptr()))
@@ -40,7 +43,9 @@ impl SingleInstance {
                 }
 
                 println!("Single instance mutex created successfully");
-                Ok(SingleInstance { mutex_handle: SafeHandle(handle) })
+                Ok(SingleInstance {
+                    mutex_handle: SafeHandle(handle),
+                })
             }
         }
 

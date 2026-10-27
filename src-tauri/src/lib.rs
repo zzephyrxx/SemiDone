@@ -25,6 +25,10 @@ pub fn run() {
 
     // 初始化存储
     let storage = Storage::new().expect("Failed to initialize storage");
+    let topmost_enabled = storage
+        .load_settings()
+        .map(|settings| settings.is_pinned)
+        .unwrap_or(false);
 
     // 创建系统托盘菜单将在setup中处理
 
@@ -32,30 +36,23 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
         .manage(Mutex::new(storage))
-        .manage(WindowPinning::default())
-        .on_window_event(|window, event| {
-            if window.label() != "main" {
-                return;
-            }
-            let pinning = window.state::<WindowPinning>();
-            match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    pinning.set_hidden(true);
-                    if let Err(error) = window.hide() {
-                        log::warn!("Failed to hide window: {error}");
-                        pinning.set_hidden(false);
-                    }
-                    api.prevent_close();
+        .manage(commands::TopmostState::new(topmost_enabled))
+        .on_window_event(|window, event| match event {
+            WindowEvent::CloseRequested { api, .. } => {
+                // 先阻止窗口被销毁，再隐藏到托盘。即使隐藏失败，WebView 仍然
+                // 存活，避免出现进程仍在但托盘无法恢复窗口的状态。
+                api.prevent_close();
+                if let Err(error) = window.hide() {
+                    eprintln!("Failed to hide window after close request: {error}");
                 }
-                WindowEvent::Focused(true) => pinning.set_hidden(false),
-                WindowEvent::Destroyed => pinning.stop(),
-                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
             commands::set_window_topmost,
             commands::set_window_pin_mode,
             commands::get_tasks,
+            commands::set_window_topmost,
+            commands::reassert_window_topmost,
             commands::create_task,
             commands::update_task,
             commands::delete_task,
@@ -91,11 +88,9 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
-            if let Some(window) = app.get_webview_window("main") {
-                app.state::<WindowPinning>()
-                    .start(window)
-                    .map_err(std::io::Error::other)?;
-            }
+            #[cfg(target_os = "windows")]
+            commands::start_topmost_watchdog(app.handle().clone())?;
+
             // 创建托盘右键菜单
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
@@ -107,19 +102,159 @@ pub fn run() {
                 .tooltip("事半·SemiDone")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "show" => show_main_window(app),
-                    "quit" => app.exit(0),
-                    _ => {}
+                .on_menu_event(|app, event| {
+                    println!("🔔 托盘菜单事件: {}", event.id.as_ref());
+                    match event.id.as_ref() {
+                        "show" => {
+                            println!("  └─ 显示窗口");
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = commands::force_window_topmost(&window);
+                                let _ = window.set_focus();
+                                let _ = commands::restore_configured_window_topmost(app, &window);
+                                println!("  └─ ✅ 窗口已显示并聚焦");
+                            }
+                        }
+                        "quit" => {
+                            println!("  └─ 退出应用");
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
-                        button: tauri::tray::MouseButton::Left,
-                        button_state: tauri::tray::MouseButtonState::Up,
-                        ..
-                    } = event
-                    {
-                        show_main_window(tray.app_handle());
+                    match event {
+                        TrayIconEvent::Click {
+                            button,
+                            button_state,
+                            ..
+                        } => {
+                            println!(
+                                "🔔 托盘点击事件 - 按钮: {:?}, 状态: {:?}",
+                                button, button_state
+                            );
+
+                            // 只响应左键释放事件
+                            if button == tauri::tray::MouseButton::Left
+                                && button_state == tauri::tray::MouseButtonState::Up
+                            {
+                                println!("  └─ ✅ 左键释放，立即处理（无阻塞）");
+
+                                if let Some(window) = tray.app_handle().get_webview_window("main") {
+                                    println!("  ├─ 找到窗口: main");
+
+                                    // 检查窗口是否可见
+                                    match window.is_visible() {
+                                        Ok(is_visible) => {
+                                            println!("  ├─ 窗口可见性: {}", is_visible);
+
+                                            if is_visible {
+                                                // 窗口已显示：聚焦并置顶到前台
+                                                println!("  ├─ 📍 窗口已显示，强制聚焦到前台");
+
+                                                // 先取消最小化
+                                                if let Err(e) = window.unminimize() {
+                                                    println!("  │  ├─ ⚠️ 取消最小化失败: {:?}", e);
+                                                } else {
+                                                    println!("  │  ├─ ✅ 取消最小化成功");
+                                                }
+
+                                                // 临时置顶（Windows需要这样才能强制前台）
+                                                if let Err(e) =
+                                                    commands::force_window_topmost(&window)
+                                                {
+                                                    println!("  │  ├─ ⚠️ 临时置顶失败: {:?}", e);
+                                                } else {
+                                                    println!("  │  ├─ ✅ 临时置顶成功");
+                                                }
+
+                                                // 聚焦
+                                                if let Err(e) = window.set_focus() {
+                                                    println!("  │  ├─ ⚠️ 聚焦失败: {:?}", e);
+                                                } else {
+                                                    println!("  │  ├─ ✅ 聚焦成功");
+                                                }
+
+                                                // 按用户设置恢复最终置顶状态。
+                                                let topmost_result =
+                                                    commands::restore_configured_window_topmost(
+                                                        tray.app_handle(),
+                                                        &window,
+                                                    );
+                                                if let Err(e) = topmost_result {
+                                                    println!(
+                                                        "  │  └─ ⚠️ 恢复置顶状态失败: {:?}",
+                                                        e
+                                                    );
+                                                } else {
+                                                    println!("  │  └─ ✅ 已恢复用户置顶设置");
+                                                }
+                                            } else {
+                                                // 窗口隐藏：显示并聚焦
+                                                println!("  ├─ 👁️ 窗口隐藏，重新显示并聚焦");
+
+                                                // 先显示
+                                                if let Err(e) = window.show() {
+                                                    println!("  │  ├─ ⚠️ 显示窗口失败: {:?}", e);
+                                                } else {
+                                                    println!("  │  ├─ ✅ 显示窗口成功");
+                                                }
+
+                                                // 取消最小化
+                                                if let Err(e) = window.unminimize() {
+                                                    println!("  │  ├─ ⚠️ 取消最小化失败: {:?}", e);
+                                                } else {
+                                                    println!("  │  ├─ ✅ 取消最小化成功");
+                                                }
+
+                                                // 临时置顶以强制前台
+                                                if let Err(e) =
+                                                    commands::force_window_topmost(&window)
+                                                {
+                                                    println!("  │  ├─ ⚠️ 临时置顶失败: {:?}", e);
+                                                } else {
+                                                    println!("  │  ├─ ✅ 临时置顶成功");
+                                                }
+
+                                                // 聚焦
+                                                if let Err(e) = window.set_focus() {
+                                                    println!("  │  ├─ ⚠️ 聚焦失败: {:?}", e);
+                                                } else {
+                                                    println!("  │  ├─ ✅ 聚焦成功");
+                                                }
+
+                                                // 按用户设置恢复最终置顶状态。
+                                                let topmost_result =
+                                                    commands::restore_configured_window_topmost(
+                                                        tray.app_handle(),
+                                                        &window,
+                                                    );
+                                                if let Err(e) = topmost_result {
+                                                    println!(
+                                                        "  │  └─ ⚠️ 恢复置顶状态失败: {:?}",
+                                                        e
+                                                    );
+                                                } else {
+                                                    println!("  │  └─ ✅ 已恢复用户置顶设置");
+                                                }
+                                            }
+
+                                            println!("✅ [处理完成] 托盘单击处理完成（无阻塞）\n");
+                                        }
+                                        Err(e) => {
+                                            println!("  └─ ❌ 检查窗口可见性失败: {:?}", e);
+                                        }
+                                    }
+                                } else {
+                                    println!("  └─ ❌ 未找到窗口: main");
+                                }
+                            }
+                            // 不输出忽略消息，减少日志噪音
+                        }
+                        _ => {
+                            // 忽略其他事件（Move, Enter, Leave等），不输出任何日志
+                        }
                     }
                 })
                 .build(app)?;

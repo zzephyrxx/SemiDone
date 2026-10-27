@@ -1,13 +1,73 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  currentMonitor,
+  getCurrentWindow,
+  PhysicalPosition,
+} from '@tauri-apps/api/window';
 import { useSettingsStore } from '../store/settingsStore';
+import {
+  clampWindowPositionToMonitor,
+  findHorizontalSnapEdge,
+} from '../utils/windowSnap';
+
+const DRAG_THRESHOLD = 3;
+const BOUNDARY_SETTLE_DELAY = 120;
+
+interface PointerPosition {
+  x: number;
+  y: number;
+}
+
+interface WindowGeometry {
+  position: PointerPosition;
+  size: {
+    width: number;
+    height: number;
+  };
+  monitor: NonNullable<Awaited<ReturnType<typeof currentMonitor>>>;
+  corrected: boolean;
+}
 
 interface FloatingBallProps {
   onExpand: () => void;
-  onClose: () => void;
-  isTransparent?: boolean; // 添加透明模式支持
 }
 
-export default function FloatingBall({ onExpand, onClose, isTransparent }: FloatingBallProps) {
+async function keepFloatingWindowVisible(
+  onBeforeCorrection?: (position: PointerPosition) => void,
+): Promise<WindowGeometry | null> {
+  const appWindow = getCurrentWindow();
+  const [windowPosition, windowSize, monitor] = await Promise.all([
+    appWindow.outerPosition(),
+    appWindow.outerSize(),
+    currentMonitor(),
+  ]);
+  if (!monitor) return null;
+
+  const safePosition = clampWindowPositionToMonitor(
+    windowPosition,
+    windowSize,
+    monitor,
+  );
+  const corrected =
+    safePosition.x !== windowPosition.x ||
+    safePosition.y !== windowPosition.y;
+
+  if (corrected) {
+    onBeforeCorrection?.(safePosition);
+    await appWindow.setPosition(
+      new PhysicalPosition(safePosition.x, safePosition.y),
+    );
+  }
+
+  return {
+    position: safePosition,
+    size: windowSize,
+    monitor,
+    corrected,
+  };
+}
+
+export default function FloatingBall({ onExpand }: FloatingBallProps) {
   const { settings, setEdgeSnap } = useSettingsStore();
 
   // 应用透明效果
@@ -35,87 +95,179 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
   }, []);
 
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const ballRef = useRef<HTMLDivElement>(null);
-  const [isNearEdge, setIsNearEdge] = useState(false);
+  const dragStartRef = useRef<PointerPosition | null>(null);
+  const nativeDragStartedRef = useRef(false);
+  const suppressClickRef = useRef(false);
+  const suppressClickTimerRef = useRef<number | null>(null);
 
-  // 检测是否接近屏幕边缘
-  const checkEdgeProximity = (x: number, screenWidth: number) => {
-    const threshold = 50;
-    return x < threshold || x > screenWidth - threshold;
-  };
-
-  // 鼠标按下开始拖拽（仅左键）
+  // 左键按下时只记录起点，避免原生拖窗吞掉普通点击事件。
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
-    setIsDragging(true);
-    const rect = ballRef.current?.getBoundingClientRect();
-    if (rect) {
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-    }
-    e.preventDefault();
+    dragStartRef.current = { x: e.screenX, y: e.screenY };
+    nativeDragStartedRef.current = false;
   };
 
-  // 拖拽 & 边缘吸附
+  // 移动超过阈值后才启动原生窗口拖动；释放时再判断是否需要吸附。
   useEffect(() => {
-    if (!isDragging) return;
+    const appWindow = getCurrentWindow();
+    let boundaryTimer: number | null = null;
+    let boundaryCorrectionPromise: Promise<WindowGeometry | null> | null = null;
+    let unlistenMoved: (() => void) | null = null;
+    let disposed = false;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!ballRef.current) return;
-
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
-
-      ballRef.current.style.left = `${newX}px`;
-      ballRef.current.style.top = `${newY}px`;
-
-      const screenWidth = window.screen.width;
-      const ballWidth = ballRef.current.offsetWidth;
-      const ballCenterX = newX + ballWidth / 2;
-
-      setIsNearEdge(checkEdgeProximity(ballCenterX, screenWidth));
+    const clearBoundaryTimer = () => {
+      if (boundaryTimer !== null) {
+        window.clearTimeout(boundaryTimer);
+        boundaryTimer = null;
+      }
     };
 
-    const handleMouseUp = async () => {
-      setIsDragging(false);
+    const keepVisibleOnce = (
+      onBeforeCorrection?: (position: PointerPosition) => void,
+    ) => {
+      if (!boundaryCorrectionPromise) {
+        boundaryCorrectionPromise = keepFloatingWindowVisible(onBeforeCorrection)
+          .finally(() => {
+            boundaryCorrectionPromise = null;
+          });
+      }
+      return boundaryCorrectionPromise;
+    };
 
-      if (!ballRef.current || !isNearEdge) {
-        setIsNearEdge(false);
+    const correctBoundary = async () => {
+      try {
+        await keepVisibleOnce(() => {
+          // setPosition 会再次触发 onMoved。先结束本轮原生拖动态，
+          // 避免程序化位置修正被误判为第二次用户拖动。
+          nativeDragStartedRef.current = false;
+          dragStartRef.current = null;
+          clearBoundaryTimer();
+        });
+      } catch (error) {
+        console.error('修正悬浮球屏幕边界失败:', error);
+      } finally {
+        setIsDragging(false);
+      }
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const dragStart = dragStartRef.current;
+      if (!dragStart || nativeDragStartedRef.current) return;
+
+      if ((event.buttons & 1) !== 1) {
+        dragStartRef.current = null;
+        setIsDragging(false);
         return;
       }
 
-      try {
-        const screenWidth = window.screen.width;
-        const ballWidth = ballRef.current.offsetWidth;
-        const currentX = parseInt(ballRef.current.style.left) || 0;
-        const ballCenterX = currentX + ballWidth / 2;
+      const pointerDistance = Math.hypot(
+        event.screenX - dragStart.x,
+        event.screenY - dragStart.y,
+      );
+      if (pointerDistance < DRAG_THRESHOLD) return;
 
-        const position = ballCenterX < screenWidth / 2 ? 'left' : 'right';
-        await setEdgeSnap(true, position);
+      nativeDragStartedRef.current = true;
+      setIsDragging(true);
+      event.preventDefault();
+
+      void appWindow.startDragging().catch((error) => {
+        nativeDragStartedRef.current = false;
+        dragStartRef.current = null;
+        setIsDragging(false);
+        console.error('悬浮球拖动失败:', error);
+      });
+    };
+
+    const handleMouseUp = async () => {
+      if (!dragStartRef.current) return;
+
+      clearBoundaryTimer();
+      const wasDragging = nativeDragStartedRef.current;
+      dragStartRef.current = null;
+      nativeDragStartedRef.current = false;
+      setIsDragging(false);
+
+      if (!wasDragging) return;
+
+      suppressClickRef.current = true;
+      if (suppressClickTimerRef.current !== null) {
+        window.clearTimeout(suppressClickTimerRef.current);
+      }
+      suppressClickTimerRef.current = window.setTimeout(() => {
+        suppressClickRef.current = false;
+        suppressClickTimerRef.current = null;
+      }, 0);
+
+      try {
+        const geometry = await keepVisibleOnce();
+        if (!geometry || geometry.corrected) return;
+
+        const edge = findHorizontalSnapEdge(
+          geometry.position,
+          geometry.size,
+          geometry.monitor,
+        );
+        if (edge) {
+          await setEdgeSnap(true, edge);
+        } else if (settings.isEdgeSnapped) {
+          await setEdgeSnap(false);
+          await keepFloatingWindowVisible();
+        }
       } catch (error) {
-        console.error('边缘吸附失败:', error);
-      } finally {
-        setIsNearEdge(false);
+        // 悬浮球窗口太小，不在这里显示会被裁切的 Toast。
+        console.error('检测屏幕边缘失败:', error);
       }
     };
+
+    // Windows 原生拖窗可能吞掉 WebView 的 mouseup。窗口停止移动后再做一次
+    // 边界校正，确保左、右、下方越界时悬浮球仍完整可见。
+    void appWindow.onMoved(() => {
+      if (!nativeDragStartedRef.current) return;
+
+      clearBoundaryTimer();
+      boundaryTimer = window.setTimeout(() => {
+        boundaryTimer = null;
+        void correctBoundary();
+      }, BOUNDARY_SETTLE_DELAY);
+    }).then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        unlistenMoved = unlisten;
+      }
+    }).catch((error) => {
+      console.error('监听悬浮球窗口移动失败:', error);
+    });
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
+      disposed = true;
+      clearBoundaryTimer();
+      unlistenMoved?.();
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      if (suppressClickTimerRef.current !== null) {
+        window.clearTimeout(suppressClickTimerRef.current);
+      }
     };
-  }, [isDragging, dragOffset, isNearEdge, setEdgeSnap]);
+  }, [setEdgeSnap, settings.isEdgeSnapped]);
 
   // 点击展开
   const handleClick = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+
     if (settings.isEdgeSnapped) {
-      setEdgeSnap(false);
+      void setEdgeSnap(false)
+        .then(() => keepFloatingWindowVisible())
+        .catch((error) => {
+          console.error('恢复悬浮球可视位置失败:', error);
+        });
     } else {
       onExpand();
     }
@@ -125,8 +277,10 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
 
   return (
     <div
-      ref={ballRef}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
       className={`
         fixed top-0 left-0 z-50 select-none cursor-pointer overflow-hidden
         flex items-center justify-center p-0 m-0
@@ -137,8 +291,7 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
       style={{
         width: isSnapped ? '30px' : '55px', 
         height: isSnapped ? '30px' : '55px',
-        WebkitAppRegion: 'drag',
-      } as React.CSSProperties}
+      }}
     >
       <img
         src="/Logo3D.png"

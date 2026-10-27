@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { ChevronRight, LoaderCircle, RefreshCw, Rocket } from 'lucide-react';
+import { CheckCircle2, ChevronRight, LoaderCircle, RefreshCw, Rocket } from 'lucide-react';
 import {
   checkForGithubUpdate,
   type UpdateCheckResult,
@@ -73,6 +73,18 @@ export default function VersionUpdateBadge({
         <span>发现新版本 {result.latestVersion}</span>
         <ChevronRight className="h-3.5 w-3.5" />
       </button>
+    );
+  }
+
+  if (result?.status === 'current') {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-emerald-600 dark:text-emerald-400"
+        aria-label="已是最新版本"
+      >
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        已是最新
+      </span>
     );
   }
 

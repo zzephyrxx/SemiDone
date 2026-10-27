@@ -534,7 +534,11 @@ export default function TaskDetail() {
                   {task.dueDate ? (
                     <div className="space-y-0.5">
                       <div className="text-sm font-medium text-foreground">{new Date(task.dueDate).toLocaleDateString()}</div>
-                      <div className={`text-sm ${getDateColor(task.dueDate)}`}>{formatDate(task.dueDate)}</div>
+                      {!task.completed && (
+                        <div className={`text-sm ${getDateColor(task.dueDate)}`}>
+                          {formatDate(task.dueDate)}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <span className="text-sm text-muted-foreground italic">未设置</span>
