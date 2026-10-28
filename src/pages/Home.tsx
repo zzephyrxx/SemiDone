@@ -63,7 +63,6 @@ export default function Home() {
       case 'today':
         return '今天没有到期的待办';
       default:
-        if (completedCount > 0) return '当前待办已清空，完成记录可在“已完成”中查看';
         return theme === 'light' ? '暂无待办，点击添加新待办' : '还没有待办哦，要不要添加一个？';
     }
   };

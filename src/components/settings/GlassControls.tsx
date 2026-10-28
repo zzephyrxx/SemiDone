@@ -1,6 +1,5 @@
 import type { LiquidGlassSettings } from '../../types';
 import { normalizeGlassPresetSettings } from '../../utils/liquidGlassSettings';
-import LiquidGlassPreview from './LiquidGlassPreview';
 
 export default function GlassControls({ settings, onCommit }: {
   settings: LiquidGlassSettings; onCommit: (updates: Partial<LiquidGlassSettings>) => void;
@@ -18,6 +17,5 @@ export default function GlassControls({ settings, onCommit }: {
         </button>
       ))}
     </div>
-    <LiquidGlassPreview settings={glass} />
   </div>;
 }

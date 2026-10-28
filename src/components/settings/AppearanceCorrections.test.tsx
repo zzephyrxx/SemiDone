@@ -53,6 +53,9 @@ describe('appearance corrections', () => {
         onFontScaleChange={fontScale => void useSettingsStore.getState().updateSettings({ fontScale })} /></>;
     }
     render(<Example />);
+    const preview = screen.getByText('Aa 字体预览').parentElement!;
+    expect(preview).toHaveStyle({ fontSize: '12px' });
+    expect(screen.getByText('Aa 字体预览')).toHaveStyle({ fontSize: '17.6px' });
     const slider = screen.getByRole('slider', { name: '全局字体大小' });
     fireEvent.change(slider, { target: { value: '130' } });
     expect(document.documentElement.style.getPropertyValue('--ui-font-scale')).toBe('1');
@@ -60,8 +63,13 @@ describe('appearance corrections', () => {
     await waitFor(() => expect(document.documentElement.style.getPropertyValue('--ui-font-scale')).toBe('1.3'));
     expect((await settingsApi.getSettings()).data?.fontScale).toBe(130);
     expect(document.documentElement.style.zoom).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: '恢复默认大小' }));
+    expect(preview).toHaveStyle({ fontSize: '15.6px' });
+    const reset = screen.getByRole('button', { name: '重置字体大小' });
+    expect(reset.nextElementSibling).toHaveTextContent('130%');
+    expect(reset.querySelector('svg')).not.toBeNull();
+    fireEvent.click(reset);
     await waitFor(() => expect(document.documentElement.style.getPropertyValue('--ui-font-scale')).toBe('1'));
+    expect(preview).toHaveStyle({ fontSize: '12px' });
   });
   it('applies the independent motion switch and global glass switch to runtime state', () => {
     render(<LiquidGlassRuntime />);

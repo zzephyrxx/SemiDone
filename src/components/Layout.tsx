@@ -140,7 +140,8 @@ export default function Layout() {
   }
 
   return (
-    <div className={`h-screen flex flex-col overflow-hidden ${settings.collapseMode === 'expanded' ? 'workspace-shell' : ''}`}>
+    <div className={`h-screen flex flex-col overflow-hidden ${settings.collapseMode === 'expanded' ? 'workspace-shell' : 'workspace-bar'}`}
+      onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}>
       {/* Header - 自定义标题栏 */}
       <div
         className="flex-shrink-0 h-[65px] bg-background border-b border-border flex items-center justify-between px-4 select-none titlebar"
@@ -150,7 +151,7 @@ export default function Layout() {
         {settings.collapseMode === 'bar' ? (
           <div
             className="flex items-center gap-3 flex-1 min-w-0 cursor-move"
-            style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10 flex-shrink-0" />
 
@@ -188,7 +189,7 @@ export default function Layout() {
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10" />
-            <span className="workspace-wordmark font-semibold text-foreground">SemiDone<span className="workspace-brand-caption">事半</span></span>
+            <span className="workspace-wordmark font-semibold text-foreground">SemiDone</span>
           </Link>
         )}
 
@@ -278,12 +279,12 @@ export default function Layout() {
               <span className="ui-selection-indicator ui-selection-indicator--fill" aria-hidden="true" />
               <span className="ui-selection-indicator ui-selection-indicator--optics" aria-hidden="true"><Surface role="selection" /></span>
               {[
-                { to: '/', label: '待办', title: '我的待办', icon: ListTodo },
-                { to: '/task-calendar', label: '日历', title: '任务视图', icon: CalendarDays },
-                { to: '/usage-stats', label: '统计', title: '使用统计', icon: ChartNoAxesCombined },
-                { to: '/settings', label: '设置', title: '设置', icon: Settings },
-              ].map(({ to, label, title, icon: Icon }) => (
-                <NavLink key={to} to={to} end={to === '/'} title={title} data-nav-to={to} draggable={false}
+                { to: '/', label: '待办', icon: ListTodo },
+                { to: '/task-calendar', label: '日历', icon: CalendarDays },
+                { to: '/usage-stats', label: '统计', icon: ChartNoAxesCombined },
+                { to: '/settings', label: '设置', icon: Settings },
+              ].map(({ to, label, icon: Icon }) => (
+                <NavLink key={to} to={to} end={to === '/'} data-nav-to={to} draggable={false}
                   className={({ isActive }) => `workspace-nav-link ${isActive ? 'is-active' : ''}`}>
                   <Icon size={19} strokeWidth={1.8} />
                   <span>{label}</span>

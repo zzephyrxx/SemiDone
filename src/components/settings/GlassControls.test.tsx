@@ -13,6 +13,7 @@ it('shows exactly two presets and no manual controls for migrated custom setting
   expect(screen.getByRole('button', { name: /标准/ })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+  expect(screen.queryByRole('figure', { name: '液态玻璃实时预览' })).not.toBeInTheDocument();
 });
 it('commits the exact requested profiles in one action and responds to saved or rolled-back selection', () => {
   const save = vi.fn(); const view = render(<GlassControls settings={legacy} onCommit={save} />);

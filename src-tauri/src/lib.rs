@@ -3,6 +3,7 @@ mod commands;
 mod models;
 mod single_instance;
 mod storage;
+mod window_interaction;
 mod window_lifecycle;
 mod window_pinning;
 
@@ -108,6 +109,7 @@ pub fn run() {
                 log::warn!("Failed to refresh autostart registration: {error}");
             }
             if let Some(window) = app.get_webview_window("main") {
+                window_interaction::install(&window).map_err(std::io::Error::other)?;
                 app.state::<WindowPinning>()
                     .start(window)
                     .map_err(std::io::Error::other)?;

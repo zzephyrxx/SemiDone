@@ -24,7 +24,7 @@ describe('task pinning order', () => {
       .toEqual(['pinned-new', 'pinned-old', 'normal-new']);
   });
 
-  it('keeps completed cards only in the completed filter, including pinned cards', () => {
+  it('includes completed cards after pending cards in all, including pinned cards', () => {
     const tasks = [
       task({ id: 'normal-completed', title: '普通已完成', completed: true }),
       task({ id: 'normal-pending', title: '普通未完成' }),
@@ -32,11 +32,27 @@ describe('task pinning order', () => {
     ];
 
     expect(getFilteredTasks(tasks, 'all', '', { field: 'createdAt', order: 'desc' }).map(item => item.id))
-      .toEqual(['normal-pending']);
+      .toEqual(['normal-pending', 'pinned-completed', 'normal-completed']);
     expect(getFilteredTasks(tasks, 'completed', '', { field: 'createdAt', order: 'desc' }).map(item => item.id))
       .toEqual(['pinned-completed', 'normal-completed']);
     const today = new Date().toISOString();
     expect(getFilteredTasks(tasks.map(item => ({ ...item, dueDate: today })), 'today', '', { field: 'createdAt', order: 'desc' }).map(item => item.id))
       .toEqual(['normal-pending']);
+  });
+
+  it.each(['createdAt', 'updatedAt', 'dueDate', 'priority'] as const)('preserves %s sorting and pinning within both completion groups', field => {
+    const tasks = [true, false].flatMap(completed => [4, 1, 3, 2].map(rank => task({
+      id: `${completed ? 'done' : 'pending'}-${rank}`, title: `任务 ${rank}`, completed,
+      isPinned: rank <= 2, priority: rank % 2 === 1 ? 'low' : 'high',
+      createdAt: `2026-07-${10 + rank}T08:00:00Z`, updatedAt: `2026-07-${10 + rank}T09:00:00Z`, dueDate: `2026-08-${10 + rank}T10:00`,
+    })));
+    const originalOrder = tasks.map(item => item.id);
+    for (const order of ['asc', 'desc'] as const) {
+      const ranks = order === 'asc' ? [1, 2, 3, 4] : [2, 1, 4, 3];
+      expect(getFilteredTasks(tasks, 'all', '', { field, order }).map(item => item.id))
+        .toEqual(['pending', 'done'].flatMap(status => ranks.map(rank => `${status}-${rank}`)));
+    }
+    expect(tasks.map(item => item.id)).toEqual(originalOrder);
+    expect(getFilteredTasks(tasks, 'all', '任务 4', { field, order: 'asc' }).map(item => item.id)).toEqual(['pending-4', 'done-4']);
   });
 });

@@ -231,7 +231,7 @@ export default function AppearanceSettingsSection({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">液态玻璃</p>
-              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">仅用于悬浮导航、关键弹窗与实时预览</p>
+              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">仅用于悬浮导航与关键弹窗</p>
             </div>
             <SettingSwitch
               label="液态玻璃"

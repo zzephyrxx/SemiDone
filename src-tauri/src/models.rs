@@ -351,6 +351,8 @@ pub struct UpdateTaskRequest {
     pub priority: Option<String>,
     #[serde(rename = "dueDate")]
     pub due_date: Option<String>,
+    #[serde(rename = "clearDueDate", default)]
+    pub clear_due_date: bool,
     pub attachments: Option<Vec<Attachment>>,
     #[serde(default, rename = "recurrence")]
     pub recurrence: Option<Option<RecurrenceRule>>,

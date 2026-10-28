@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart3 } from 'lucide-react';
-import PageBackHeader from '../ui/PageBackHeader';
-import { useNavigate } from 'react-router-dom';
 import { useUsageStore } from '../store/usageStore';
 import UsageTimer from '../components/UsageTimer';
 import UsageChart from '../components/UsageChart';
 
 export default function UsageStats() {
-  const navigate = useNavigate();
   const {
     stats,
     formatMinutes,
@@ -73,7 +70,6 @@ export default function UsageStats() {
   const usageHistory = getUsageHistory();
   return (
     <div className="workspace-page usage-page min-h-full bg-background">
-      <PageBackHeader onBack={() => navigate(-1)} />
       <div className="max-w-4xl mx-auto space-y-6">
         {/* 番茄钟组件 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

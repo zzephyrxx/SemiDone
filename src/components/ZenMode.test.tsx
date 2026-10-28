@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api/tauri';
@@ -8,6 +10,7 @@ import { useTaskStore } from '../store/taskStore';
 import type { Task } from '../types';
 import { DEFAULT_ZEN_MODE_SETTINGS } from '../utils/zenModeSettings';
 import ZenMode from './ZenMode';
+import { normalizeGlassPresetSettings } from '../utils/liquidGlassSettings';
 
 vi.mock('@tauri-apps/api/core', () => ({ isTauri: () => false }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
@@ -32,9 +35,41 @@ beforeEach(async () => {
     pending, { ...pending, id: 'done', title: '已完成的工作', completed: true },
   ]));
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); document.getElementById('zen-typography-styles')?.remove(); document.getElementById('zen-panel-material-css')?.remove(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Zen mode', () => {
+  it('adapts its configuration panel to glass live without changing the transparent task window', async () => {
+    const css = document.createElement('style'); css.id = 'zen-panel-material-css';
+    css.textContent = ['zenMode.css', 'workspace.css', 'ui.css', 'liquidGlassSurfaces.css'].map(file => readFileSync(resolve('src/styles', file), 'utf8')).join('\n');
+    document.head.append(css);
+    const view = render(<ZenMode onClose={vi.fn()} />);
+    await screen.findByText(pending.title);
+    const windowStyle = view.container.querySelector<HTMLElement>('.zen-mode')!.style.cssText;
+    fireEvent.click(screen.getByRole('button', { name: 'Zen 模式配置' }));
+    const panel = screen.getByRole('region', { name: 'Zen 模式配置' });
+    const font = screen.getByRole('spinbutton', { name: '字体大小' });
+    for (const preset of ['standard', 'extreme'] as const) {
+      for (const enabled of [true, false, true]) {
+        act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, liquidGlass: normalizeGlassPresetSettings({ preset, enabled }) } })));
+        expect(panel).toHaveAttribute('data-material', enabled ? 'glass' : 'solid');
+        const filter = (panel as HTMLElement).style.getPropertyValue('--surface-filter');
+        if (enabled) {
+          expect(filter).toMatch(/^blur\(/);
+          if (preset === 'extreme') expect(filter).toContain('chromatic-refraction');
+        } else {
+          expect(filter).toBe('none');
+          expect(getComputedStyle(panel).getPropertyValue('backdrop-filter')).toBe('none');
+        }
+        expect(getComputedStyle(panel).position).toBe('absolute');
+        expect(getComputedStyle(panel).overflowY).toBe('auto');
+        expect(screen.getByRole('spinbutton', { name: '字体大小' })).toBe(font);
+        expect(view.container.querySelector<HTMLElement>('.zen-mode')!.style.cssText).toBe(windowStyle);
+        expect(screen.getByText(pending.title)).toBeVisible();
+      }
+    }
+    fireEvent.click(screen.getByRole('button', { name: '收起配置' }));
+    expect(screen.getByRole('button', { name: 'Zen 模式配置' })).toHaveFocus();
+  });
   it('shows all pending titles independently of full-mode filters and persists completion', async () => {
     render(<ZenMode onClose={vi.fn()} />);
     const checkbox = await screen.findByRole('checkbox', { name: '完成：整理实验结果' });
@@ -129,9 +164,12 @@ describe('Zen mode', () => {
     expect(screen.queryByRole('region', { name: '文字颜色调色盘' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Zen 模式配置' })).toBeVisible();
     expect(screen.getByRole('button', { name: '文字颜色' })).toHaveFocus();
-    fireEvent.change(screen.getByRole('slider', { name: '面板不透明度' }), { target: { value: '0' } });
+    expect(screen.getByRole('spinbutton', { name: '面板透明度' })).toHaveAttribute('aria-valuenow', '35');
+    expect(screen.getByRole('spinbutton', { name: '行底色透明度' })).toHaveAttribute('aria-valuenow', '92');
+    fireEvent.keyDown(screen.getByRole('spinbutton', { name: '面板透明度' }), { key: 'End' });
+    fireEvent.keyDown(screen.getByRole('spinbutton', { name: '行底色透明度' }), { key: 'Home' });
     await waitFor(async () => expect((await api.settings.getSettings()).data?.zenMode).toMatchObject({
-      textColor: '#aabbcc', backgroundOpacity: 0, enabled: true,
+      textColor: '#aabbcc', backgroundOpacity: 0, rowOpacity: 100, enabled: true,
     }));
     expect(document.querySelector('.zen-mode')).toHaveStyle('--zen-text: #aabbcc');
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -155,17 +193,27 @@ describe('Zen mode', () => {
   });
 
   it('persists the font size and applies it without changing the row background opacity', async () => {
+    const style = document.createElement('style'); style.id = 'zen-typography-styles';
+    style.textContent = ['zenMode.css', 'workspace.css', 'ui.css'].map(name => readFileSync(resolve('src/styles', name), 'utf8')).join('\n');
+    document.head.append(style);
     render(<ZenMode onClose={vi.fn()} />);
     await screen.findByText(pending.title);
     expect(screen.getByText('SemiDone Zen')).toBeVisible();
     expect(screen.queryByRole('region', { name: 'Zen 模式配置' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Zen 模式配置' }));
-    const font = screen.getByRole('slider', { name: '字体大小' });
-    expect(font).toHaveAttribute('min', '12');
-    expect(font).toHaveAttribute('max', '28');
-    fireEvent.change(font, { target: { value: '24' } });
+    const font = screen.getByRole('spinbutton', { name: '字体大小' });
+    expect(font).toHaveAttribute('aria-valuemin', '12');
+    expect(font).toHaveAttribute('aria-valuemax', '28');
+    fireEvent.keyDown(font, { key: 'PageUp' });
+    fireEvent.keyDown(font, { key: 'ArrowDown' });
     await waitFor(async () => expect((await api.settings.getSettings()).data?.zenMode?.fontSize).toBe(24));
     expect(document.querySelector('.zen-mode')).toHaveStyle('--zen-font-size: 24px');
+    const actual = document.querySelector('.zen-task-list .zen-task-title')!;
+    const preview = document.querySelector('.zen-preview .zen-task-title')!;
+    for (const property of ['fontSize', 'lineHeight', 'fontFamily'] as const) {
+      expect(getComputedStyle(preview)[property]).toBe(getComputedStyle(actual)[property]);
+    }
+    expect(document.querySelector('.zen-preview .zen-task-toggle svg rect')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '恢复默认' }));
     await waitFor(() => expect(useSettingsStore.getState().settings.zenMode)
       .toMatchObject({ active: true, enabled: true, fontSize: 15 }));

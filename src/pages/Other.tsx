@@ -3,7 +3,6 @@ import { getVersion } from '@tauri-apps/api/app';
 import { isTauri } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Palette, Database, Info } from 'lucide-react';
-import PageBackHeader from '../ui/PageBackHeader';
 import ZenIcon from '../components/icons/ZenIcon';
 import { toast } from 'sonner';
 import ClearCacheDialog from '../components/ClearCacheDialog';
@@ -183,7 +182,6 @@ export default function Other() {
 
   return (
     <div className="workspace-page settings-page">
-      <PageBackHeader onBack={() => window.history.back()} />
       <div className="settings-container">
         <nav className="settings-index" aria-label="设置分组">
           {[{ id: 'appearance', label: '外观', icon: Palette }, { id: 'zen', label: 'Zen', icon: ZenIcon },

@@ -3,8 +3,9 @@ import { MOTION, useReducedMotion } from './motion';
 import { useSettingsStore } from '../store/settingsStore';
 
 /** Keep the portal alive until exit finishes; closing is not an immediate unmount. */
-export function useDialogMotion(open: boolean) {
-  const allowed = useSettingsStore(state => !state.settings.collapseMode || state.settings.collapseMode === 'expanded');
+export function useDialogMotion(open: boolean, presentationEnabled = true) {
+  const expanded = useSettingsStore(state => !state.settings.collapseMode || state.settings.collapseMode === 'expanded');
+  const allowed = expanded && presentationEnabled;
   const visible = allowed && open;
   const root = useRef<HTMLDivElement>(null);
   const [retained, setRetained] = useState(open);

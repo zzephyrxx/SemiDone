@@ -13,7 +13,7 @@ import { DEFAULT_LIQUID_GLASS_SETTINGS } from '../utils/liquidGlassSettings';
 let frames: Map<number, FrameRequestCallback>;
 beforeEach(() => {
   vi.useFakeTimers(); localStorage.clear();
-  useSettingsStore.setState(state => ({ settings: { ...state.settings, collapseMode: 'expanded', animationsEnabled: false, liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS, preset: 'extreme', blur: 1 } } }));
+  useSettingsStore.setState(state => ({ settings: { ...state.settings, zenMode: { ...state.settings.zenMode!, active: false }, collapseMode: 'expanded', animationsEnabled: false, liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS, preset: 'extreme', blur: 1 } } }));
   class TestPointer extends MouseEvent {
     pointerId: number;
     constructor(type: string, options: MouseEventInit & { pointerId?: number }) { super(type, options); this.pointerId = options.pointerId ?? 1; }
@@ -51,7 +51,7 @@ it.each(['close', 'welcome'])('drags the %s dialog by its header, clamps it and 
   fireEvent.pointerCancel(handle, { pointerId: 3 });
   expect(dialog.style.translate).toBe('-192px -92px');
   expect(dialog).not.toHaveAttribute('data-dragging');
-  fireEvent.click(screen.getByRole('button', { name: kind === 'close' ? '取消关闭应用' : '关闭欢迎弹窗' }));
+  fireEvent.click(screen.getByRole('button', { name: kind === 'close' ? '取消关闭' : '关闭欢迎弹窗' }));
   if (kind === 'close') expect(cancel).toHaveBeenCalledOnce();
   else expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(confirm).not.toHaveBeenCalled();
@@ -87,11 +87,16 @@ it.each(['bar', 'floating'] as const)('defers modal presentation in %s mode and 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
 });
 
-it('allows welcome and exit dialogs in expanded Zen mode', () => {
+it('defers the welcome in a Zen window while allowing an explicit exit dialog', () => {
   useSettingsStore.setState(state => ({ settings: { ...state.settings, zenMode: { ...state.settings.zenMode!, enabled: true, active: true } } }));
   render(<><StartupTip /><CloseConfirmDialog isOpen onConfirm={vi.fn()} onCancel={vi.fn()} /></>);
   act(() => vi.advanceTimersByTime(800));
-  expect(screen.getByRole('dialog')).toBeVisible(); expect(screen.getByRole('alertdialog')).toBeVisible();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(screen.getByRole('alertdialog')).toBeVisible();
+  expect(localStorage.getItem('welcome_shown_7.0.0')).toBeNull();
+  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, zenMode: { ...state.settings.zenMode!, active: false } } })));
+  expect(screen.getByRole('dialog')).toBeVisible();
+  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, zenMode: { ...state.settings.zenMode!, active: true } } })));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
 it('uses each actual border-box size and a common parameter path for navigation, exit and welcome surfaces', () => {

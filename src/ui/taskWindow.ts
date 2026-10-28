@@ -1,4 +1,5 @@
-export const ROW = 104, INITIAL_EDITOR_HEIGHT = 224;
+// 91px card (5px bottom padding) + 4px gap; keep virtualization in sync with workspace.css.
+export const ROW = 95, INITIAL_EDITOR_HEIGHT = 224;
 const OVERSCAN = 6;
 
 export function taskWindow(count: number, editingIndex: number, top: number, height: number, row = ROW, editingRow = INITIAL_EDITOR_HEIGHT) {

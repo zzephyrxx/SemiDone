@@ -285,7 +285,7 @@ describe('settings action notifications', () => {
   });
 
   it.each([
-    { useCapsuleMode: false, expectedSize: { width: 550, height: 65 } },
+    { useCapsuleMode: false, expectedSize: { width: 550, height: 58.5 } },
     { useCapsuleMode: true, expectedSize: { width: 60, height: 60 } },
   ])(
     'locks a collapsed size without changing the native resizable style',

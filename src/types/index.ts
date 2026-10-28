@@ -126,6 +126,7 @@ export interface UpdateTaskRequest {
   isPinned?: boolean;
   priority?: Priority;
   dueDate?: string;
+  clearDueDate?: boolean;
   attachments?: Attachment[];
   recurrence?: RecurrenceRule | null;
   clearRecurrence?: boolean;

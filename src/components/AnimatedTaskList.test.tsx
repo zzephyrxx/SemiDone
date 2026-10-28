@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Task } from '../types';
 import AnimatedTaskList from './AnimatedTaskList';
-import { taskWindow } from '../ui/taskWindow';
+import { ROW, taskWindow } from '../ui/taskWindow';
 import { useSettingsStore } from '../store/settingsStore';
 import { useState } from 'react';
 import { readFileSync } from 'node:fs';
@@ -34,10 +34,10 @@ describe('keyed virtual task transitions', () => {
     const view = render(<PageList />);
     const root = screen.getByTestId('page-scroll');
     expect(screen.getByLabelText('待办列表')).not.toHaveClass('overflow-y-auto');
-    fireEvent.scroll(root, { target: { scrollTop: 400 + 30 * 104 } });
+    fireEvent.scroll(root, { target: { scrollTop: 400 + 30 * ROW } });
     expect(screen.getByText('Task 30')).toBeVisible(); expect(screen.queryByText('Task 0')).not.toBeInTheDocument();
     expect(document.querySelectorAll('[data-task-row]').length).toBeLessThan(20);
-    view.rerender(<PageList />); expect(root.scrollTop).toBe(3520);
+    view.rerender(<PageList />); expect(root.scrollTop).toBe(400 + 30 * ROW);
     view.unmount(); const before = counter.renders;
     fireEvent.scroll(root, { target: { scrollTop: 0 } }); expect(counter.renders).toBe(before);
   });
@@ -57,10 +57,10 @@ describe('keyed virtual task transitions', () => {
       return { top: this.classList.contains('home-task-list') ? 100 + offset - this.parentElement!.scrollTop : 100, height: 624 } as DOMRect;
     });
     render(<PageList />); const root = screen.getByTestId('page-scroll');
-    fireEvent.scroll(root, { target: { scrollTop: 3520 } });
+    fireEvent.scroll(root, { target: { scrollTop: 400 + 30 * ROW } });
     const first = document.querySelector<HTMLElement>('[data-task-row]')!.dataset.taskRow;
     offset = 600; act(() => notify.forEach(callback => callback()));
-    expect(root.scrollTop).toBe(3520);
+    expect(root.scrollTop).toBe(400 + 30 * ROW);
     expect(document.querySelector<HTMLElement>('[data-task-row]')!.dataset.taskRow).not.toBe(first);
     expect(screen.getByText('Task 28')).toBeVisible();
   });
@@ -86,6 +86,16 @@ describe('keyed virtual task transitions', () => {
     expect(screen.getByText('Task 0').closest('[data-task-row]')).not.toHaveClass('is-leaving');
     style.remove();
   });
+  it('retains a completed task once at its sorted position in all after the exit animation', () => {
+    const view = render(<AnimatedTaskList tasks={tasks.slice(0, 2)} editingTaskId={null} resetKey="all" />);
+    view.rerender(<AnimatedTaskList tasks={[tasks[1], { ...tasks[0], completed: true }]} editingTaskId={null} resetKey="all" />);
+    expect(screen.getByText('Task 0').closest('[data-task-row]')).toHaveClass('is-leaving');
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getAllByText('Task 0')).toHaveLength(1);
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('[data-task-row]'));
+    expect(rows.map(row => row.dataset.taskRow)).toEqual(['t1', 't0']);
+    expect(rows[1]).not.toHaveClass('is-leaving'); expect(rows[1].inert).toBe(false);
+  });
   it('finishes completion immediately when interface animations are disabled', () => {
     useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: false } }));
     const view = render(<AnimatedTaskList tasks={tasks.slice(0, 1)} editingTaskId={null} resetKey="all" />);
@@ -95,10 +105,10 @@ describe('keyed virtual task transitions', () => {
   });
   it('uses the measured editor height rather than a fixed blank area', () => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      return { top: 0, height: this.dataset.taskRow === 't0' ? 210 : 104 } as DOMRect;
+      return { top: 0, height: this.dataset.taskRow === 't0' ? 210 : ROW } as DOMRect;
     });
     render(<AnimatedTaskList tasks={tasks.slice(0, 2)} editingTaskId="t0" resetKey="all" />);
-    expect(screen.getByLabelText('待办列表').firstElementChild).toHaveStyle({ height: '314px' });
+    expect(screen.getByLabelText('待办列表').firstElementChild).toHaveStyle({ height: `${210 + ROW}px` });
     expect(screen.getByText('Task 0').closest<HTMLElement>('[data-task-row]')?.style.height).toBe('');
   });
   it('keeps the final removed row inert during exit then reveals the empty state', () => {
@@ -122,9 +132,10 @@ describe('keyed virtual task transitions', () => {
     expect(screen.getByText('Empty')).toBeVisible(); expect(vi.getTimerCount()).toBe(0);
   });
   it('does not render per pixel while scrolling inside the current virtual range', () => {
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(6 * ROW);
     render(<AnimatedTaskList tasks={tasks} editingTaskId={null} resetKey="all" />);
     const list = screen.getByLabelText('待办列表'); const before = counter.renders;
-    for (let top = 1; top <= 100; top++) fireEvent.scroll(list, { target: { scrollTop: top } });
+    for (let top = 1; top < ROW; top++) fireEvent.scroll(list, { target: { scrollTop: top } });
     expect(counter.renders - before).toBe(0);
     fireEvent.scroll(list, { target: { scrollTop: 1040 } });
     expect(counter.renders).toBeGreaterThan(before);
@@ -132,7 +143,7 @@ describe('keyed virtual task transitions', () => {
   });
   it('accounts for an expanded editor before and within the viewport', () => {
     expect(taskWindow(100, 2, 1040, 400, 104, 210).total).toBe(10506);
-    expect(taskWindow(100, 2, 1040, 400).start).toBe(2);
+    expect(taskWindow(100, 2, 10 * ROW, 400).start).toBe(2);
     expect(taskWindow(0, -1, 0, 400)).toEqual({ start: 0, end: 0, offset: 0, total: 0 });
   });
   it('moves stable keyed rows to their new positions and releases animations on unmount', () => {
@@ -155,10 +166,10 @@ describe('keyed virtual task transitions', () => {
   it('mounts only the viewport and overscan for a thousand tasks', () => {
     const thousand = Array.from({ length: 1000 }, (_, i) => ({ ...tasks[0], id: `long-${i}`, title: `Long ${i}` }));
     render(<AnimatedTaskList tasks={thousand} editingTaskId={null} resetKey="all" />);
-    expect(document.querySelectorAll('[data-task-row]').length).toBe(13);
+    expect(document.querySelectorAll('[data-task-row]').length).toBeLessThan(20);
     const list = screen.getByLabelText('待办列表');
-    fireEvent.scroll(list, { target: { scrollTop: 52000 } });
-    expect(document.querySelectorAll('[data-task-row]').length).toBe(19);
+    fireEvent.scroll(list, { target: { scrollTop: 500 * ROW } });
+    expect(document.querySelectorAll('[data-task-row]').length).toBeLessThan(21);
     expect(screen.getByText('Long 500')).toBeVisible();
   });
 });

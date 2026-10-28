@@ -99,7 +99,8 @@ export const taskApi = {
         return createResponse(null, false, '待办不存在');
       }
 
-      const normalizedUpdates = { ...updates };
+      const { clearDueDate, ...normalizedUpdates } = updates;
+      if (clearDueDate) normalizedUpdates.dueDate = undefined;
       if (updates.clearRecurrence) {
         normalizedUpdates.recurrence = undefined;
       }

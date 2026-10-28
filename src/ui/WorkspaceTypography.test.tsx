@@ -42,7 +42,7 @@ it.each([100, 130])('uses the same text roles on every page at %s percent withou
     expect(getComputedStyle(page.querySelector('h3')!).fontSize).toBe(getComputedStyle(page.querySelector('input')!).fontSize);
   }
 });
-it.each([[550, 900, '8px', '68px'], [400, 700, '6px', '68px'], [1040, 900, '16px', '0px']] as const)('shares page spacing at %s x %s', (width, height, top, offset) => {
+it.each([[550, 900, '6.4px', '65.4px'], [400, 700, '4.8px', '65.4px'], [1040, 900, '12.8px', '0px']] as const)('shares page spacing at %s x %s', (width, height, top, offset) => {
   install(width, height);
   const view = render(<div className="workspace-shell"><main className="workspace-content"><Pages /></main><main className="workspace-content workspace-content--home" /></div>);
   expect(getComputedStyle(view.container.querySelector('.workspace-shell')!).getPropertyValue('--page-inset-top').trim()).toBe(top);

@@ -9,6 +9,7 @@ import { startWindowDragging } from '../utils/windowDragging';
 import ZenModeAppearance from './settings/ZenModeAppearance';
 import ZenIcon from './icons/ZenIcon';
 import { MOTION, useReducedMotion } from '../ui/motion';
+import { Surface } from '../ui/Surface';
 
 interface Props { onClose: () => void }
 interface Completion { task: Task; index: number; phase: 'saving' | 'exiting'; saved: boolean }
@@ -109,7 +110,7 @@ export default function ZenMode({ onClose }: Props) {
         </div>
       </header>
       {showAppearance && (
-        <section id="zen-appearance-panel" aria-label="Zen 模式配置" className="zen-appearance-panel">
+        <Surface role="dialog" htmlRole="region" id="zen-appearance-panel" aria-label="Zen 模式配置" className="zen-appearance-panel">
           <div className="zen-appearance-heading"><h2>Zen 模式配置</h2>
             <button type="button" aria-label="收起配置" onClick={() => {
               setShowAppearance(false);
@@ -117,7 +118,7 @@ export default function ZenMode({ onClose }: Props) {
             }}><X size={16} /></button>
           </div>
           <ZenModeAppearance settings={appearance} onChange={(updates) => void setZenMode(updates)} />
-        </section>
+        </Surface>
       )}
       <main className="zen-task-list" aria-label="未完成待办" aria-busy={loading}>
         {loading ? <p className="zen-empty" role="status">正在加载待办…</p>

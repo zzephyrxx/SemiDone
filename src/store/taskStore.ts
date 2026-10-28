@@ -199,6 +199,9 @@ export const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery:
       case 'today':
         matchesFilter = !task.completed && !!task.dueDate && task.dueDate.split('T')[0] === todayStr;
         break;
+      case 'all':
+        matchesFilter = true;
+        break;
       default:
         matchesFilter = !task.completed;
         break;
@@ -248,7 +251,11 @@ export const getFilteredTasks = (tasks: Task[], filter: TaskFilter, searchQuery:
 
   const sortedPinned = sortTasks(pinned);
   const sorted = sortTasks(filtered);
-  return [...sortedPinned, ...sorted];
+  const ordered = [...sortedPinned, ...sorted];
+  // Completion groups take precedence over pinning; each group keeps the chosen sort.
+  return filter === 'all'
+    ? [...ordered.filter(task => !task.completed), ...ordered.filter(task => task.completed)]
+    : ordered;
 };
 
 export const useTaskStore = create<TaskState>()(devtools(

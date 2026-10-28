@@ -47,11 +47,11 @@ export default function DataDirectoryDialog({
               className="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-foreground rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
               disabled={isMigrating}
             >
-              选择目录
+              选择
             </button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            先选择根目录，系统会自动补全为 SemiDone/SemiDoneData；若不存在会自动创建，当前数据会复制到新目录。更改后请重启应用
+            先选择根目录，会自动补全为 SemiDone/SemiDoneData；若不存在则自动创建，当前数据会复制到新目录。更改后请重启应用
           </p>
           <p className="text-xs text-destructive mt-2">⚠️ 此为危险操作，请提前备份数据，以免丢失</p>
         </div>

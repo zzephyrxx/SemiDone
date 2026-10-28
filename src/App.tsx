@@ -12,8 +12,11 @@ import UpdateNotifier from './components/UpdateNotifier';
 import { useNativePinMode } from './hooks/useNativePinMode';
 import { useSettingsStore } from './store/settingsStore'
 import { Toaster } from 'sonner'
+import { TooltipLayer } from './ui/TooltipLayer';
+import { useContextMenuGuard } from './hooks/useGlobalInteractionGuards';
 
 function App() {
+  useContextMenuGuard();
   const theme = useSettingsStore(state => state.settings.theme);
   const loadSettings = useSettingsStore(state => state.loadSettings);
   const compact = useSettingsStore(state => state.settings.collapseMode !== 'expanded');
@@ -62,6 +65,7 @@ function App() {
       </Router>
       <StartupTip />
       <UpdateNotifier />
+      <TooltipLayer />
       {!compact && <Toaster richColors position="top-center" duration={2000} />}
     </>
   );

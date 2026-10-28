@@ -36,6 +36,12 @@ html[data-liquid-glass-dialogs='false'] .ui-selection-indicator { z-index: 0; }
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+.ui-surface[data-material='frosted'] {
+  background: hsl(var(--card) / .78);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: none;
+}
 /* Defeat legacy theme/transparent-mode frost too; switching glass must not
    recolor or shade ordinary content. Focus rings are left intact on inputs. */
 html[data-liquid-glass-dialogs] .workspace-shell :is(.home-overview, .task-card, .task-card.completed, .card, .settings-tile, .titlebar) {
@@ -56,12 +62,12 @@ html[data-liquid-glass-dialogs='true'] .workspace-nav-link:hover { background: t
   :root { --glass-fill-top: .88; --glass-fill-bottom: .76; }
 }
 @media (forced-colors: active) {
-  .ui-surface[data-material='glass'] { background: Canvas !important; border-color: CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ui-surface:is([data-material='glass'], [data-material='frosted']) { background: Canvas !important; border-color: CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .ui-selection-indicator { z-index: 0; }
   .ui-selection-indicator--optics { z-index: 0 !important; }
   .ui-surface--selection::after { background: none !important; mask: none !important; -webkit-mask: none !important; border: 1px solid Highlight; }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .ui-selection-indicator--optics { z-index: 0 !important; }
-  .ui-surface[data-material='glass'] { background: hsl(var(--card) / .96) !important; }
+  .ui-surface:is([data-material='glass'], [data-material='frosted']) { background: hsl(var(--card) / .96) !important; }
 }

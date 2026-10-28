@@ -4,6 +4,7 @@ import { APP_VERSION, RELEASE_HIGHLIGHTS, RELEASE_MONTH } from '../data/release'
 import { useDialogMotion } from '../ui/useDialogMotion';
 import { Surface } from '../ui/Surface';
 import { useDraggableDialog } from '../ui/useDraggableDialog';
+import { useSettingsStore } from '../store/settingsStore';
 
 const WELCOME_STORAGE_KEY = `welcome_shown_${APP_VERSION}`;
 
@@ -11,7 +12,9 @@ export default function StartupTip() {
   const [show, setShow] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const primaryActionRef = useRef<HTMLButtonElement>(null);
-  const { root, present } = useDialogMotion(show);
+  const zenWindow = useSettingsStore(state => state.settings.zenMode?.enabled === true
+    && state.settings.zenMode.active && state.settings.collapseMode === 'expanded');
+  const { root, present } = useDialogMotion(show, !zenWindow);
   const drag = useDraggableDialog(present);
 
   useEffect(() => {

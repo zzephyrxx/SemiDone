@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useId, useState, useRef, useEffect } from 'react';
 import { Plus, X, Calendar, Flag, Type, AlignLeft, Paperclip, Repeat } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
 import type { Priority, CreateTaskRequest, Attachment, RecurrenceRule } from '../types';
 import { toast } from 'sonner';
 import RecurrenceEditor from './RecurrenceEditor';
+import DueDateDialog from './DueDateDialog';
 
 interface QuickAddTaskProps {
   onClose: () => void;
@@ -21,11 +22,12 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tempDueDate, setTempDueDate] = useState('');
   const [recurrence, setRecurrence] = useState<RecurrenceRule | undefined>(undefined);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dateButtonRef = useRef<HTMLButtonElement>(null);
+  const datePickerId = useId();
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -108,7 +110,6 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
       setAttachmentFiles([]);
       setRecurrence(undefined);
       setShowDatePicker(false);
-      setTempDueDate('');
 
       onClose();
     } catch (error) {
@@ -120,6 +121,8 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Portal controls belong to the topmost child dialog, not the task form.
+    if (!e.currentTarget.contains(e.target as Node)) return;
     if (e.key === 'Escape') {
       onClose();
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -173,8 +176,8 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
   };
 
   return (
-    <div className="p-6 quick-add-card max-h-[90vh] overflow-y-auto">
-      <div className="flex items-center justify-between mb-4">
+    <div className="p-5 quick-add-card max-h-[90vh] overflow-y-auto">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
           <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
             <Plus className="w-4 h-4 text-primary-foreground" />
@@ -195,7 +198,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
 
       <form onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
         {/* 待办标题 */}
-        <div className="mb-4">
+        <div className="mb-3">
           <div className="relative">
             <Type className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -205,7 +208,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
               placeholder={settings.theme === 'light' ? '输入待办标题...' : '今天要做什么呢？'}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder-muted-foreground"
+              className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder-muted-foreground"
               maxLength={100}
             />
           </div>
@@ -215,7 +218,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
         </div>
 
         {/* 高级选项切换 */}
-        <div className="mb-4">
+        <div className="mb-3">
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -227,7 +230,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
 
         {/* 高级选项 */}
         {showAdvanced && (
-          <div className="space-y-4 mb-4">
+          <div className="space-y-3 mb-3">
             {/* 待办描述 */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -238,7 +241,8 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
                 placeholder="添加待办描述..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder-muted-foreground resize-none"
+                aria-label="待办描述"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder-muted-foreground resize-y min-h-16 max-h-[40vh]"
                 rows={2}
                 maxLength={500}
               />
@@ -282,11 +286,14 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
               <div className="relative">
                 <button
                   type="button"
+                  ref={dateButtonRef}
+                  aria-expanded={showDatePicker}
+                  aria-haspopup="dialog"
+                  aria-controls={showDatePicker ? datePickerId : undefined}
                   onClick={() => {
-                    setTempDueDate(dueDate);
                     setShowDatePicker(!showDatePicker);
                   }}
-                  className="w-full px-3 py-2 text-left bg-background border border-border rounded-lg hover:bg-muted transition-colors text-foreground"
+                  className="w-full px-3 py-2 text-left bg-background border border-border rounded-lg hover:bg-muted transition-colors text-foreground text-sm"
                 >
                   {dueDate ? new Date(dueDate).toLocaleString('zh-CN', {
                     year: 'numeric',
@@ -296,86 +303,11 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
                     minute: '2-digit'
                   }) : '设置截止日期'}
                 </button>
-                
-                {showDatePicker && (
-                  <>
-                    <div className="fixed inset-0 z-[9998]" onClick={() => {
-                      setTempDueDate(dueDate);
-                      setShowDatePicker(false);
-                    }} />
-                    <div className="absolute top-full left-0 mt-1 p-4 bg-card border border-border rounded-lg shadow-xl z-[9999] min-w-[320px]">
-                      <div className="space-y-4">
-                        <div className="text-sm font-medium text-foreground">选择截止日期</div>
-                        
-                        {/* 日期选择 */}
-                        <div>
-                          <label className="block text-xs text-muted-foreground mb-1">日期</label>
-                          <input
-                            type="date"
-                            value={tempDueDate ? tempDueDate.split('T')[0] : ''}
-                            onChange={(e) => {
-                              const dateValue = e.target.value;
-                              const timeValue = tempDueDate ? tempDueDate.split('T')[1] || '09:00' : '09:00';
-                              setTempDueDate(dateValue ? `${dateValue}T${timeValue}` : '');
-                            }}
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            min={new Date().toISOString().split('T')[0]}
-                          />
-                        </div>
-                        
-                        {/* 时间选择 */}
-                        <div>
-                          <label className="block text-xs text-muted-foreground mb-1">时间</label>
-                          <input
-                            type="time"
-                            value={tempDueDate ? tempDueDate.split('T')[1] || '09:00' : '09:00'}
-                            onChange={(e) => {
-                              const timeValue = e.target.value;
-                              const dateValue = tempDueDate ? tempDueDate.split('T')[0] : new Date().toISOString().split('T')[0];
-                              setTempDueDate(`${dateValue}T${timeValue}`);
-                            }}
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                          />
-                        </div>
-                        
-                        {/* 确认按钮 */}
-                        <div className="flex justify-end space-x-2 pt-2 border-t border-border">
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              setTempDueDate(dueDate);
-                              setShowDatePicker(false);
-                            }} 
-                            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                          >
-                            取消
-                          </button>
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              setTempDueDate('');
-                              setDueDate('');
-                              setShowDatePicker(false);
-                            }} 
-                            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                          >
-                            清除
-                          </button>
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              setDueDate(tempDueDate);
-                              setShowDatePicker(false);
-                            }} 
-                            className="px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded transition-colors font-medium"
-                          >
-                            确定
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
+
+                <DueDateDialog open={showDatePicker} id={datePickerId} value={dueDate} returnFocus={dateButtonRef}
+                  onCancel={() => setShowDatePicker(false)}
+                  onClear={() => { setDueDate(''); setShowDatePicker(false); }}
+                  onConfirm={value => { setDueDate(value); setShowDatePicker(false); }} />
               </div>
             </div>
 
@@ -473,11 +405,11 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
         )}
 
         {/* 操作按钮 */}
-        <div className="flex items-center justify-between pt-4 border-t border-border">
+        <div className="flex items-center justify-between pt-3 border-t border-border">
           <div className="text-xs text-muted-foreground">
-            按 Ctrl+Enter 快速创建
+            Ctrl+Enter 快速创建
           </div>
-          
+
           <div className="flex space-x-3">
             <button
               type="button"
@@ -486,9 +418,11 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
             >
               取消
             </button>
-            
+
             <button
               type="submit"
+              aria-label={isSubmitting ? '正在创建待办' : '创建待办'}
+              aria-busy={isSubmitting}
               disabled={!title.trim() || isSubmitting}
               className="px-6 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
             >
@@ -500,7 +434,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  <span>创建待办</span>
+                  <span>创建</span>
                 </>
               )}
             </button>

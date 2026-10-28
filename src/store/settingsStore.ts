@@ -58,6 +58,7 @@ const EXPANDED_WINDOW_SIZE_CONSTRAINTS = {
   minWidth: 400,
   minHeight: 700,
 } as const;
+const BAR_WINDOW_HEIGHT = 65 * 0.9;
 
 const fixedWindowSizeConstraints = (width: number, height: number) => ({
   minWidth: width,
@@ -399,9 +400,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
                 const { width } = JSON.parse(savedSize);
                 targetWidth = width;
               }
-              console.log('📏 切换到条状模式:', targetWidth, 'x 65');
+              console.log('📏 切换到条状模式:', targetWidth, 'x', BAR_WINDOW_HEIGHT);
               collapsedWidth = targetWidth;
-              collapsedHeight = 65;
+              collapsedHeight = BAR_WINDOW_HEIGHT;
             }
 
             // 不再切换 resizable。Tao 在 Windows 上切到 false 会移除

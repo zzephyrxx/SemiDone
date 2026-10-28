@@ -71,6 +71,14 @@ afterEach(() => {
 });
 
 describe('Layout header', () => {
+  it.each(['bar', 'expanded'])('blocks context menus in the %s window', mode => {
+    mocks.settings.collapseMode = mode;
+    render(<MemoryRouter><Layout /></MemoryRouter>);
+    const target = screen.getByText(mode === 'bar' ? '第一条名言' : 'SemiDone');
+    expect(fireEvent.contextMenu(target)).toBe(false);
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
   it('defaults old settings to a native close request without exiting the process', () => {
     mocks.settings.collapseMode = 'expanded';
     render(<MemoryRouter><Layout /></MemoryRouter>);
@@ -143,6 +151,11 @@ describe('Layout header', () => {
       <Route index element={<p>待办内容</p>} />
       <Route path="settings" element={<p>设置内容</p>} />
     </Route></Routes></MemoryRouter>);
+    expect(screen.getByText('SemiDone').textContent).toBe('SemiDone');
+    expect(document.querySelector('.workspace-brand-caption')).not.toBeInTheDocument();
+    for (const link of screen.getByRole('navigation', { name: '主导航' }).querySelectorAll('a')) {
+      expect(link).not.toHaveAttribute('title');
+    }
     expect(screen.getByRole('link', { name: '待办' })).toHaveAttribute('aria-current', 'page');
     fireEvent.click(screen.getByRole('link', { name: '设置' }));
     expect(screen.getByText('设置内容')).toBeVisible();
@@ -159,12 +172,13 @@ describe('Layout header', () => {
     expect(screen.getByText('第二条名言')).toBeVisible();
   });
 
-  it('keeps the task calendar hover label consistent with adjacent header actions', () => {
+  it('keeps the calendar destination accessible without a hover tooltip', () => {
     mocks.settings.collapseMode = 'expanded';
     render(<MemoryRouter><Layout /></MemoryRouter>);
 
-    const taskCalendarLink = screen.getByTitle('任务视图');
+    const taskCalendarLink = screen.getByRole('link', { name: '日历' });
     expect(taskCalendarLink).toHaveAttribute('href', '/task-calendar');
+    expect(taskCalendarLink).not.toHaveAttribute('title');
   });
 
   it('enters Zen mode from the header and replaces the full interface', () => {
@@ -176,7 +190,7 @@ describe('Layout header', () => {
     mocks.settings.zenMode = { enabled: true, active: true };
     view.rerender(<MemoryRouter><Layout /></MemoryRouter>);
     expect(screen.getByText('Zen 视图')).toBeVisible();
-    expect(screen.queryByTitle('任务视图')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '日历' })).not.toBeInTheDocument();
   });
 
   it('hides the Zen entry when the setting is switched off', () => {
@@ -184,6 +198,6 @@ describe('Layout header', () => {
     mocks.settings.zenMode = { enabled: false, active: false };
     render(<MemoryRouter><Layout /></MemoryRouter>);
     expect(screen.queryByRole('button', { name: /进入.*Zen/ })).not.toBeInTheDocument();
-    expect(screen.getByTitle('设置')).toBeVisible();
+    expect(screen.getByRole('link', { name: '设置' })).toBeVisible();
   });
 });

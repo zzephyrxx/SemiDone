@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import StartupTip from './StartupTip';
+import { useSettingsStore } from '../store/settingsStore';
 
 const WELCOME_STORAGE_KEY = 'welcome_shown_7.0.0';
 
@@ -14,6 +15,7 @@ function renderWelcome() {
 beforeEach(() => {
   vi.useFakeTimers();
   localStorage.clear();
+  useSettingsStore.setState(state => ({ settings: { ...state.settings, collapseMode: 'expanded', zenMode: { ...state.settings.zenMode!, active: false } } }));
 });
 
 afterEach(() => {
@@ -22,6 +24,11 @@ afterEach(() => {
 });
 
 describe('StartupTip welcome dialog', () => {
+  it('still presents the welcome when Zen is enabled but its window is not active', () => {
+    useSettingsStore.setState(state => ({ settings: { ...state.settings, zenMode: { ...state.settings.zenMode!, enabled: true, active: false } } }));
+    renderWelcome();
+    expect(screen.getByRole('dialog', { name: '欢迎使用 SemiDone' })).toBeVisible();
+  });
   it('renders the approved 7.0.0 release overview', () => {
     renderWelcome();
 

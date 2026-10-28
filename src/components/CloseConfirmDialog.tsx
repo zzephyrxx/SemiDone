@@ -30,11 +30,11 @@ export default function CloseConfirmDialog({ isOpen, onConfirm, onCancel }: Clos
             <div className="close-dialog-icon w-8 h-8 bg-destructive/10 rounded-full flex items-center justify-center">
               <Power className="w-4 h-4 text-destructive" />
             </div>
-            <h3 id="close-app-title" className="text-lg font-semibold text-foreground">关闭应用</h3>
+            <h3 id="close-app-title" className="text-lg font-semibold text-foreground">关闭</h3>
           </div>
           <button
             onClick={onCancel}
-            aria-label="取消关闭应用"
+            aria-label="取消关闭"
             className="close-dialog-dismiss p-1 rounded-full hover:bg-accent transition-colors"
           >
             <X className="w-4 h-4 text-muted-foreground" />
@@ -64,7 +64,7 @@ export default function CloseConfirmDialog({ isOpen, onConfirm, onCancel }: Clos
             className="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-lg transition-colors flex items-center space-x-1"
           >
             <Power className="w-4 h-4" />
-            <span>关闭应用</span>
+            <span>关闭</span>
           </button>
         </div>
       </Surface>
