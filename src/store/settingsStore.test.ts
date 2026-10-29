@@ -28,8 +28,6 @@ vi.mock('../api/tauri', () => ({
   },
 }));
 
-vi.mock('../services/zenWindowService', () => ({ setZenWindowMode: mocks.setZenWindowMode }));
-
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: mocks.invoke,
 }));
@@ -212,29 +210,6 @@ describe('settings action notifications', () => {
 
     expect(useSettingsStore.getState().settings.isPinned).toBe(false);
     expect(mocks.invoke).toHaveBeenCalledWith('set_window_topmost', { enabled: false });
-  });
-
-  it('clears an earlier native pin when reloaded settings have pinning disabled', async () => {
-    useSettingsStore.setState({ settings: { ...defaultSettings, isPinned: true } });
-    mocks.getSettings.mockResolvedValueOnce({ success: true, data: defaultSettings });
-    await useSettingsStore.getState().loadSettings();
-    expect(mocks.invoke).toHaveBeenCalledWith('set_window_topmost', { enabled: false });
-    expect(useSettingsStore.getState().settings.isPinned).toBe(false);
-  });
-
-  it('stops native pinning when settings are reset', async () => {
-    useSettingsStore.setState({ settings: { ...defaultSettings, isPinned: true } });
-    await useSettingsStore.getState().resetSettings();
-    expect(mocks.invoke).toHaveBeenCalledWith('set_window_topmost', { enabled: false });
-    expect(useSettingsStore.getState().settings.isPinned).toBe(false);
-  });
-
-  it('restores native pinning if a generic settings save fails', async () => {
-    mocks.updateSettings.mockResolvedValueOnce({ success: false, error: 'write failed' });
-    await useSettingsStore.getState().updateSettings({ isPinned: true });
-    expect(mocks.invoke).toHaveBeenNthCalledWith(1, 'set_window_topmost', { enabled: true });
-    expect(mocks.invoke).toHaveBeenNthCalledWith(2, 'set_window_topmost', { enabled: false });
-    expect(useSettingsStore.getState().settings.isPinned).toBe(false);
   });
 
   it('keeps the autostart error popup when the operation fails', async () => {

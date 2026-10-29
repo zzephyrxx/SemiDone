@@ -14,21 +14,11 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
 });
 
-const initialSettings: Settings = {
-  theme: 'light', liquidGlass: { enabled: true, blur: 6, refraction: 42, dispersion: true },
-  notifications: true, autoSave: true, isPinned: false, isCollapsed: false,
-  collapseMode: 'expanded', useCapsuleMode: false,
-};
+const methodIds = ['css', 'noise', 'edge', 'chromatic', 'interactive'] as const;
 
-function EditableAppearance() {
-  const [settings, setSettings] = useState(initialSettings);
-  return <AppearanceSettingsSection settings={settings}
-    onLiquidGlassChange={(updates) => setSettings((current) => ({
-      ...current, liquidGlass: { ...current.liquidGlass, ...updates },
-    }))}
-    onThemeChange={vi.fn()} onToggleAutoStart={vi.fn()} onTransparencyToggle={vi.fn()}
-    onTransparencyLevelChange={vi.fn()} onToggleCapsuleMode={vi.fn()} />;
-}
+describe('LiquidGlassPreview', () => {
+  it('renders all five reference implementations and their SVG filters', () => {
+    render(<LiquidGlassPreview />);
 
 describe('liquid-glass parameter preview', () => {
   it('drags the miniature within the scene and keeps its position when parameters change', () => {

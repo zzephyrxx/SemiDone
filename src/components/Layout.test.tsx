@@ -181,7 +181,7 @@ describe('Layout header', () => {
     expect(taskCalendarLink).not.toHaveAttribute('title');
   });
 
-  it('enters Zen mode from the header and replaces the full interface', () => {
+  it('hides the app name on narrow windows instead of shrinking the user avatar', () => {
     mocks.settings.collapseMode = 'expanded';
     mocks.settings.zenMode = { enabled: true, active: false };
     const view = render(<MemoryRouter><Layout /></MemoryRouter>);
@@ -193,9 +193,15 @@ describe('Layout header', () => {
     expect(screen.queryByRole('link', { name: '日历' })).not.toBeInTheDocument();
   });
 
-  it('hides the Zen entry when the setting is switched off', () => {
-    mocks.settings.collapseMode = 'expanded';
-    mocks.settings.zenMode = { enabled: false, active: false };
+  it('keeps a four-pixel gap between the active pomodoro dot and bar expand button', () => {
+    mocks.pomodoro.isActive = true;
+    render(<MemoryRouter><Layout /></MemoryRouter>);
+
+    expect(screen.getByTestId('pomodoro-status-dot')).toHaveClass('mr-1');
+    expect(screen.getByTitle('展开窗口')).toBeVisible();
+  });
+
+  it('drags the window from nested title-bar content but not from controls or right-click', () => {
     render(<MemoryRouter><Layout /></MemoryRouter>);
     expect(screen.queryByRole('button', { name: /进入.*Zen/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '设置' })).toBeVisible();

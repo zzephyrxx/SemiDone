@@ -81,15 +81,15 @@ export default function Layout() {
   const getUserAvatarDisplay = () => {
     if (settings.avatar) {
       return (
-        <img
-          src={settings.avatar}
-          alt="Avatar"
-          className="w-8 h-8 rounded-full object-cover"
+        <img 
+          src={settings.avatar} 
+          alt="Avatar" 
+          className="w-8 h-8 shrink-0 rounded-full object-cover"
         />
       );
     }
     return (
-      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+      <div className="w-8 h-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
         <User className="w-4 h-4 text-primary" />
       </div>
     );
@@ -100,8 +100,19 @@ export default function Layout() {
     await toggleIsCollapsed(); // 从悬浮球切换到展开模式
   };
 
-  const handleCloseFromFloating = () => {
-    handleCloseApp();
+  const handleTitleBarMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+
+    const target = event.target as HTMLElement;
+    const isInteractive = target.closest(
+      'a, button, input, textarea, select, [contenteditable="true"], [role="button"]',
+    );
+    if (isInteractive) return;
+
+    event.preventDefault();
+    void getCurrentWindow().startDragging().catch((error) => {
+      console.error('Failed to drag window:', error);
+    });
   };
 
   // 如果是悬浮球，只渲染悬浮球组件
@@ -110,8 +121,6 @@ export default function Layout() {
       <>
         <FloatingBall
           onExpand={handleExpandFromFloating}
-          onClose={handleCloseFromFloating}
-          isTransparent={true}
         />
 
         {/* User Profile Modal */}
@@ -145,7 +154,7 @@ export default function Layout() {
       {/* Header - 自定义标题栏 */}
       <div
         className="flex-shrink-0 h-[65px] bg-background border-b border-border flex items-center justify-between px-4 select-none titlebar"
-        onMouseDown={startWindowDragging}
+        onMouseDown={handleTitleBarMouseDown}
       >
         {/* Logo区域 / 励志名言 / 番茄钟计时 */}
         {settings.collapseMode === 'bar' ? (
@@ -153,17 +162,23 @@ export default function Layout() {
             className="flex items-center gap-3 flex-1 min-w-0 cursor-move"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
-            <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10 flex-shrink-0" />
-
+            <img
+              src="/Logo3D.png"
+              alt="Logo3D"
+              className="w-10 h-10 flex-shrink-0"
+            />
+            
             {/* 番茄钟聚焦模式显示 */}
             {pomodoro.isActive ? (
-              <div className="flex items-center gap-2 flex-1 min-w-0 animate-fade-in">
+              <div
+                className="flex items-center gap-2 flex-1 min-w-0 animate-fade-in"
+              >
                 <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                   pomodoro.currentMode === 'work' ? 'bg-blue-100 text-blue-700' :
                   pomodoro.currentMode === 'break' ? 'bg-green-100 text-green-700' :
                   'bg-purple-100 text-purple-700'
                 }`}>
-                  {pomodoro.currentMode === 'work' ? '专注时间' :
+                  {pomodoro.currentMode === 'work' ? '专注' :
                    pomodoro.currentMode === 'break' ? '短休息' :
                    '长休息'}
                 </div>
@@ -173,11 +188,16 @@ export default function Layout() {
                 <div className="text-xs text-muted-foreground">
                   第 {pomodoro.cycle + 1} 个
                 </div>
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse ml-auto" />
+                <div
+                  data-testid="pomodoro-status-dot"
+                  className="w-2 h-2 rounded-full bg-red-500 animate-pulse ml-auto mr-1"
+                />
               </div>
             ) : (
               // 普通模式显示励志名言
-              <p className="text-sm font-medium text-foreground truncate animate-fade-in">
+              <p
+                className="text-sm font-medium text-foreground truncate animate-fade-in"
+              >
                 {currentQuote}
               </p>
             )}
@@ -192,10 +212,9 @@ export default function Layout() {
             <span className="workspace-wordmark font-semibold text-foreground">SemiDone</span>
           </Link>
         )}
-
-        <div
-          className="flex items-center gap-1 animate-fade-in"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        
+        <div 
+          className="flex shrink-0 items-center gap-1 animate-fade-in"
         >
           {/* 用户头像 - 条状模式下隐藏 */}
           {settings.collapseMode !== 'bar' && (

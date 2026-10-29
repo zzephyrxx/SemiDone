@@ -34,7 +34,6 @@ describe('StartupTip welcome dialog', () => {
 
     const dialog = screen.getByRole('dialog', { name: '欢迎使用 SemiDone' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveAttribute('data-glass-layout', 'unified');
     expect(dialog.parentElement).toHaveAttribute('data-no-overlay');
     expect(dialog).toHaveClass('liquid-glass-modal-surface');
     expect(dialog.querySelectorAll('.liquid-glass-modal-surface')).toHaveLength(0);

@@ -21,6 +21,7 @@ export default function LiquidGlassPreview({ settings }: { settings: LiquidGlass
     const maxY = Math.max(0, (scene.current.clientHeight - card.current.offsetHeight) / 2 - 8);
     return { x: Math.max(-maxX, Math.min(maxX, next.x)), y: Math.max(-maxY, Math.min(maxY, next.y)) };
   }, []);
+
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
@@ -101,6 +102,54 @@ export default function LiquidGlassPreview({ settings }: { settings: LiquidGlass
           <div className="liquid-glass-preview-task"><Circle size={14} /><span>专注做好一件事</span></div>
           <div className="liquid-glass-preview-task liquid-glass-preview-task-done"><Check size={14} /><span>给自己留一点空白</span></div>
         </div>
+      </header>
+
+      <div className="lgp-toolbar">
+        <label>
+          <span>全局模糊</span>
+          <input
+            aria-label="液态玻璃全局模糊"
+            type="range"
+            min="0"
+            max="24"
+            step="1"
+            value={blur}
+            onChange={(event) => setBlur(Number(event.target.value))}
+          />
+          <output>{blur}px</output>
+        </label>
+        <label>
+          <span>折射强度</span>
+          <input
+            aria-label="液态玻璃折射强度"
+            type="range"
+            min="0"
+            max="2"
+            step="0.05"
+            value={refraction}
+            onChange={(event) => setRefraction(Number(event.target.value))}
+          />
+          <output>{refraction.toFixed(2)}×</output>
+        </label>
+        <label>
+          <span>圆角程度</span>
+          <input
+            aria-label="液态玻璃圆角程度"
+            type="range"
+            min="16"
+            max="72"
+            step="1"
+            value={radius}
+            onChange={(event) => setRadius(Number(event.target.value))}
+          />
+          <output>{radius}px</output>
+        </label>
+        <button type="button" onClick={() => setAlternateBackground((current) => !current)}>
+          切换演示背景
+        </button>
+        <button type="button" onClick={() => setAnimateNoise((current) => !current)}>
+          {animateNoise ? '暂停动态噪声' : '继续动态噪声'}
+        </button>
       </div>
       {glass.enabled && (glass.strength > 0 || glass.magnify > 0 || glass.dispersion) && <LiquidGlassFilters settings={glass} idPrefix={prefix} geometry={geometry} />}
     </figure>

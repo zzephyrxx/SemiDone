@@ -8,7 +8,11 @@ import AboutSettingsSection from './AboutSettingsSection';
 import AppearanceSettingsSection from './AppearanceSettingsSection';
 import DataSettingsSection from './DataSettingsSection';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 const settings: Settings = {
   theme: 'light',
@@ -170,6 +174,17 @@ describe('settings page sections', () => {
     expect(screen.queryByRole('heading', { name: '软件更新' })).not.toBeInTheDocument();
   });
 
+  it('shows the current-version status when no update is available', async () => {
+    render(
+      <AboutSettingsSection
+        appVersion="5.0.0"
+        checkForUpdate={vi.fn().mockResolvedValue(currentResult)}
+      />,
+    );
+
+    expect(await screen.findByText('已是最新')).toBeVisible();
+  });
+
   it('keeps the public-account QR code collapsed until requested', () => {
     render(
       <AboutSettingsSection
@@ -276,7 +291,7 @@ describe('settings page sections', () => {
 
     fireEvent.click(trigger);
 
-    const dialog = screen.getByRole('dialog', { name: '液态玻璃预览' });
+    const dialog = screen.getByRole('dialog', { name: '液态玻璃效果预览' });
     const samplePanes = screen.getAllByTestId(/^liquid-preview-glass-/);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -285,7 +300,7 @@ describe('settings page sections', () => {
     expect(dialog.parentElement).not.toHaveClass('bg-[#061421]/25');
     expect(dialog.style.translate).toBe('');
     expect(screen.queryByTestId('easter-egg-dialog-drag-handle')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '液态玻璃预览' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '液态玻璃效果预览' })).toBeVisible();
     expect(samplePanes).toHaveLength(5);
     samplePanes.forEach((pane) => {
       expect(pane.style.transform).toContain('translate(0px, 0px)');
@@ -293,7 +308,7 @@ describe('settings page sections', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '关闭彩蛋弹窗' }));
     expect(
-      screen.queryByRole('dialog', { name: '液态玻璃预览' }),
+      screen.queryByRole('dialog', { name: '液态玻璃效果预览' }),
     ).not.toBeInTheDocument();
   });
   it('drags the donation dialog by its title and keeps it inside the app viewport', () => {
