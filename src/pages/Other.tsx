@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { isTauri } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { ArrowLeft, Settings2 } from 'lucide-react';
+import { Palette, Database, Info } from 'lucide-react';
+import ZenIcon from '../components/icons/ZenIcon';
 import { toast } from 'sonner';
 import ClearCacheDialog from '../components/ClearCacheDialog';
 import ReportExportDialog from '../components/ReportExportDialog';
@@ -29,7 +30,7 @@ export default function Other() {
     toggleCapsuleMode,
     toggleAutoStart,
   } = useSettingsStore();
-  const { loadTasks } = useTaskStore();
+  const loadTasks = useTaskStore(state => state.loadTasks);
   const [appVersion, setAppVersion] = useState(APP_VERSION);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -82,6 +83,7 @@ export default function Other() {
   };
 
   const handleTransparencyLevelChange = async (level: number) => {
+    if (!useSettingsStore.getState().settings.transparentEnabled) return;
     document.documentElement.style.setProperty('--window-opacity', String(level / 100));
     await setTransparency(true, level);
   };
@@ -179,37 +181,34 @@ export default function Other() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-3 py-3">
-      <div className="max-w-2xl mx-auto">
-        <header className="mb-3 flex items-center gap-3 px-1 py-2">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            aria-label="返回"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-            <Settings2 className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">设置</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">个性化、数据与应用信息</p>
-          </div>
-        </header>
-
-        <main className="space-y-3">
+    <div className="workspace-page settings-page">
+      <div className="settings-container">
+        <nav className="settings-index" aria-label="设置分组">
+          {[{ id: 'appearance', label: '外观', icon: Palette }, { id: 'zen', label: 'Zen', icon: ZenIcon },
+            { id: 'data', label: '数据', icon: Database }, { id: 'about', label: '关于', icon: Info }].map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => document.getElementById(`settings-${id}`)?.scrollIntoView({ block: 'start', behavior: 'instant' })}>
+              <Icon size={15} /><span>{label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="settings-sections">
+          <div id="settings-appearance">
           <AppearanceSettingsSection
             settings={settings}
             onThemeChange={(theme) => void handleThemeChange(theme)}
+            onFontScaleChange={(fontScale) => void updateSettings({ fontScale })}
+            onAnimationsChange={(animationsEnabled) => void updateSettings({ animationsEnabled })}
             onLiquidGlassChange={(updates) => void setLiquidGlass(updates)}
             onToggleAutoStart={() => void toggleAutoStart()}
+            autoStartAvailable={isTauri() && !import.meta.env.DEV}
             onTransparencyToggle={(enabled) => void handleTransparencyToggle(enabled)}
             onTransparencyLevelChange={(level) => void handleTransparencyLevelChange(level)}
             onToggleCapsuleMode={() => void toggleCapsuleMode()}
+            onCloseToTrayChange={(closeToTray) => void updateSettings({ closeToTray })}
           />
-          <ZenModeSettingsSection />
+          </div>
+          <div id="settings-zen"><ZenModeSettingsSection /></div>
+          <div id="settings-data">
           <DataSettingsSection
             dataDir={dataDir}
             onOpenDirectory={() => void handleOpenDataFolder()}
@@ -217,8 +216,9 @@ export default function Other() {
             onExport={() => setShowExportDialog(true)}
             onClear={() => setShowClearDialog(true)}
           />
-          <AboutSettingsSection appVersion={appVersion} />
-        </main>
+          </div>
+          <div id="settings-about"><AboutSettingsSection appVersion={appVersion} /></div>
+        </div>
       </div>
 
       <ClearCacheDialog

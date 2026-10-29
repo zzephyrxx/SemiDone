@@ -65,6 +65,11 @@ export interface LiquidGlassSettings {
   blur: number;
   refraction: number;
   dispersion: boolean;
+  /** Optional in older saved settings; normalized before rendering. */
+  strength?: number;
+  rimWidth?: number;
+  magnify?: number;
+  preset?: 'standard' | 'extreme';
 }
 
 export interface ZenModeSettings {
@@ -80,6 +85,8 @@ export interface ZenModeSettings {
 
 export interface Settings {
   theme: Theme;
+  fontScale?: number;
+  animationsEnabled?: boolean;
   liquidGlass: LiquidGlassSettings;
   zenMode?: ZenModeSettings;
   // Read-only migration source for settings saved before the Zen rename.
@@ -97,6 +104,7 @@ export interface Settings {
   isEdgeSnapped?: boolean;       // 是否吸附到边缘
   edgePosition?: 'left' | 'right'; // 吸附边缘位置
   autoStart?: boolean;            // 开机自启
+  closeToTray?: boolean;          // 关闭窗口时保留在托盘；旧配置默认开启
   dataDir?: string;              // 自定义数据目录
 }
 
@@ -118,6 +126,7 @@ export interface UpdateTaskRequest {
   isPinned?: boolean;
   priority?: Priority;
   dueDate?: string;
+  clearDueDate?: boolean;
   attachments?: Attachment[];
   recurrence?: RecurrenceRule | null;
   clearRecurrence?: boolean;

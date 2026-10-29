@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Camera, Save } from 'lucide-react';
 import { useSettingsStore } from '../store/settingsStore';
+import { useDialogMotion } from '../ui/useDialogMotion';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ export default function UserProfileModal({ isOpen, onClose }: UserProfileModalPr
   const [username, setUsername] = useState(settings.username || '用户');
   const [avatar, setAvatar] = useState(settings.avatar || '');
   const [isLoading, setIsLoading] = useState(false);
+  const { root, present } = useDialogMotion(isOpen);
 
   useEffect(() => {
     if (isOpen) {
@@ -60,10 +62,10 @@ export default function UserProfileModal({ isOpen, onClose }: UserProfileModalPr
     );
   };
 
-  if (!isOpen) return null;
+  if (!present) return null;
 
   return (
-    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div ref={root} className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
         role="dialog"
         aria-modal="true"

@@ -382,7 +382,9 @@ impl Storage {
             if let Some(priority_str) = &updates.priority {
                 task.priority = Priority::from_string(priority_str);
             }
-            if let Some(due_date) = &updates.due_date {
+            if updates.clear_due_date {
+                task.due_date = None;
+            } else if let Some(due_date) = &updates.due_date {
                 task.due_date = Some(due_date.clone());
             }
             if let Some(attachments) = &updates.attachments {
@@ -550,6 +552,31 @@ mod tests {
             .expect("task should exist");
         assert!(!updated.is_pinned);
 
+        std::fs::remove_dir_all(data_dir).expect("remove test data directory");
+    }
+
+    #[test]
+    fn task_due_date_edits_and_explicit_clear_survive_reload() {
+        let data_dir = std::env::temp_dir()
+            .join(format!("semidone-due-date-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&data_dir).expect("create test data directory");
+        let storage = Storage { data_dir: data_dir.clone() };
+        let task = storage.add_task(Task::new(
+            "截止日期".into(), None, None, Some("2099-01-15T09:00".into()),
+            None, None, false, None,
+        )).expect("create task");
+        let edit: UpdateTaskRequest = serde_json::from_value(json!({ "title": "仅修改标题" }))
+            .expect("deserialize legacy update without clearDueDate");
+        let unchanged = storage.update_task(&task.id, &edit).unwrap().unwrap();
+        assert_eq!(unchanged.due_date.as_deref(), Some("2099-01-15T09:00"));
+        let date: UpdateTaskRequest = serde_json::from_value(json!({ "dueDate": "2099-01-16T17:25" })).unwrap();
+        storage.update_task(&task.id, &date).unwrap();
+        assert_eq!(storage.load_tasks().unwrap()[0].due_date.as_deref(), Some("2099-01-16T17:25"));
+        let clear: UpdateTaskRequest = serde_json::from_value(json!({ "clearDueDate": true })).unwrap();
+        storage.update_task(&task.id, &clear).unwrap();
+        let reloaded = storage.load_tasks().unwrap();
+        assert!(reloaded[0].due_date.is_none());
+        assert_eq!(reloaded[0].title, "仅修改标题");
         std::fs::remove_dir_all(data_dir).expect("remove test data directory");
     }
 }

@@ -8,12 +8,15 @@ import { zenModeStyle, normalizeZenModeSettings } from '../utils/zenModeSettings
 import { startWindowDragging } from '../utils/windowDragging';
 import ZenModeAppearance from './settings/ZenModeAppearance';
 import ZenIcon from './icons/ZenIcon';
+import { MOTION, useReducedMotion } from '../ui/motion';
+import { Surface } from '../ui/Surface';
 
 interface Props { onClose: () => void }
 interface Completion { task: Task; index: number; phase: 'saving' | 'exiting'; saved: boolean }
 
 export default function ZenMode({ onClose }: Props) {
   const { settings, setZenMode, toggleIsPinned } = useSettingsStore();
+  const reducedMotion = useReducedMotion();
   const appearance = normalizeZenModeSettings(settings.zenMode);
   const { tasks, sortConfig, loading, loadTasks, toggleTaskComplete, hideCelebration } = useTaskStore(
     useShallow((state) => ({
@@ -59,19 +62,18 @@ export default function ZenMode({ onClose }: Props) {
     const timer = window.setInterval(() => {
       setCompletion((current) => current?.phase === 'saving' && current.saved
         ? { ...current, phase: 'exiting' } : current);
-    }, 325);
+    }, MOTION.zenSaving);
     return () => window.clearInterval(timer);
   }, [completion?.phase]);
   useEffect(() => {
     if (completion?.phase !== 'exiting') return;
-    // Also clean up if animation events are suppressed or reduced motion is enabled.
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    // Keep a completion pause even when interface animation is disabled.
     const timer = window.setTimeout(() => {
       setCompletion(null);
       completing.current = false;
-    }, reducedMotion ? 625 : 875);
+    }, reducedMotion ? MOTION.zenReducedFallback : MOTION.zenExitFallback);
     return () => window.clearTimeout(timer);
-  }, [completion]);
+  }, [completion, reducedMotion]);
 
   const completeTask = async (task: Task, index: number) => {
     if (completing.current) return;
@@ -108,7 +110,7 @@ export default function ZenMode({ onClose }: Props) {
         </div>
       </header>
       {showAppearance && (
-        <section id="zen-appearance-panel" aria-label="Zen 模式配置" className="zen-appearance-panel">
+        <Surface role="dialog" htmlRole="region" id="zen-appearance-panel" aria-label="Zen 模式配置" className="zen-appearance-panel">
           <div className="zen-appearance-heading"><h2>Zen 模式配置</h2>
             <button type="button" aria-label="收起配置" onClick={() => {
               setShowAppearance(false);
@@ -116,7 +118,7 @@ export default function ZenMode({ onClose }: Props) {
             }}><X size={16} /></button>
           </div>
           <ZenModeAppearance settings={appearance} onChange={(updates) => void setZenMode(updates)} />
-        </section>
+        </Surface>
       )}
       <main className="zen-task-list" aria-label="未完成待办" aria-busy={loading}>
         {loading ? <p className="zen-empty" role="status">正在加载待办…</p>

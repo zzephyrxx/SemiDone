@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, isBefore, startOfDay } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -22,6 +21,7 @@ import {
 import type { Task, Priority, UpdateTaskRequest } from '../types';
 import { useTaskStore } from '../store/taskStore';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
+import DueDateDialog from './DueDateDialog';
 import { useShallow } from 'zustand/react/shallow';
 
 interface TaskItemProps {
@@ -40,40 +40,18 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
     }))
   );
   const [isHovered, setIsHovered] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const completionPending = useRef(false);
   const isEditing = editingTaskId === task.id;
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
   const [editPriority, setEditPriority] = useState<Priority>(task.priority);
   const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
-  const [tempDueDate, setTempDueDate] = useState(task.dueDate || '');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const datePickerBtnRef = useRef<HTMLButtonElement>(null);
-  const [datePickerPos, setDatePickerPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-
-  const updateDatePickerPos = useCallback(() => {
-    if (datePickerBtnRef.current) {
-      const rect = datePickerBtnRef.current.getBoundingClientRect();
-      const popupHeight = 240;
-      const viewportHeight = window.innerHeight;
-
-      if (rect.bottom + 4 + popupHeight > viewportHeight) {
-        // 底部空间不足，弹窗翻到按钮上方
-        setDatePickerPos({ top: Math.max(4, rect.top - popupHeight - 4), left: rect.left });
-      } else {
-        setDatePickerPos({ top: rect.bottom + 4, left: rect.left });
-      }
-    }
-  }, []);
-
-  // 滚动时实时更新弹窗位置
-  useEffect(() => {
-    if (!showDatePicker) return;
-    const handleScroll = () => updateDatePickerPos();
-    window.addEventListener('scroll', handleScroll, true);
-    return () => window.removeEventListener('scroll', handleScroll, true);
-  }, [showDatePicker, updateDatePickerPos]);
+  const datePickerId = useId();
 
   // Reset editing state when this task is no longer being edited
   useEffect(() => {
@@ -83,13 +61,16 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
       setEditDescription(task.description || '');
       setEditPriority(task.priority);
       setEditDueDate(task.dueDate || '');
-      setTempDueDate(task.dueDate || '');
     }
   }, [isEditing, task.title, task.description, task.priority, task.dueDate]);
 
-  const handleToggleComplete = (e: React.MouseEvent) => {
+  const handleToggleComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleTaskComplete(task.id);
+    if (completionPending.current) return;
+    completionPending.current = true;
+    setIsCompleting(true);
+    try { await toggleTaskComplete(task.id); }
+    finally { completionPending.current = false; setIsCompleting(false); }
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -100,7 +81,6 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
     setEditDescription(task.description || '');
     setEditPriority(task.priority);
     setEditDueDate(task.dueDate || '');
-    setTempDueDate(task.dueDate || '');
     setShowDatePicker(false);
   };
 
@@ -114,6 +94,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
       description: editDescription.trim() || undefined,
       priority: editPriority,
       dueDate: editDueDate || undefined,
+      clearDueDate: !editDueDate && Boolean(task.dueDate),
     };
 
     try {
@@ -133,19 +114,6 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
     setEditDescription(task.description || '');
     setEditPriority(task.priority);
     setEditDueDate(task.dueDate || '');
-    setTempDueDate(task.dueDate || '');
-    setShowDatePicker(false);
-  };
-
-  const handleDateConfirm = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditDueDate(tempDueDate);
-    setShowDatePicker(false);
-  };
-
-  const handleDateCancel = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setTempDueDate(editDueDate);
     setShowDatePicker(false);
   };
 
@@ -229,7 +197,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
   return (
     <div
       className={`
-        group relative p-2 rounded-lg border transition-all duration-200 cursor-pointer task-card
+        group relative p-2 rounded-lg border transition-all duration-200 cursor-pointer task-card ${isEditing ? 'is-editing' : ''}
         ${task.completed
           ? 'bg-gradient-to-r from-emerald-50/80 to-green-50/80 border-emerald-200/60 shadow-inner completed'
           : isOverdue
@@ -239,18 +207,13 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
               : 'bg-card border-border hover:bg-accent hover:border-accent-foreground/20'
         }
         ${isHovered ? 'shadow-lg' : 'shadow-sm'}
-        ${showDatePicker ? 'z-[9998]' : 'z-auto'}
       `}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={(e) => {
         // 防止点击按钮时触发卡片点击
-        if ((e.target as HTMLElement).closest('button')) {
+        if (isEditing || (e.target as HTMLElement).closest('button')) {
           return;
-        }
-        // 清除快速编辑状态后再导航
-        if (editingTaskId === task.id) {
-          setEditingTaskId(null);
         }
         // Navigate to task detail page
         navigate(`/task/${task.id}`);
@@ -261,6 +224,9 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         {/* 完成状态按钮 */}
         <button
           onClick={handleToggleComplete}
+          disabled={isCompleting}
+          aria-busy={isCompleting}
+          aria-label={task.completed ? `标记未完成：${task.title}` : `完成待办：${task.title}`}
           className={`
             flex-shrink-0 transition-all duration-200 pt-1
             ${task.completed
@@ -270,10 +236,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
           `}
         >
           {task.completed ? (
-            <div className="relative">
-              <CheckCircle2 className="w-7 h-7 filter drop-shadow-sm" />
-              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></div>
-            </div>
+            <CheckCircle2 className="w-7 h-7" />
           ) : (
             <Circle className="w-7 h-7" />
           )}
@@ -283,16 +246,17 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         <div className="flex-1 min-w-0">
           {isEditing ? (
             /* 编辑模式 */
-            <div className="flex flex-col h-full">
-              <div className="flex-grow space-y-3">
+            <div className="task-edit-form flex flex-col">
+              <div className="space-y-3">
                 {/* 标题编辑 */}
                 <div className="relative">
                   <Type className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
+                    aria-label="待办标题"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-base font-medium bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="task-title-input w-full pl-9 pr-3 py-2 font-medium bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="待办标题"
                     maxLength={100}
                     onClick={(e) => e.stopPropagation()}
@@ -303,9 +267,10 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                 <div className="relative">
                   <FileText className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                   <textarea
+                    aria-label="待办描述"
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                    className="task-description-input w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                     placeholder="待办描述"
                     rows={2}
                     maxLength={500}
@@ -339,10 +304,12 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                   <div className="relative">
                     <button
                       ref={datePickerBtnRef}
+                      aria-expanded={showDatePicker}
+                      aria-haspopup="dialog"
+                      aria-controls={showDatePicker ? datePickerId : undefined}
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!showDatePicker) updateDatePickerPos();
                         setShowDatePicker(!showDatePicker);
                       }}
                       className="px-2 py-1 text-xs bg-background border border-border rounded hover:bg-muted transition-colors flex items-center space-x-1"
@@ -351,71 +318,10 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                       <span>{editDueDate ? new Date(editDueDate).toLocaleDateString() : '设置截止日期'}</span>
                     </button>
 
-                    {showDatePicker && createPortal(
-                      <>
-                        <div className="fixed inset-0 z-[9998]" onClick={(e) => { e.stopPropagation(); handleDateCancel(e); }} />
-                        <div
-                          className="fixed p-4 bg-background border border-border rounded-lg shadow-xl z-[9999] min-w-[190px]"
-                          style={{ top: datePickerPos.top, left: datePickerPos.left }}
-                        >
-                          <div className="space-y-4">
-                            <div className="text-sm font-medium text-foreground">选择截止日期</div>
-                            
-                            {/* 日期选择 */}
-                            <div>
-                              <label className="block text-xs text-muted-foreground mb-1">日期</label>
-                              <input
-                                type="date"
-                                value={tempDueDate ? tempDueDate.split('T')[0] : ''}
-                                onChange={(e) => {
-                                  const dateValue = e.target.value;
-                                  const timeValue = tempDueDate ? tempDueDate.split('T')[1] || '09:00' : '09:00';
-                                  setTempDueDate(dateValue ? `${dateValue}T${timeValue}` : '');
-                                }}
-                                className="w-full px-2 py-2 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                min={new Date().toISOString().split('T')[0]}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                            
-                            {/* 时间选择 */}
-                            <div>
-                              <label className="block text-xs text-muted-foreground mb-1">时间</label>
-                              <input
-                                type="time"
-                                value={tempDueDate ? tempDueDate.split('T')[1] || '09:00' : '09:00'}
-                                onChange={(e) => {
-                                  const timeValue = e.target.value;
-                                  const dateValue = tempDueDate ? tempDueDate.split('T')[0] : new Date().toISOString().split('T')[0];
-                                  setTempDueDate(`${dateValue}T${timeValue}`);
-                                }}
-                                className="w-full px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            </div>
-                            
-                            {/* 确认按钮 */}
-                            <div className="flex justify-end space-x-2 pt-2 border-t border-border">
-                              <button 
-                                type="button" 
-                                onClick={handleDateCancel} 
-                                className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                              >
-                                取消
-                              </button>
-                              <button 
-                                type="button" 
-                                onClick={handleDateConfirm} 
-                                className="px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded transition-colors font-medium"
-                              >
-                                确定
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </>,
-                      document.body
-                    )}
+                    <DueDateDialog open={showDatePicker} id={datePickerId} value={editDueDate} returnFocus={datePickerBtnRef}
+                        onCancel={() => setShowDatePicker(false)}
+                        onClear={() => { setEditDueDate(''); setShowDatePicker(false); }}
+                        onConfirm={value => { setEditDueDate(value); setShowDatePicker(false); }} />
                   </div>
                 </div>
               </div>
@@ -432,9 +338,9 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
             </div>
           ) : (
             /* 显示模式 */
-            <div className="flex flex-col justify-between min-h-[4.5rem]">
+            <div className="task-card-summary">
               {/* 上半部分: 标题和右侧信息 */}
-              <div className="flex items-center justify-between">
+              <div className="task-card-top flex items-center justify-between">
                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
                   {task.isPinned && (
                     <button
@@ -449,7 +355,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                   )}
                   <h3
                     className={`
-                      flex-1 min-w-0 text-base font-medium leading-6 transition-all duration-200
+                      flex-1 min-w-0 text-base font-medium leading-6 transition-colors duration-200
                       whitespace-nowrap overflow-hidden text-ellipsis mt-1
                       ${task.completed
                         ? 'line-through text-emerald-700/80 decoration-emerald-400 decoration-2'
@@ -484,9 +390,15 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                 </div>
               </div>
 
+              {task.description?.trim() && (
+                <p className="task-card-description text-muted-foreground" title={task.description}>
+                  {task.description}
+                </p>
+              )}
+
               {/* 下半部分: 底部信息 */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3 text-xs text-muted-foreground">
+              <div className="task-card-bottom flex items-center justify-between gap-2">
+                <div className="task-card-metadata flex items-center gap-2 text-xs text-muted-foreground">
                   {/* 截止日期 */}
                   {task.dueDate && (
                     <div className={`
@@ -516,7 +428,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                   )}
 
                   {/* 创建时间 */}
-                  <div className="flex items-center space-x-1">
+                  <div className="task-created-at flex items-center space-x-1">
                     <Clock className="w-4 h-4" />
                     <span>创建于 {formatDueDate(task.createdAt)}</span>
                   </div>

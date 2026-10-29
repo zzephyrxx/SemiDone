@@ -8,7 +8,7 @@ import {
   isToday,
 } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { ArrowLeft, CalendarCheck2, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import type { Task } from '../types';
@@ -89,41 +89,20 @@ export function TaskCalendarContent({ tasks, initialAnchor = new Date() }: TaskC
   const maximumCount = Math.max(1, ...cells.map(cell => cell.count));
 
   return (
-    <div className="min-h-full bg-background p-3 text-foreground">
+    <div className="workspace-page calendar-page min-h-full bg-background text-foreground">
+      <h1 className="sr-only">任务日历</h1>
       <div className="mx-auto max-w-2xl space-y-3">
-        <div className="flex items-center justify-between">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            返回
-          </Link>
-          <div className="inline-flex rounded-lg border border-border bg-muted/50 p-1">
-            {VIEW_OPTIONS.map(option => (
-              <button
-                key={option.value}
-                type="button"
-                aria-label={`${option.label}视图`}
-                onClick={() => setView(option.value)}
-                className={`min-w-10 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  view === option.value
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4">
             <div>
-              <div className="mb-1 flex items-center gap-2 text-primary">
-                <CalendarCheck2 className="h-5 w-5" />
-                <h1 className="text-lg font-bold text-foreground">任务视图</h1>
+              <div className="calendar-view-switch mb-1 rounded-lg border border-border bg-muted/50" role="group" aria-label="日历视图">
+                {VIEW_OPTIONS.map(option => (
+                  <button key={option.value} type="button" aria-label={`${option.label}视图`} aria-pressed={view === option.value}
+                    onClick={() => setView(option.value)}
+                    className={`min-w-10 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${view === option.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    {option.label}
+                  </button>
+                ))}
               </div>
               <p className="text-xs text-muted-foreground">按完成日期回看每一步进展</p>
             </div>

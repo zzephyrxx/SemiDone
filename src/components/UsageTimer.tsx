@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Play, Pause, RotateCcw, Settings, BarChart3, Timer } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Play, Pause, RotateCcw, Settings, BarChart3, Timer, X } from 'lucide-react';
 import { useUsageStore } from '../store/usageStore';
+import { Overlay } from '../ui/Overlay';
 
 interface UsageTimerProps {
   onShowDetails?: () => void;
@@ -19,6 +20,7 @@ export default function UsageTimer({ onShowDetails }: UsageTimerProps) {
   } = useUsageStore();
 
   const [showSettings, setShowSettings] = useState(false);
+  const settingsButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     loadUsageData();
@@ -127,7 +129,11 @@ export default function UsageTimer({ onShowDetails }: UsageTimerProps) {
             </button>
 
             <button
+              ref={settingsButton}
               onClick={() => setShowSettings(!showSettings)}
+              aria-label="番茄钟设置"
+              aria-haspopup="dialog"
+              aria-expanded={showSettings}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
               title="设置"
             >
@@ -148,10 +154,10 @@ export default function UsageTimer({ onShowDetails }: UsageTimerProps) {
           </div>
         </div>
 
-      {/* 番茄钟设置面板 */}
-      {showSettings && (
+      <Overlay label="番茄钟设置" open={showSettings} onClose={() => setShowSettings(false)} returnFocus={settingsButton}
+        dialogClassName="ui-overlay-dialog--pomodoro">
         <PomodoroSettings onClose={() => setShowSettings(false)} />
-      )}
+      </Overlay>
     </div>
   );
 }
@@ -172,19 +178,20 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="mt-4 p-4 bg-accent rounded-lg border border-border">
+    <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-medium text-foreground">番茄钟设置</h3>
         <button
           onClick={onClose}
+          aria-label="关闭番茄钟设置"
           className="text-muted-foreground hover:text-foreground"
         >
-          <RotateCcw className="w-4 h-4" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 [&>div]:min-w-0 [&_input]:min-w-0 [&_input]:w-full">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
               专注时长
@@ -192,6 +199,7 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-2">
               <input
                 type="number"
+                aria-label="专注时长"
                 min="1"
                 max="60"
                 value={settings.workDuration}
@@ -209,6 +217,7 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-2">
               <input
                 type="number"
+                aria-label="短休息"
                 min="1"
                 max="30"
                 value={settings.breakDuration}
@@ -226,6 +235,7 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-2">
               <input
                 type="number"
+                aria-label="长休息"
                 min="1"
                 max="60"
                 value={settings.longBreakDuration}
@@ -243,6 +253,7 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-2">
               <input
                 type="number"
+                aria-label="长休息间隔"
                 min="2"
                 max="10"
                 value={settings.cyclesBeforeLongBreak}

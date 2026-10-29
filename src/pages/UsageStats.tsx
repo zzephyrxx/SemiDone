@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, BarChart3 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { BarChart3 } from 'lucide-react';
 import { useUsageStore } from '../store/usageStore';
 import UsageTimer from '../components/UsageTimer';
 import UsageChart from '../components/UsageChart';
 
 export default function UsageStats() {
-  const navigate = useNavigate();
   const {
     stats,
     formatMinutes,
@@ -71,25 +69,8 @@ export default function UsageStats() {
 
   const usageHistory = getUsageHistory();
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="workspace-page usage-page min-h-full bg-background">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* 返回按钮 */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          <span>返回</span>
-        </button>
-
-        {/* 页面标题 */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-2">我的使用时长</h1>
-          <p className="text-sm text-muted-foreground">
-            追踪您的使用习惯，提升效率管理
-          </p>
-        </div>
-
         {/* 番茄钟组件 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">

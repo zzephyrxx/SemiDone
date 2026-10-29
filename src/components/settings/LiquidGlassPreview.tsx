@@ -1,478 +1,106 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-} from 'react';
-import { createRoundedRectEdgeMap } from '../../utils/liquidGlassDisplacement';
-import './LiquidGlassPreview.css';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Check, Circle } from 'lucide-react';
+import type { CSSProperties } from 'react';
+import type { LiquidGlassSettings } from '../../types';
+import { liquidGlassBackdrop, liquidGlassBlurLevelToPixels, normalizeLiquidGlassSettings } from '../../utils/liquidGlassSettings';
+import { LiquidGlassFilters } from '../LiquidGlassRuntime';
+import { scheduleFrame } from '../../ui/motion';
 
-type PreviewMethodId = 'css' | 'noise' | 'edge' | 'chromatic' | 'interactive';
-
-interface PreviewMethod {
-  id: PreviewMethodId;
-  glassTitle: string;
-  glassSubtitle: string;
-  title: string;
-  description: string;
-  featured?: boolean;
-}
-
-interface Position {
-  x: number;
-  y: number;
-}
-
-interface DragState {
-  pointerId: number;
-  pointerX: number;
-  pointerY: number;
-  positionX: number;
-  positionY: number;
-  lastX: number;
-  lastY: number;
-  lastTime: number;
-}
-
-interface GlassSceneProps {
-  method: PreviewMethod;
-  alternateBackground: boolean;
-  radius: number;
-  onInteractiveBoost: (boost: number) => void;
-}
-
-const METHODS: PreviewMethod[] = [
-  {
-    id: 'css',
-    glassTitle: 'CSS Frosted',
-    glassSubtitle: '仅模糊、透明度与高光',
-    title: '磨砂玻璃',
-    description: '柔和模糊背景，呈现轻盈通透的玻璃质感。',
-  },
-  {
-    id: 'noise',
-    glassTitle: 'Global Noise',
-    glassSubtitle: '整块区域持续波动',
-    title: '液态玻璃',
-    description: '背景持续产生轻微流动与折射。',
-  },
-  {
-    id: 'edge',
-    glassTitle: 'Edge Refraction',
-    glassSubtitle: '中心清晰，仅边缘弯曲',
-    title: '边缘折射玻璃',
-    description: '中心保持清晰，边缘呈现自然弯曲。',
-    featured: true,
-  },
-  {
-    id: 'chromatic',
-    glassTitle: 'Chromatic Edge',
-    glassSubtitle: 'RGB 不同强度的边缘偏移',
-    title: '色散玻璃',
-    description: '玻璃边缘带有克制的彩色光晕。',
-  },
-  {
-    id: 'interactive',
-    glassTitle: 'Interactive Jelly',
-    glassSubtitle: '拖动或移动指针试试看',
-    title: '交互式液态玻璃',
-    description: '拖动时会跟随速度产生柔和形变。',
-  },
-];
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function GlassScene({
-  method,
-  alternateBackground,
-  radius,
-  onInteractiveBoost,
-}: GlassSceneProps) {
-  const sceneRef = useRef<HTMLDivElement>(null);
-  const glassRef = useRef<HTMLDivElement>(null);
-  const dragStateRef = useRef<DragState | null>(null);
-  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
-  const [deformation, setDeformation] = useState({
-    rotation: 0,
-    scaleX: 1,
-    scaleY: 1,
-    borderRadius: `${radius}px`,
-  });
-
-  useEffect(() => {
-    if (!dragStateRef.current) {
-      setDeformation((current) => ({
-        ...current,
-        borderRadius: `${radius}px`,
-      }));
-    }
-  }, [radius]);
-
-  const getLimits = () => {
-    const scene = sceneRef.current;
-    const glass = glassRef.current;
-    if (!scene || !glass) return { x: 0, y: 0 };
-
-    const sceneRect = scene.getBoundingClientRect();
-    const glassRect = glass.getBoundingClientRect();
-    return {
-      x: Math.max(0, (sceneRect.width - glassRect.width) / 2 - 14),
-      y: Math.max(0, (sceneRect.height - glassRect.height) / 2 - 14),
-    };
-  };
-
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    dragStateRef.current = {
-      pointerId: event.pointerId,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-      positionX: position.x,
-      positionY: position.y,
-      lastX: event.clientX,
-      lastY: event.clientY,
-      lastTime: performance.now(),
-    };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    event.preventDefault();
-  };
-
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const glass = glassRef.current;
-    if (method.id === 'interactive' && glass) {
-      const rect = glass.getBoundingClientRect();
-      const nx = clamp(((event.clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1, -1, 1);
-      const ny = clamp(((event.clientY - rect.top) / Math.max(rect.height, 1)) * 2 - 1, -1, 1);
-      onInteractiveBoost(Math.hypot(nx, ny) * 5);
-    }
-
-    const dragState = dragStateRef.current;
-    if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-    const limits = getLimits();
-    const nextPosition = {
-      x: clamp(
-        dragState.positionX + event.clientX - dragState.pointerX,
-        -limits.x,
-        limits.x,
-      ),
-      y: clamp(
-        dragState.positionY + event.clientY - dragState.pointerY,
-        -limits.y,
-        limits.y,
-      ),
-    };
-    setPosition(nextPosition);
-
-    if (method.id === 'interactive') {
-      const now = performance.now();
-      const dx = event.clientX - dragState.lastX;
-      const dy = event.clientY - dragState.lastY;
-      const elapsed = Math.max(8, now - dragState.lastTime);
-      const speed = (Math.hypot(dx, dy) / elapsed) * 16;
-      setDeformation({
-        rotation: clamp(dx * 0.12, -5, 5),
-        scaleX: 1 + Math.min(Math.abs(dx) * 0.0045, 0.08),
-        scaleY:
-          1
-          - Math.min(Math.abs(dx) * 0.002, 0.035)
-          + Math.min(Math.abs(dy) * 0.002, 0.035),
-        borderRadius: [
-          clamp(radius - dx * 0.08, 16, 80),
-          clamp(radius + dx * 0.08, 16, 80),
-          clamp(radius + dy * 0.08, 16, 80),
-          clamp(radius - dy * 0.08, 16, 80),
-        ].map((value) => `${value}px`).join(' '),
-      });
-      onInteractiveBoost(Math.min(speed * 0.55, 24));
-      dragState.lastX = event.clientX;
-      dragState.lastY = event.clientY;
-      dragState.lastTime = now;
-    }
-  };
-
-  const releasePointer = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const dragState = dragStateRef.current;
-    if (!dragState || dragState.pointerId !== event.pointerId) return;
-    dragStateRef.current = null;
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setDeformation({
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
-      borderRadius: `${radius}px`,
-    });
-    if (method.id === 'interactive') onInteractiveBoost(0);
-  };
-
-  return (
-    <div
-      ref={sceneRef}
-      data-testid={`liquid-preview-scene-${method.id}`}
-      className={`lgp-scene${alternateBackground ? ' lgp-scene--alternate' : ''}`}
-    >
-      <i className="lgp-orb lgp-orb--one" />
-      <i className="lgp-orb lgp-orb--two" />
-      <i className="lgp-orb lgp-orb--three" />
-      <div
-        ref={glassRef}
-        data-testid={`liquid-preview-glass-${method.id}`}
-        aria-label={`拖动${method.title}样例`}
-        className={`lgp-glass lgp-glass--${method.id}`}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={releasePointer}
-        onPointerCancel={releasePointer}
-        onPointerLeave={() => {
-          if (method.id === 'interactive' && !dragStateRef.current) {
-            onInteractiveBoost(0);
-          }
-        }}
-        style={{
-          transform: `translate(${position.x}px, ${position.y}px) rotate(${deformation.rotation}deg) scale(${deformation.scaleX}, ${deformation.scaleY})`,
-          borderRadius: deformation.borderRadius,
-        }}
-      >
-        <div className="lgp-glass-content">
-          <strong>{method.glassTitle}</strong>
-          <span>{method.glassSubtitle}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function LiquidGlassPreview() {
-  const turbulenceRef = useRef<SVGFETurbulenceElement>(null);
-  const [blur, setBlur] = useState(12);
-  const [refraction, setRefraction] = useState(1);
-  const [radius, setRadius] = useState(42);
-  const [alternateBackground, setAlternateBackground] = useState(false);
-  const [animateNoise, setAnimateNoise] = useState(true);
-  const [interactiveBoost, setInteractiveBoost] = useState(0);
-  const [supportText, setSupportText] = useState('正在检测渲染能力');
-
-  const edgeMap = useMemo(
-    () =>
-      createRoundedRectEdgeMap({
-        width: 240,
-        height: 150,
-        radius,
-        edgeWidth: 24,
-      }),
-    [radius],
-  );
-
-  useEffect(() => {
-    const cssApi = globalThis.CSS;
-    const backdropSupported =
-      cssApi?.supports?.('backdrop-filter', 'blur(2px)')
-      || cssApi?.supports?.('-webkit-backdrop-filter', 'blur(2px)');
-    const chromium =
-      typeof navigator !== 'undefined'
-      && /Chrome|Chromium|Edg\//.test(navigator.userAgent)
-      && !/OPR\//.test(navigator.userAgent);
-    setSupportText(
-      chromium && backdropSupported
-        ? '当前环境适合完整演示'
-        : backdropSupported
-          ? '可显示基础玻璃，SVG 置换可能降级'
-          : '当前环境将显示透明度与高光降级效果',
-    );
+export default function LiquidGlassPreview({ settings }: { settings: LiquidGlassSettings }) {
+  const scene = useRef<HTMLDivElement>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ id: number; x: number; y: number; startX: number; startY: number } | null>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const latestPosition = useRef(position);
+  const cancelFrame = useRef<() => void>(() => {});
+  const [geometry, setGeometry] = useState({ width: 260, height: 110, radius: 20 });
+  const [dragging, setDragging] = useState(false);
+  const constrain = useCallback((next: { x: number; y: number }) => {
+    if (!scene.current || !card.current) return next;
+    const maxX = Math.max(0, (scene.current.clientWidth - card.current.offsetWidth) / 2 - 8);
+    const maxY = Math.max(0, (scene.current.clientHeight - card.current.offsetHeight) / 2 - 8);
+    return { x: Math.max(-maxX, Math.min(maxX, next.x)), y: Math.max(-maxY, Math.min(maxY, next.y)) };
   }, []);
 
   useEffect(() => {
-    const turbulence = turbulenceRef.current;
-    if (!animateNoise || !turbulence || typeof window.requestAnimationFrame !== 'function') {
-      return;
-    }
-
-    const startedAt = performance.now();
-    let frameId = 0;
-    const animate = (now: number) => {
-      const seconds = (now - startedAt) / 1000;
-      const frequencyX = 0.011 + Math.sin(seconds * 0.45) * 0.0022;
-      const frequencyY = 0.021 + Math.cos(seconds * 0.37) * 0.003;
-      turbulence.setAttribute(
-        'baseFrequency',
-        `${frequencyX.toFixed(4)} ${frequencyY.toFixed(4)}`,
-      );
-      frameId = window.requestAnimationFrame(animate);
-    };
-    frameId = window.requestAnimationFrame(animate);
-    return () => window.cancelAnimationFrame(frameId);
-  }, [animateNoise]);
-
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      const next = constrain(latestPosition.current);
+      latestPosition.current = next; setPosition(next);
+      if (card.current && card.current.offsetWidth > 0) {
+        const size = { width: card.current.offsetWidth, height: card.current.offsetHeight, radius: 20 };
+        setGeometry(old => old.width === size.width && old.height === size.height ? old : size);
+      }
+    });
+    if (scene.current) observer.observe(scene.current);
+    if (card.current) observer.observe(card.current);
+    return () => observer.disconnect();
+  }, [constrain]);
+  useEffect(() => () => cancelFrame.current(), []);
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const prefix = `semidone-preview-${id}`;
+  const glass = normalizeLiquidGlassSettings(settings);
+  const blur = liquidGlassBlurLevelToPixels(glass.blur);
+  const filter = liquidGlassBackdrop(glass, prefix, 'pane', geometry);
   const style = {
-    '--lgp-global-blur': `${blur}px`,
-    '--lgp-noise-blur': `${(blur * 0.38).toFixed(2)}px`,
-    '--lgp-edge-blur': `${(blur * 0.06).toFixed(2)}px`,
-    '--lgp-chromatic-blur': `${(blur * 0.03).toFixed(2)}px`,
-    '--lgp-interactive-blur': `${(blur * 0.14).toFixed(2)}px`,
-    '--lgp-radius': `${radius}px`,
+    '--liquid-glass-dialog-blur': `${blur}px`,
+    '--surface-filter': filter,
+    translate: `${latestPosition.current.x}px ${latestPosition.current.y}px`,
   } as CSSProperties;
 
   return (
-    <div className="lgp-root" style={style}>
-      <svg
-        aria-hidden="true"
-        width="0"
-        height="0"
-        className="lgp-filter-definitions"
-        colorInterpolationFilters="sRGB"
-      >
-        <defs>
-          <filter id="preview-global-noise-filter" x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence
-              ref={turbulenceRef}
-              type="fractalNoise"
-              baseFrequency="0.012 0.022"
-              numOctaves={2}
-              seed={7}
-              result="previewNoise"
-            />
-            <feGaussianBlur in="previewNoise" stdDeviation="0.35" result="previewSoftNoise" />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="previewSoftNoise"
-              scale={18 * refraction}
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-
-          <filter
-            id="preview-edge-filter"
-            filterUnits="userSpaceOnUse"
-            x="-40"
-            y="-40"
-            width="320"
-            height="230"
-          >
-            <feImage
-              href={edgeMap}
-              x="0"
-              y="0"
-              width="240"
-              height="150"
-              preserveAspectRatio="none"
-              result="previewEdgeMap"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="previewEdgeMap"
-              scale={34 * refraction}
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-
-          <filter
-            id="preview-chromatic-filter"
-            filterUnits="userSpaceOnUse"
-            x="-40"
-            y="-40"
-            width="320"
-            height="230"
-          >
-            <feImage
-              href={edgeMap}
-              x="0"
-              y="0"
-              width="240"
-              height="150"
-              preserveAspectRatio="none"
-              result="previewChromaticMap"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="previewChromaticMap"
-              scale={31 * refraction}
-              xChannelSelector="R"
-              yChannelSelector="G"
-              result="previewRedShift"
-            />
-            <feColorMatrix
-              in="previewRedShift"
-              type="matrix"
-              values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
-              result="previewRedOnly"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="previewChromaticMap"
-              scale={23 * refraction}
-              xChannelSelector="R"
-              yChannelSelector="G"
-              result="previewGreenShift"
-            />
-            <feColorMatrix
-              in="previewGreenShift"
-              type="matrix"
-              values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"
-              result="previewGreenOnly"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="previewChromaticMap"
-              scale={16 * refraction}
-              xChannelSelector="R"
-              yChannelSelector="G"
-              result="previewBlueShift"
-            />
-            <feColorMatrix
-              in="previewBlueShift"
-              type="matrix"
-              values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"
-              result="previewBlueOnly"
-            />
-            <feBlend in="previewRedOnly" in2="previewGreenOnly" mode="screen" result="previewRG" />
-            <feBlend in="previewRG" in2="previewBlueOnly" mode="screen" />
-          </filter>
-
-          <filter
-            id="preview-interactive-filter"
-            filterUnits="userSpaceOnUse"
-            x="-50"
-            y="-50"
-            width="340"
-            height="250"
-          >
-            <feImage
-              href={edgeMap}
-              x="0"
-              y="0"
-              width="240"
-              height="150"
-              preserveAspectRatio="none"
-              result="previewInteractiveMap"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="previewInteractiveMap"
-              scale={38 * refraction + interactiveBoost}
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </defs>
-      </svg>
-
-      <header className="lgp-header">
-        <div>
-          <div className="lgp-eyebrow">Next Version Preview
-          </div>
-          <h2>液态玻璃效果预览</h2>
+    <figure aria-label="液态玻璃实时预览" className="liquid-glass-preview">
+      <figcaption className="mb-2 flex flex-wrap items-center justify-between gap-1 text-[11px]">
+        <span className="font-medium text-foreground">实时预览</span>
+        <span className="text-muted-foreground">{glass.preset ? `${glass.preset === 'extreme' ? '极致' : '标准'}预设` : `扭曲 ${glass.strength}% · 过渡 ${Math.round(glass.rimWidth * 100)}% · 放大 ${Math.round(glass.magnify * 100)}% · 色散${glass.dispersion ? '开' : '关'}`}</span>
+      </figcaption>
+      <div ref={scene} className="liquid-glass-preview-scene">
+        <div aria-hidden="true" className="liquid-glass-preview-backdrop">
+          <div className="liquid-glass-preview-orb liquid-glass-preview-orb-blue" />
+          <div className="liquid-glass-preview-orb liquid-glass-preview-orb-pink" />
+          <span>SEMIDONE</span>
+          <span>保持专注，轻松完成</span>
         </div>
-        <div className="lgp-support">
-          <span className="lgp-status-dot" />
-          <span>{supportText}</span>
+        <div ref={card} className={`liquid-glass-modal-surface liquid-glass-preview-card${dragging ? ' is-dragging' : ''}`}
+          style={style} tabIndex={0} role="group" aria-label="可拖动的玻璃预览小窗"
+          title="拖动小窗，或使用方向键移动，预览不同背景下的玻璃效果"
+          onPointerDown={(event) => {
+            if (event.button !== 0 || drag.current) return;
+            event.preventDefault();
+            event.currentTarget.focus({ preventScroll: true });
+            drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: latestPosition.current.x, startY: latestPosition.current.y };
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setDragging(true);
+          }}
+          onPointerMove={(event) => {
+            const origin = drag.current;
+            if (!origin || origin.id !== event.pointerId) return;
+            latestPosition.current = constrain({ x: origin.startX + event.clientX - origin.x, y: origin.startY + event.clientY - origin.y });
+            cancelFrame.current();
+            cancelFrame.current = scheduleFrame(() => {
+              if (card.current) card.current.style.translate = `${latestPosition.current.x}px ${latestPosition.current.y}px`;
+            });
+          }}
+          onPointerUp={(event) => {
+            if (drag.current?.id !== event.pointerId) return;
+            drag.current = null;
+            cancelFrame.current(); setPosition(latestPosition.current);
+            setDragging(false);
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }}
+          onPointerCancel={() => { drag.current = null; cancelFrame.current(); setPosition(latestPosition.current); setDragging(false); }}
+          onLostPointerCapture={() => { drag.current = null; setPosition(latestPosition.current); setDragging(false); }}
+          onKeyDown={(event) => {
+            const step = event.shiftKey ? 20 : 8;
+            const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
+            if (!delta) return;
+            event.preventDefault();
+            latestPosition.current = constrain({ x: latestPosition.current.x + delta[0], y: latestPosition.current.y + delta[1] });
+            setPosition(latestPosition.current);
+          }}>
+          <span className="liquid-glass-preview-card-label">今日待办</span>
+          <div className="liquid-glass-preview-task"><Circle size={14} /><span>专注做好一件事</span></div>
+          <div className="liquid-glass-preview-task liquid-glass-preview-task-done"><Check size={14} /><span>给自己留一点空白</span></div>
         </div>
       </header>
 
@@ -523,28 +151,7 @@ export default function LiquidGlassPreview() {
           {animateNoise ? '暂停动态噪声' : '继续动态噪声'}
         </button>
       </div>
-
-      <main className="lgp-grid">
-        {METHODS.map((method) => (
-          <article
-            key={method.id}
-            className={`lgp-method${method.featured ? ' lgp-method--featured' : ''}`}
-          >
-            <GlassScene
-              method={method}
-              alternateBackground={alternateBackground}
-              radius={radius}
-              onInteractiveBoost={
-                method.id === 'interactive' ? setInteractiveBoost : () => undefined
-              }
-            />
-            <div className="lgp-method-body">
-              <h3>{method.title}</h3>
-              <p>{method.description}</p>
-            </div>
-          </article>
-        ))}
-      </main>
-    </div>
+      {glass.enabled && (glass.strength > 0 || glass.magnify > 0 || glass.dispersion) && <LiquidGlassFilters settings={glass} idPrefix={prefix} geometry={geometry} />}
+    </figure>
   );
 }

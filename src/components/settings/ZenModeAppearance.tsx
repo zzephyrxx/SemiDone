@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
-import ParameterSlider from './ParameterSlider';
+import NumberWheel from './NumberWheel';
 import ZenColorPicker from './ZenColorPicker';
 import type { ZenModeSettings } from '../../types';
 import { DEFAULT_ZEN_MODE_SETTINGS, zenModeStyle } from '../../utils/zenModeSettings';
@@ -26,8 +26,14 @@ export default function ZenModeAppearance({ settings, onChange }: Props) {
   };
   return (
     <div className="zen-appearance">
-      <ParameterSlider label="字体大小" min={12} max={28} value={settings.fontSize} suffix=" px"
-        onChange={(fontSize) => onChange({ fontSize })} />
+      <div className="zen-number-grid">
+        <NumberWheel label="字体大小" min={12} max={28} value={settings.fontSize} suffix=" px"
+          onChange={(fontSize) => onChange({ fontSize })} />
+        <NumberWheel label="面板透明度" min={0} max={100} value={100 - settings.backgroundOpacity} suffix="%"
+          onChange={(transparency) => onChange({ backgroundOpacity: 100 - transparency })} />
+        <NumberWheel label="行底色透明度" min={0} max={100} value={100 - settings.rowOpacity} suffix="%"
+          onChange={(transparency) => onChange({ rowOpacity: 100 - transparency })} />
+      </div>
       <div className="zen-color-grid">
         {COLORS.map(({ key, label }) => (
           <div key={key} className="zen-color-field">
@@ -46,20 +52,18 @@ export default function ZenModeAppearance({ settings, onChange }: Props) {
         <ZenColorPicker key={editingColor.key} label={editingColor.label} value={settings[editingColor.key]}
           onChange={(color) => onChange({ [editingColor.key]: color })} onClose={closePicker} />
       </div>}
-      {([
-        { key: 'backgroundOpacity', label: '面板不透明度' },
-        { key: 'rowOpacity', label: '每行底色不透明度' },
-      ] as const).map(({ key, label }) => (
-        <ParameterSlider key={key} label={label} min={0} max={100} value={settings[key]} suffix="%"
-          onChange={(value) => onChange({ [key]: value })} />
-      ))}
       <div className="zen-preview-checker" aria-label="Zen 模式外观预览">
         <div className="zen-preview" style={zenModeStyle(settings)}>
-          <span className="zen-preview-row"><span aria-hidden="true">○</span> 专注眼前的一件事</span>
+          <div className="zen-preview-row zen-task-row"><div className="zen-task-content">
+            <span className="zen-task-toggle" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <rect x="1.5" y="1.5" width="17" height="17" rx="4" />
+            </svg></span>
+            <span className="zen-task-title">专注眼前的一件事</span>
+          </div></div>
         </div>
       </div>
       <div className="zen-appearance-footer">
-        <span>0% 全透明 · 100% 不透明</span>
+        <span>透明度：0% 不透明 · 100% 全透明</span>
         <button type="button" onClick={() => onChange({
           fontSize: DEFAULT_ZEN_MODE_SETTINGS.fontSize,
           textColor: DEFAULT_ZEN_MODE_SETTINGS.textColor,

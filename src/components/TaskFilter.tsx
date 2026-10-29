@@ -1,12 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, Filter, CheckCircle, Circle, Clock, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTaskStore } from '../store/taskStore';
-import { useSettingsStore } from '../store/settingsStore';
-import type { TaskFilter as TaskFilterType, SortField, SortOrder } from '../types';
+import type { TaskFilter as TaskFilterType, SortField } from '../types';
+import { useShallow } from 'zustand/react/shallow';
 
 export default function TaskFilter() {
-  const { filter, searchQuery, setFilter, setSearchQuery, stats, filteredTasks, sortConfig, setSortConfig } = useTaskStore();
-  const { settings } = useSettingsStore();
+  const { filter, searchQuery, setFilter, total, filteredCount, sortConfig, setSortConfig } = useTaskStore(useShallow(state => ({
+    filter: state.filter, searchQuery: state.searchQuery, setFilter: state.setFilter, total: state.stats.total,
+    filteredCount: state.filteredTasks.length, sortConfig: state.sortConfig, setSortConfig: state.setSortConfig,
+  })));
   const [showSortMenu, setShowSortMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -24,37 +26,12 @@ export default function TaskFilter() {
     }
   }, [showSortMenu]);
 
-  const filterOptions: { value: TaskFilterType; label: string; icon: React.ReactNode; count?: number }[] = [
-    {
-      value: 'all',
-      label: '全部',
-      icon: <Filter className="w-4 h-4" />,
-      count: stats.total
-    },
-    {
-      value: 'pending',
-      label: '待完成',
-      icon: <Circle className="w-4 h-4" />,
-      count: stats.pending
-    },
-    {
-      value: 'today',
-      label: '今日到期',
-      icon: <Clock className="w-4 h-4" />,
-      count: stats.today
-    },
-    {
-      value: 'overdue',
-      label: '已逾期',
-      icon: <AlertTriangle className="w-4 h-4" />,
-      count: stats.overdue
-    },
-    {
-      value: 'completed',
-      label: '已完成',
-      icon: <CheckCircle className="w-4 h-4" />,
-      count: stats.completed
-    }
+  const filterOptions: { value: TaskFilterType; label: string }[] = [
+    { value: 'all', label: '全部' },
+    { value: 'pending', label: '待完成' },
+    { value: 'today', label: '今日到期' },
+    { value: 'overdue', label: '已逾期' },
+    { value: 'completed', label: '已完成' },
   ];
 
   const sortOptions: { field: SortField; label: string }[] = [
@@ -88,30 +65,30 @@ export default function TaskFilter() {
 
   const getFilterButtonClass = (filterValue: TaskFilterType) => {
     const isActive = filter === filterValue;
-    const baseClass = "flex items-center space-x-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200";
+    const baseClass = "task-filter-tab flex items-center px-2.5 py-2 rounded-xl text-xs font-medium transition-colors";
 
     if (isActive) {
-      return `${baseClass} bg-primary text-primary-foreground shadow-sm`;
+      return `${baseClass} is-active bg-primary/10 text-primary`;
     }
 
     return `${baseClass} text-muted-foreground hover:text-foreground hover:bg-muted`;
   };
 
   const currentFilterLabel = filterOptions.find(opt => opt.value === filter)?.label || '全部';
-  const currentFilterCount = filter === 'all' ? (stats.total || 0) : filteredTasks.length;
+  const currentFilterCount = filter === 'all' ? total : filteredCount;
 
   return (
-    <div className="space-y-2">
+    <div className="task-filter space-y-2">
       {/* 筛选按钮行 */}
-      <div className="flex flex-wrap gap-1">
+      <div className="task-filter-tabs flex gap-1" role="group" aria-label="筛选待办">
         {filterOptions.map((option) => (
           <button
             key={option.value}
             onClick={() => setFilter(option.value)}
+            aria-pressed={filter === option.value}
             className={getFilterButtonClass(option.value)}
           >
             <span className="flex items-center">
-              {option.icon}
               <span className="ml-1.5">{option.label}</span>
             </span>
           </button>
@@ -126,10 +103,10 @@ export default function TaskFilter() {
       )}
 
       {/* 筛选结果统计 + 排序 */}
-      <div className="flex items-center justify-between">
+      <div className="task-filter-summary flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {filter === 'all' ? (
-            <>全部 · {stats.total || 0} 个待办</>
+            <>全部 · {total || 0} 个待办</>
           ) : (
             <>{currentFilterLabel} · {currentFilterCount} 个待办</>
           )}
@@ -139,6 +116,7 @@ export default function TaskFilter() {
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowSortMenu(!showSortMenu)}
+            aria-expanded={showSortMenu}
             className="flex items-center space-x-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-muted"
           >
             <ArrowUpDown className="w-4 h-4" />

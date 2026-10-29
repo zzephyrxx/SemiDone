@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import { Overlay } from '../ui/Overlay';
 import type { RecurrenceRule, RecurrenceType } from '../types';
 import { DAY_NAMES } from '../types';
 import { formatRecurrenceText } from '../utils/recurrence';
@@ -7,7 +8,6 @@ interface RecurrenceEditorProps {
   value?: RecurrenceRule;
   onChange: (value: RecurrenceRule | undefined) => void;
   buttonClassName?: string;
-  popoverClassName?: string;
 }
 
 function createRule(type: RecurrenceType): RecurrenceRule {
@@ -20,9 +20,10 @@ export function RecurrenceEditor({
   value,
   onChange,
   buttonClassName = 'w-full px-3 py-2 text-left bg-background border border-border rounded-lg hover:bg-muted transition-colors text-foreground text-sm',
-  popoverClassName = 'bg-card',
 }: RecurrenceEditorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const dialogId = useId();
 
   const toggleWeekday = (day: number) => {
     if (value?.type !== 'week') return;
@@ -44,14 +45,13 @@ export function RecurrenceEditor({
 
   return (
     <div className="relative">
-      <button type="button" onClick={() => setIsOpen((open) => !open)} className={buttonClassName}>
+      <button ref={button} type="button" aria-haspopup="dialog" aria-expanded={isOpen} aria-controls={isOpen ? dialogId : undefined}
+        onClick={() => setIsOpen((open) => !open)} className={buttonClassName}>
         {value ? formatRecurrenceText(value) : '不重复'}
       </button>
 
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
-          <div className={`absolute bottom-full right-0 mb-1 p-4 border border-border rounded-lg shadow-xl z-[9999] min-w-[320px] ${popoverClassName}`}>
+      <Overlay label="设置重复周期" open={isOpen} onClose={() => setIsOpen(false)} returnFocus={button} anchor={button} dialogClassName="ui-overlay-dialog--recurrence">
+          <div id={dialogId} className="p-4">
             <div className="space-y-4">
               <div className="text-sm font-medium text-foreground">设置重复周期</div>
 
@@ -164,8 +164,7 @@ export function RecurrenceEditor({
               </div>
             </div>
           </div>
-        </>
-      )}
+      </Overlay>
     </div>
   );
 }

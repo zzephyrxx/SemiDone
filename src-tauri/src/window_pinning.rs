@@ -158,15 +158,23 @@ impl WindowPinning {
 
 /// Only an explicit user action brings the window to the foreground.
 pub fn show_main_window(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let pinning = app.state::<WindowPinning>();
+    let Some(window) = app.get_webview_window("main") else {
+        log::error!("Tray restore failed: main window no longer exists");
+        return;
+    };
+    let pinning = app.state::<WindowPinning>();
+    let result = (|| -> Result<(), tauri::Error> {
+        window.unminimize()?;
+        window.show()?;
+        // A late focus event from hiding must never re-enable the pin guard.
+        // Only explicit restoration releases the user's hidden state.
         pinning.set_hidden(false);
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_always_on_top(true);
-        let _ = window.set_focus();
-        // Never undo the user's pin when the tray temporarily raises the window.
-        let _ = window.set_always_on_top(pinning.enabled());
+        window.set_always_on_top(pinning.enabled())?;
+        window.set_focus()?;
+        Ok(())
+    })();
+    if let Err(error) = result {
+        log::error!("Failed to restore main window from tray: {error}");
     }
 }
 

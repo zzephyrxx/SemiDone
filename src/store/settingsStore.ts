@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { LiquidGlassSettings, ZenModeSettings, Settings, Theme } from '../types';
-import { api } from '../api/tauri';
+import { api, isDesktopRuntime } from '../api/tauri';
 import { toast } from 'sonner';
-import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeLiquidGlassSettings } from '../utils/liquidGlassSettings';
+import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeGlassPresetSettings } from '../utils/liquidGlassSettings';
 import { DEFAULT_ZEN_MODE_SETTINGS, normalizeZenModeSettings } from '../utils/zenModeSettings';
 import { setZenWindowMode } from '../services/zenWindowService';
+import { normalizeFontScale } from '../utils/interfaceSettings';
 
 interface SettingsState {
   // 状态
@@ -31,6 +32,8 @@ interface SettingsState {
 
 const defaultSettings: Settings = {
   theme: 'light',
+  fontScale: 100,
+  animationsEnabled: true,
   liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
   zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS },
   notifications: true,
@@ -44,12 +47,18 @@ const defaultSettings: Settings = {
   isEdgeSnapped: false,
   edgePosition: 'right',
   autoStart: false,
+  closeToTray: true,
 };
+
+let appearancePersistenceQueue: Promise<void> = Promise.resolve();
+let zenModeTransitionQueue: Promise<void> = Promise.resolve();
+let autoStartUpdating = false;
 
 const EXPANDED_WINDOW_SIZE_CONSTRAINTS = {
   minWidth: 400,
   minHeight: 700,
 } as const;
+const BAR_WINDOW_HEIGHT = 65 * 0.9;
 
 const fixedWindowSizeConstraints = (width: number, height: number) => ({
   minWidth: width,
@@ -80,9 +89,22 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             const loadedSettings = {
               ...defaultSettings,
               ...storedSettings,
-              liquidGlass: normalizeLiquidGlassSettings(response.data?.liquidGlass),
+              liquidGlass: normalizeGlassPresetSettings(response.data?.liquidGlass),
               zenMode: normalizeZenModeSettings(storedSettings.zenMode ?? legacyZenMode),
+              closeToTray: storedSettings.closeToTray !== false,
+              fontScale: normalizeFontScale(storedSettings.fontScale),
+              animationsEnabled: storedSettings.animationsEnabled !== false,
             };
+            if (isDesktopRuntime) {
+              try {
+                const autostart = await api.autostart.getAutostartEnabled();
+                if (autostart.success && typeof autostart.data === 'boolean') {
+                  loadedSettings.autoStart = autostart.data;
+                }
+              } catch (error) {
+                console.warn('Failed to read system autostart state:', error);
+              }
+            }
             set({ settings: loadedSettings });
             
             // 应用主题
@@ -177,7 +199,8 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         const newSettings = {
           ...currentSettings,
           ...updates,
-          ...(updates.liquidGlass ? { liquidGlass: normalizeLiquidGlassSettings(updates.liquidGlass) } : {}),
+          ...(updates.fontScale !== undefined ? { fontScale: normalizeFontScale(updates.fontScale) } : {}),
+          ...(updates.liquidGlass ? { liquidGlass: normalizeGlassPresetSettings(updates.liquidGlass) } : {}),
           ...(updates.zenMode ? { zenMode: normalizeZenModeSettings(updates.zenMode) } : {}),
         };
         
@@ -219,7 +242,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
 
       setLiquidGlass: async (updates: Partial<LiquidGlassSettings>) => {
         const previousSettings = get().settings;
-        const liquidGlass = normalizeLiquidGlassSettings({
+        const liquidGlass = normalizeGlassPresetSettings({
           ...previousSettings.liquidGlass,
           ...updates,
         });
@@ -341,9 +364,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
                 const { width } = JSON.parse(savedSize);
                 targetWidth = width;
               }
-              console.log('📏 切换到条状模式:', targetWidth, 'x 65');
+              console.log('📏 切换到条状模式:', targetWidth, 'x', BAR_WINDOW_HEIGHT);
               collapsedWidth = targetWidth;
-              collapsedHeight = 65;
+              collapsedHeight = BAR_WINDOW_HEIGHT;
             }
 
             // 不再切换 resizable。Tao 在 Windows 上切到 false 会移除
@@ -543,31 +566,29 @@ export const useSettingsStore = create<SettingsState>()(devtools(
       },
 
       toggleAutoStart: async () => {
-        const currentSettings = get().settings;
-        const newAutoStartState = !currentSettings.autoStart;
-        console.log('[Autostart] toggleAutoStart called, new state:', newAutoStartState);
-
-        // 先更新本地状态
-        const newSettings = {
-          ...currentSettings,
-          autoStart: newAutoStartState,
-        };
-        set({ settings: newSettings });
-
+        if (autoStartUpdating) return;
+        autoStartUpdating = true;
         try {
-          // 调用 Rust 端设置自启动
-          console.log('[Autostart] calling Rust setAutostartEnabled...');
-          const response = await api.autostart.setAutostartEnabled(newAutoStartState);
-          console.log('[Autostart] response:', response);
-          if (response.success) {
-            // 保存到后端
-            await api.settings.updateSettings(newSettings);
-          } else {
+          const response = await api.autostart.setAutostartEnabled(!get().settings.autoStart);
+          if (!response.success || typeof response.data !== 'boolean') {
             toast.error(response.error || '设置自启动失败');
+            return;
+          }
+          // The OS is authoritative; a rejected operation must not flip the switch.
+          const newSettings = { ...get().settings, autoStart: response.data };
+          set({ settings: newSettings });
+          try {
+            const saved = await api.settings.updateSettings(newSettings);
+            if (!saved.success) toast.error('自启动已更改，但保存设置失败，请稍后重试');
+          } catch (error) {
+            console.error('Save autostart preference failed:', error);
+            toast.error('自启动已更改，但保存设置失败，请稍后重试');
           }
         } catch (error) {
           console.error('[Autostart] Failed to toggle autostart:', error);
           toast.error('设置自启动失败');
+        } finally {
+          autoStartUpdating = false;
         }
       },
     }),

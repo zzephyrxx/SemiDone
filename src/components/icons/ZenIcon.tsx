@@ -1,5 +1,5 @@
-import zenOn from '../../assets/icons/zen-on.svg';
-import zenOff from '../../assets/icons/zen-off.svg';
+import zenOn from '../../assets/icons/zen-on.svg?raw';
+import zenOff from '../../assets/icons/zen-off.svg?raw';
 
 interface Props {
   variant?: 'on' | 'off';
@@ -9,21 +9,12 @@ interface Props {
 
 export default function ZenIcon({ variant = 'on', size = 22, className = '' }: Props) {
   const image = variant === 'on' ? zenOn : zenOff;
-  // Assets share a centered, tightly padded viewBox; inherit the button's theme color.
+  // Inline the bundled SVG so currentColor follows the theme without a CSS mask.
   return (
-    <span aria-hidden="true" className={`block shrink-0 ${className}`} style={{
+    <span aria-hidden="true" className={`block shrink-0 [&>svg]:block [&>svg]:h-full [&>svg]:w-full ${className}`} style={{
       width: size,
       height: size,
-      backgroundColor: 'currentColor',
-      maskImage: `url("${image}")`,
-      WebkitMaskImage: `url("${image}")`,
-      maskPosition: 'center',
-      WebkitMaskPosition: 'center',
-      maskRepeat: 'no-repeat',
-      WebkitMaskRepeat: 'no-repeat',
-      maskSize: 'contain',
-      WebkitMaskSize: 'contain',
       pointerEvents: 'none',
-    }} />
+    }} dangerouslySetInnerHTML={{ __html: image }} />
   );
 }

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
+import { APP_VERSION, RELEASE_HIGHLIGHTS, RELEASE_MONTH } from '../data/release';
+import { useDialogMotion } from '../ui/useDialogMotion';
+import { Surface } from '../ui/Surface';
+import { useDraggableDialog } from '../ui/useDraggableDialog';
+import { useSettingsStore } from '../store/settingsStore';
 
 const APP_VERSION = '5.2.0';
 const WELCOME_STORAGE_KEY = `welcome_shown_${APP_VERSION}`;
@@ -20,6 +25,10 @@ export default function StartupTip() {
   const [show, setShow] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const primaryActionRef = useRef<HTMLButtonElement>(null);
+  const zenWindow = useSettingsStore(state => state.settings.zenMode?.enabled === true
+    && state.settings.zenMode.active && state.settings.collapseMode === 'expanded');
+  const { root, present } = useDialogMotion(show, !zenWindow);
+  const drag = useDraggableDialog(present);
 
   useEffect(() => {
     if (localStorage.getItem(WELCOME_STORAGE_KEY)) return;
@@ -28,7 +37,7 @@ export default function StartupTip() {
   }, []);
 
   useEffect(() => {
-    if (!show) return;
+    if (!show || !present) return;
 
     primaryActionRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -37,61 +46,58 @@ export default function StartupTip() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [show]);
+  }, [show, present]);
 
   const handleClose = () => {
     if (dontShowAgain) localStorage.setItem(WELCOME_STORAGE_KEY, 'true');
     setShow(false);
   };
 
-  if (!show) return null;
+  if (!present) return null;
 
   return (
     <div
+      ref={root}
       data-no-overlay
       className="fixed inset-0 z-50 flex items-center justify-center p-2.5"
     >
-      <div
-        role="dialog"
+      <Surface role="dialog" elementRef={drag.surface}
+        htmlRole="dialog"
         aria-modal="true"
         aria-labelledby="welcome-dialog-title"
-        className="relative flex max-h-[92vh] w-[min(417px,calc(100vw-20px))] flex-col overflow-hidden rounded-[19px] border border-white/90 bg-white shadow-[0_14px_36px_rgba(15,23,42,0.12)] animate-scale-in motion-reduce:animate-none"
+        data-glass-layout="unified"
+        className="welcome-dialog liquid-glass-modal-surface relative flex max-h-[92vh] w-[min(440px,calc(100vw-20px))] flex-col overflow-hidden rounded-[26px] border border-border/70 bg-card p-5 text-foreground shadow-[0_18px_48px_rgba(15,23,42,0.16)]"
         style={{ fontFamily: '"Segoe UI Variable", "Microsoft YaHei UI", sans-serif' }}
       >
-        <header className="relative h-[143px] shrink-0 overflow-hidden bg-[linear-gradient(118deg,#0077B6_0%,#00B4D8_58%,#90E0EF_100%)]">
-          <div
-            aria-hidden="true"
-            className="absolute -left-14 -top-20 h-[204px] w-[204px] rounded-full bg-[#0077B6]/45 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute -right-10 -top-16 h-[190px] w-[190px] rounded-full bg-[#CAF0F8]/55 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute right-8 top-12 h-14 w-24 opacity-30"
-            style={{
-              backgroundImage: 'radial-gradient(circle, white 1px, transparent 1.2px)',
-              backgroundSize: '6px 6px',
-            }}
-          />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent dark:via-white/30"
+        />
 
-          <div className="relative z-10 flex items-center gap-3.5 px-6 pt-7 max-[430px]:gap-2.5 max-[430px]:px-4">
-            <div className="grid h-[53px] w-[53px] shrink-0 place-items-center rounded-[14px] border border-white/35 bg-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,.4),0_10px_24px_rgba(0,119,182,.22)] backdrop-blur-md">
-              <Sparkles className="h-7 w-7 text-white drop-shadow" strokeWidth={1.8} />
-            </div>
-            <div className="min-w-0 text-white">
-              <h2
-                id="welcome-dialog-title"
-                className="whitespace-nowrap text-[23px] font-[750] leading-tight tracking-tight drop-shadow-sm max-[430px]:text-[20px]"
-                style={{ fontFamily: '"Segoe UI Variable Display", "Microsoft YaHei UI", sans-serif' }}
-              >
-                欢迎使用 SemiDone
-              </h2>
-              <p className="mt-1.5 text-[12px] font-light tracking-wide text-white/90">
-                v{APP_VERSION} 版本更新
-              </p>
-            </div>
+        <button
+          type="button"
+          onClick={() => setShow(false)}
+          aria-label="关闭欢迎弹窗"
+          className="welcome-dialog-dismiss absolute right-3.5 top-3.5 z-20 grid h-9 w-9 place-items-center rounded-full border border-border/60 bg-background/30 text-muted-foreground transition-colors hover:bg-background/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        >
+          <X className="h-[17px] w-[17px]" />
+        </button>
+
+        <header {...drag.handle} aria-label="拖动公告弹窗" className="dialog-drag-handle welcome-dialog-header flex shrink-0 items-start gap-3.5 pr-10">
+          <div className="welcome-dialog-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 shadow-[inset_0_1px_0_rgba(255,255,255,.55)]">
+            <Sparkles className="h-6 w-6 text-primary" strokeWidth={1.8} />
+          </div>
+          <div className="min-w-0">
+            <h2
+              id="welcome-dialog-title"
+              className="text-[22px] font-bold leading-tight tracking-tight text-foreground max-[430px]:text-[20px]"
+              style={{ fontFamily: '"Segoe UI Variable Display", "Microsoft YaHei UI", sans-serif' }}
+            >
+              欢迎使用 SemiDone
+            </h2>
+            <p className="mt-1 text-xs tracking-wide text-muted-foreground">
+              V{APP_VERSION} · {RELEASE_MONTH}
+            </p>
           </div>
 
           <button
@@ -171,7 +177,7 @@ export default function StartupTip() {
             开始使用
           </button>
         </footer>
-      </div>
+      </Surface>
     </div>
   );
 }

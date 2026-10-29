@@ -1,0 +1,73 @@
+/* Explicit glass layers only: navigation, its lens, dialogs and the preview.
+   Ordinary page cards and form controls do not opt into this material. */
+:root {
+  --glass-fill-top: .58;
+  --glass-fill-bottom: .22;
+  --glass-highlight: .58;
+  --glass-rim: .72;
+  --selection-gloss: .5;
+  --selection-base-fill: .18;
+  --liquid-glass-surface-filter: blur(var(--liquid-glass-dialog-blur, 11.11px)) url(#semidone-dialog-refraction);
+}
+html[data-theme='dark'] { --glass-fill-top: .5; --glass-fill-bottom: .18; --glass-highlight: .09; --glass-rim: .38; --selection-gloss: .14; --selection-base-fill: .24; }
+
+.ui-surface { background: hsl(var(--card) / var(--window-opacity, 1)); }
+.ui-surface[data-material='glass'] {
+  --glass-background: radial-gradient(ellipse at 14% 0%, rgb(255 255 255 / calc(var(--glass-highlight) * var(--window-opacity, 1))), transparent 58%), linear-gradient(145deg, hsl(var(--card) / calc(var(--glass-fill-top) * var(--window-opacity, 1))), hsl(var(--card) / calc(var(--glass-fill-bottom) * var(--window-opacity, 1))));
+  background: var(--glass-background) !important;
+  -webkit-backdrop-filter: var(--surface-filter, var(--liquid-glass-surface-filter));
+  backdrop-filter: var(--surface-filter, var(--liquid-glass-surface-filter));
+  border-color: rgb(255 255 255 / var(--glass-rim));
+  box-shadow: none;
+}
+.ui-selection-indicator--fill { z-index: 0; background: hsl(var(--card) / .92); border: 1px solid hsl(var(--foreground) / .12); }
+html[data-liquid-glass-dialogs='true'] .ui-selection-indicator--fill {
+  background: linear-gradient(150deg, rgb(255 255 255 / var(--selection-gloss)), rgb(255 255 255 / .04)), hsl(var(--card) / var(--selection-base-fill)) !important;
+  box-shadow: none;
+}
+/* Glass remains behind the navigation foreground in both presets. */
+html[data-liquid-glass-dialogs='true'] .ui-selection-indicator--optics { z-index: 0; }
+.workspace-nav.ui-selection-host > .workspace-nav-link { position: relative; z-index: 2; filter: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.workspace-nav-link > :is(svg, span) { filter: none; }
+.ui-surface--selection[data-material='glass'] { background: transparent !important; box-shadow: none !important; }
+.ui-surface--selection[data-material='solid'] { background: transparent; }
+html[data-liquid-glass-dialogs='false'] .ui-selection-indicator { z-index: 0; }
+.ui-surface[data-material='solid'] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.ui-surface[data-material='frosted'] {
+  background: hsl(var(--card) / .78);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: none;
+}
+/* Defeat legacy theme/transparent-mode frost too; switching glass must not
+   recolor or shade ordinary content. Focus rings are left intact on inputs. */
+html[data-liquid-glass-dialogs] .workspace-shell :is(.home-overview, .task-card, .task-card.completed, .card, .settings-tile, .titlebar) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+html[data-liquid-glass-dialogs] .workspace-shell :is(.home-search, .home-search input, button),
+.liquid-glass-modal-overlay button {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* The sticky row is layout only; its input and action remain separate. */
+.workspace-shell .home-toolbar { background: transparent !important; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-liquid-glass-dialogs='true'] .workspace-nav-link:hover { background: transparent; }
+
+@media (prefers-contrast: more) {
+  :root { --glass-fill-top: .88; --glass-fill-bottom: .76; }
+}
+@media (forced-colors: active) {
+  .ui-surface:is([data-material='glass'], [data-material='frosted']) { background: Canvas !important; border-color: CanvasText; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ui-selection-indicator { z-index: 0; }
+  .ui-selection-indicator--optics { z-index: 0 !important; }
+  .ui-surface--selection::after { background: none !important; mask: none !important; -webkit-mask: none !important; border: 1px solid Highlight; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ui-selection-indicator--optics { z-index: 0 !important; }
+  .ui-surface:is([data-material='glass'], [data-material='frosted']) { background: hsl(var(--card) / .96) !important; }
+}

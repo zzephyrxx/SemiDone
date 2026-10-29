@@ -5,66 +5,11 @@ import {
   PhysicalPosition,
 } from '@tauri-apps/api/window';
 import { useSettingsStore } from '../store/settingsStore';
-import {
-  clampWindowPositionToMonitor,
-  findHorizontalSnapEdge,
-} from '../utils/windowSnap';
-
-const DRAG_THRESHOLD = 3;
-const BOUNDARY_SETTLE_DELAY = 120;
-
-interface PointerPosition {
-  x: number;
-  y: number;
-}
-
-interface WindowGeometry {
-  position: PointerPosition;
-  size: {
-    width: number;
-    height: number;
-  };
-  monitor: NonNullable<Awaited<ReturnType<typeof currentMonitor>>>;
-  corrected: boolean;
-}
+import { isDesktopRuntime } from '../api/tauri';
+import { dragFloatingWindow } from '../services/floatingWindowDrag';
 
 interface FloatingBallProps {
   onExpand: () => void;
-}
-
-async function keepFloatingWindowVisible(
-  onBeforeCorrection?: (position: PointerPosition) => void,
-): Promise<WindowGeometry | null> {
-  const appWindow = getCurrentWindow();
-  const [windowPosition, windowSize, monitor] = await Promise.all([
-    appWindow.outerPosition(),
-    appWindow.outerSize(),
-    currentMonitor(),
-  ]);
-  if (!monitor) return null;
-
-  const safePosition = clampWindowPositionToMonitor(
-    windowPosition,
-    windowSize,
-    monitor,
-  );
-  const corrected =
-    safePosition.x !== windowPosition.x ||
-    safePosition.y !== windowPosition.y;
-
-  if (corrected) {
-    onBeforeCorrection?.(safePosition);
-    await appWindow.setPosition(
-      new PhysicalPosition(safePosition.x, safePosition.y),
-    );
-  }
-
-  return {
-    position: safePosition,
-    size: windowSize,
-    monitor,
-    corrected,
-  };
 }
 
 export default function FloatingBall({ onExpand }: FloatingBallProps) {
@@ -95,17 +40,33 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
   }, []);
 
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef<PointerPosition | null>(null);
-  const nativeDragStartedRef = useRef(false);
-  const suppressClickRef = useRef(false);
-  const suppressClickTimerRef = useRef<number | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const ballRef = useRef<HTMLDivElement>(null);
+  const [isNearEdge, setIsNearEdge] = useState(false);
+  const pressPoint = useRef({ x: 0, y: 0 });
+  const nativeDragging = useRef(false);
+  const suppressClick = useRef(false);
+
+  // 检测是否接近屏幕边缘
+  const checkEdgeProximity = (x: number, screenWidth: number) => {
+    const threshold = 50;
+    return x < threshold || x > screenWidth - threshold;
+  };
 
   // 左键按下时只记录起点，避免原生拖窗吞掉普通点击事件。
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
-
-    dragStartRef.current = { x: e.screenX, y: e.screenY };
-    nativeDragStartedRef.current = false;
+    pressPoint.current = { x: e.clientX, y: e.clientY };
+    suppressClick.current = false;
+    setIsDragging(true);
+    const rect = ballRef.current?.getBoundingClientRect();
+    if (rect) {
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
+    e.preventDefault();
   };
 
   // 移动超过阈值后才启动原生窗口拖动；释放时再判断是否需要吸附。
@@ -123,17 +84,24 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
       }
     };
 
-    const keepVisibleOnce = (
-      onBeforeCorrection?: (position: PointerPosition) => void,
-    ) => {
-      if (!boundaryCorrectionPromise) {
-        boundaryCorrectionPromise = keepFloatingWindowVisible(onBeforeCorrection)
-          .finally(() => {
-            boundaryCorrectionPromise = null;
-          });
+      const moved = Math.hypot(e.clientX - pressPoint.current.x, e.clientY - pressPoint.current.y) >= 4;
+      if (isDesktopRuntime) {
+        if (!moved || nativeDragging.current) return;
+        nativeDragging.current = true;
+        suppressClick.current = true;
+        void dragFloatingWindow().then(async edge => {
+          if (edge && useSettingsStore.getState().settings.collapseMode === 'floating') await setEdgeSnap(true, edge);
+        }).catch(error => console.warn('悬浮球拖动失败:', error)).finally(() => {
+          nativeDragging.current = false;
+          setIsDragging(false);
+          setIsNearEdge(false);
+        });
+        return;
       }
-      return boundaryCorrectionPromise;
-    };
+      if (moved) suppressClick.current = true;
+
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
 
     const correctBoundary = async () => {
       try {
@@ -180,12 +148,10 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
     };
 
     const handleMouseUp = async () => {
-      if (!dragStartRef.current) return;
-
-      clearBoundaryTimer();
-      const wasDragging = nativeDragStartedRef.current;
-      dragStartRef.current = null;
-      nativeDragStartedRef.current = false;
+      if (isDesktopRuntime) {
+        if (!nativeDragging.current) setIsDragging(false);
+        return;
+      }
       setIsDragging(false);
 
       if (!wasDragging) return;
@@ -257,11 +223,7 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
 
   // 点击展开
   const handleClick = () => {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
-
+    if (suppressClick.current) { suppressClick.current = false; return; }
     if (settings.isEdgeSnapped) {
       void setEdgeSnap(false)
         .then(() => keepFloatingWindowVisible())
@@ -277,10 +239,8 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
 
   return (
     <div
-      onContextMenu={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      }}
+      ref={ballRef}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
       className={`
         fixed top-0 left-0 z-50 select-none cursor-pointer overflow-hidden
         flex items-center justify-center p-0 m-0
@@ -291,7 +251,8 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
       style={{
         width: isSnapped ? '30px' : '55px', 
         height: isSnapped ? '30px' : '55px',
-      }}
+        WebkitAppRegion: 'no-drag',
+      } as React.CSSProperties}
     >
       <img
         src="/Logo3D.png"

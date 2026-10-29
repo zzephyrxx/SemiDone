@@ -1,7 +1,10 @@
+mod autostart;
 mod commands;
 mod models;
 mod single_instance;
 mod storage;
+mod window_interaction;
+mod window_lifecycle;
 mod window_pinning;
 
 use single_instance::ensure_single_instance;
@@ -13,6 +16,7 @@ use tauri::{
     Manager, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
+use window_lifecycle::WindowLifecycle;
 use window_pinning::{show_main_window, WindowPinning};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -25,10 +29,10 @@ pub fn run() {
 
     // 初始化存储
     let storage = Storage::new().expect("Failed to initialize storage");
-    let topmost_enabled = storage
+    let close_to_tray = storage
         .load_settings()
-        .map(|settings| settings.is_pinned)
-        .unwrap_or(false);
+        .map(|settings| settings.close_to_tray)
+        .unwrap_or(true);
 
     // 创建系统托盘菜单将在setup中处理
 
@@ -36,15 +40,29 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
         .manage(Mutex::new(storage))
-        .manage(commands::TopmostState::new(topmost_enabled))
-        .on_window_event(|window, event| match event {
-            WindowEvent::CloseRequested { api, .. } => {
-                // 先阻止窗口被销毁，再隐藏到托盘。即使隐藏失败，WebView 仍然
-                // 存活，避免出现进程仍在但托盘无法恢复窗口的状态。
-                api.prevent_close();
-                if let Err(error) = window.hide() {
-                    eprintln!("Failed to hide window after close request: {error}");
+        .manage(WindowPinning::default())
+        .manage(WindowLifecycle::new(close_to_tray))
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            let pinning = window.state::<WindowPinning>();
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    if !window.state::<WindowLifecycle>().close_to_tray() {
+                        return;
+                    }
+                    // Keep the window/WebView alive. Only the explicit quit
+                    // action exits the process while this preference is on.
+                    api.prevent_close();
+                    pinning.set_hidden(true);
+                    if let Err(error) = window.hide() {
+                        log::warn!("Failed to hide window: {error}");
+                        pinning.set_hidden(false);
+                    }
                 }
+                WindowEvent::Destroyed => pinning.stop(),
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -66,6 +84,7 @@ pub fn run() {
             commands::import_data,
             commands::clear_all_data,
             commands::exit_app,
+            commands::close_main_window,
             commands::get_data_dir_path,
             commands::open_file_with_system,
             commands::open_file_by_path,
@@ -88,9 +107,15 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
-            #[cfg(target_os = "windows")]
-            commands::start_topmost_watchdog(app.handle().clone())?;
-
+            if let Err(error) = autostart::refresh_existing_registration(app.handle()) {
+                log::warn!("Failed to refresh autostart registration: {error}");
+            }
+            if let Some(window) = app.get_webview_window("main") {
+                window_interaction::install(&window).map_err(std::io::Error::other)?;
+                app.state::<WindowPinning>()
+                    .start(window)
+                    .map_err(std::io::Error::other)?;
+            }
             // 创建托盘右键菜单
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
@@ -102,26 +127,11 @@ pub fn run() {
                 .tooltip("事半·SemiDone")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
-                .on_menu_event(|app, event| {
-                    println!("🔔 托盘菜单事件: {}", event.id.as_ref());
-                    match event.id.as_ref() {
-                        "show" => {
-                            println!("  └─ 显示窗口");
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.unminimize();
-                                let _ = commands::force_window_topmost(&window);
-                                let _ = window.set_focus();
-                                let _ = commands::restore_configured_window_topmost(app, &window);
-                                println!("  └─ ✅ 窗口已显示并聚焦");
-                            }
-                        }
-                        "quit" => {
-                            println!("  └─ 退出应用");
-                            app.exit(0);
-                        }
-                        _ => {}
-                    }
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => show_main_window(app),
+                    "quit" => app.exit(0),
+                    _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
                     match event {
