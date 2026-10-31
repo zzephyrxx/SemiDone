@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Clock, Timer, ChevronRight } from 'lucide-react';
+import { Clock, Timer, ChevronRight } from '../ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { useUsageStore } from '../store/usageStore';
 import { useShallow } from 'zustand/react/shallow';

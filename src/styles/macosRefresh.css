@@ -1,0 +1,52 @@
+/* Shared restrained appearance; container queries follow usable content width. */
+html[data-theme='light'] { --background: 220 16% 96%; --foreground: 220 15% 15%; --primary: 212 96% 44%; --accent: 212 55% 94%; --border: 220 12% 87%; --muted-foreground: 220 7% 43%; }
+html[data-theme='dark'] { --background: 220 10% 10%; --card: 220 8% 14%; --primary: 210 95% 72%; --accent: 215 20% 23%; }
+.workspace-shell { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif; }
+.settings-page, .settings-container, .settings-sections, .settings-sections > *, .settings-sections section { width: 100%; min-width: 0; max-width: 100%; }
+.settings-container { container-type: inline-size; }
+.settings-sections { grid-template-columns: minmax(0, 1fr); }
+.settings-index { flex-wrap: wrap; }
+.settings-index button { min-width: 0; }
+.settings-sections .appearance-grid { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.settings-sections .appearance-grid > * { min-width: 0; grid-column: 1 / -1; }
+.settings-tile { min-width: 0; }
+.settings-tile > :last-child { flex-shrink: 0; }
+.settings-data-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; }
+.settings-data-actions { grid-column: 2; flex-wrap: wrap; min-width: 0; }
+.settings-sections :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+.settings-sections .zen-settings-panel { min-width: 0; }
+.theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container (min-width: 570px) {
+  .settings-sections .appearance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-sections .appearance-grid > .settings-tile { grid-column: auto; }
+  .settings-data-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .settings-data-actions { grid-column: 3; grid-row: 1; }
+}
+.calendar-view-switch { background: hsl(var(--muted)); border-color: hsl(var(--border)); gap: 3px; }
+.calendar-view-switch button { position: relative; transition: background 180ms, color 180ms, box-shadow 180ms; }
+.calendar-view-switch button[aria-pressed='true'] { color: hsl(var(--primary-foreground)); background: hsl(var(--primary)); box-shadow: 0 1px 4px hsl(var(--primary) / .25), inset 0 1px 0 rgb(255 255 255 / .2); }
+.animated-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; vertical-align: middle; color: inherit; line-height: 0; }
+.animated-icon > span, .animated-icon svg { display: block; width: 100%; height: 100%; }
+.animated-icon svg { stroke-width: var(--icon-stroke, 1.8); }
+.ui-surface[data-glass-renderer='rdev'] { background: hsl(var(--card) / .62); backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.rdev-glass-layer { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: -1; }
+.rdev-glass-layer .rdev-glass { border-radius: inherit; }
+.rdev-glass-layer .glass { width: 100% !important; height: 100% !important; box-shadow: none !important; border: 1px solid hsl(var(--foreground) / .08); }
+.rdev-glass-layer .glass > div { width: 100%; }
+.rdev-glass-layer .glass__warp { -webkit-backdrop-filter: blur(14px) saturate(110%); }
+.ui-surface[data-glass-renderer='rdev']::after { background: none !important; box-shadow: none !important; }
+html[data-ui-motion='false'] .rdev-glass-layer * { transition: none !important; }
+.workspace-nav-link .animated-icon { width: 19px !important; height: 19px !important; }
+
+html[data-window-transition='collapsing'] .workspace-shell { transform-origin: top left; transition: opacity 110ms ease, transform 160ms cubic-bezier(.2,.8,.2,1); opacity: .1; transform: scale(.96); pointer-events: none; }
+html:not([data-ui-motion='false']) .floating-ball-shell { animation: floating-reveal 240ms cubic-bezier(.16,1,.3,1) both; }
+@keyframes floating-reveal { from { opacity: 0; transform: scale(.72); } to { opacity: 1; transform: scale(1); } }
+
+:where(.animated-icon) { width: 24px; height: 24px; }
+.animated-icon.fill-current svg { fill: currentColor; }
+
+.theme-miniature { overflow: hidden; }
+.floating-ball-shell { border: 0; background: transparent; padding: 0; }
+
+.theme-miniature { --mini-accent: #0769d9; }
+.theme-miniature--dark { --mini-accent: #91bdf2; }

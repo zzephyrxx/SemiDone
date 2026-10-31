@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { dragFloatingWindow } from './floatingWindowDrag';
+vi.mock('../platform/runtime', () => ({ isMacOS: false }));
 
 function windowAt(x: number) {
   let end!: () => void;
@@ -37,4 +38,17 @@ it('removes the drag-end subscription if starting movement fails', async () => {
   drag.window.startDragging.mockRejectedValue(new Error('drag failed'));
   await expect(dragFloatingWindow(drag.window, async () => null)).rejects.toThrow('drag failed');
   expect(drag.unlisten).toHaveBeenCalledOnce();
+});
+
+it('waits for the macOS mouse release before reading final window geometry', async () => {
+  const drag = windowAt(1810);
+  let release!: (down: boolean) => void;
+  const readMouse = vi.fn().mockImplementationOnce(() => new Promise<boolean>(resolve => { release = resolve; }));
+  const monitor = async () => ({ position: { x: 0, y: 0 }, size: { width: 1920, height: 1080 }, scaleFactor: 1 });
+  const pending = dragFloatingWindow(drag.window, monitor, readMouse);
+  await Promise.resolve();
+  expect(drag.window.outerPosition).not.toHaveBeenCalled();
+  release(false);
+  expect(await pending).toBe('right');
+  expect(drag.window.once).not.toHaveBeenCalled();
 });

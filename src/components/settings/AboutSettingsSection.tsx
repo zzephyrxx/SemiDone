@@ -6,7 +6,7 @@ import {
   Info,
   QrCode,
   X,
-} from 'lucide-react';
+} from '../../ui/icons';
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import VersionUpdateBadge, {
@@ -15,6 +15,7 @@ import VersionUpdateBadge, {
 } from './VersionUpdateBadge';
 import { createRoundedRectEdgeMap } from '../../utils/liquidGlassDisplacement';
 import LiquidGlassPreview from './LiquidGlassPreview';
+import { DEFAULT_LIQUID_GLASS_SETTINGS } from '../../utils/liquidGlassSettings';
 
 interface AboutSettingsSectionProps {
   appVersion: string;
@@ -607,7 +608,7 @@ export default function AboutSettingsSection({
               <X className="h-[18px] w-[18px]" />
             </button>
 
-            <LiquidGlassPreview />
+            <LiquidGlassPreview settings={DEFAULT_LIQUID_GLASS_SETTINGS} />
           </div>
         </div>
       )}

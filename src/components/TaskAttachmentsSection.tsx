@@ -1,4 +1,4 @@
-import { FolderOpen, Paperclip } from 'lucide-react';
+import { FolderOpen, Paperclip } from '../ui/icons';
 import { toast } from 'sonner';
 import { api, isDesktopRuntime } from '../api/tauri';
 import type { Attachment } from '../types';

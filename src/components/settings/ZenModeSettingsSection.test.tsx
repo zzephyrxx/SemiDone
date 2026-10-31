@@ -34,8 +34,8 @@ describe('Zen mode settings', () => {
         expect(panel).toHaveAttribute('data-material', enabled ? 'glass' : 'solid');
         const filter = (panel as HTMLElement).style.getPropertyValue('--surface-filter');
         if (enabled) {
-          expect(filter).toMatch(/^blur\(/);
-          if (preset === 'extreme') expect(filter).toContain('chromatic-refraction');
+          expect(panel).toHaveAttribute('data-glass-renderer', 'rdev');
+          expect(panel.querySelector('.glass__warp')).toBeInTheDocument();
           expect(getComputedStyle(panel).getPropertyValue('backdrop-filter')).not.toBe('none');
         } else {
           expect(filter).toBe('none');

@@ -19,7 +19,7 @@ export default function NumberWheel({ label, min, max, value, suffix = '', onCha
   const scroller = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState(value);
   const latest = useRef({ value, onChange }); latest.current = { value, onChange };
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const pendingValue = useRef<number | null>(null);
   const drag = useRef<{ id: number; y: number; top: number; moved: boolean; option?: number } | null>(null);
   const blockClick = useRef(false);

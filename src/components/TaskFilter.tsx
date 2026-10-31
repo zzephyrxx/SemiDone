@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
 import type { TaskFilter as TaskFilterType, SortField } from '../types';
 import { useShallow } from 'zustand/react/shallow';

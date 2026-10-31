@@ -1,0 +1,31 @@
+{
+  "identifier": "com.semidone.desktop",
+  "bundle": {
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "26.0",
+      "signingIdentity": "-"
+    }
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "事半·SemiDone",
+        "width": 550,
+        "height": 800,
+        "minWidth": 400,
+        "minHeight": 500,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "dragDropEnabled": false,
+        "maximizable": false
+      }
+    ]
+  }
+}

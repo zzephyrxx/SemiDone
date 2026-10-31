@@ -21,11 +21,11 @@ export function NavigationCheck() {
   useSelectionIndicator(nav, String(active));
   return <>
     <button type="button" aria-pressed={dispersion} onClick={() => useSettingsStore.setState(state => ({ settings: { ...state.settings, liquidGlass: { ...state.settings.liquidGlass, dispersion: !dispersion } } }))}>边缘色散：{dispersion ? '开' : '关'}</button>
-    {(['light', 'pink', 'dark'] as const).map((value, index) => <button key={value} type="button" aria-pressed={theme === value} style={{ marginLeft: 12 }} onClick={() => {
+    {(['light', 'dark'] as const).map((value, index) => <button key={value} type="button" aria-pressed={theme === value} style={{ marginLeft: 12 }} onClick={() => {
       document.documentElement.dataset.theme = value;
       document.documentElement.classList.toggle('dark', value === 'dark');
       useSettingsStore.setState(state => ({ settings: { ...state.settings, theme: value } }));
-    }}>{['明亮', '梦粉', '深色'][index]}</button>)}
+    }}>{['明亮', '深色'][index]}</button>)}
     <p style={{ margin: '12px 0' }}>依次点击导航，检查可见底板、文字清晰度及窄边缘；条纹仅为测试背景。</p>
     <Surface role="navigation"><nav ref={nav} className="workspace-nav ui-selection-host" aria-label="玻璃导航检查">
       <span className="ui-selection-indicator ui-selection-indicator--fill" aria-hidden="true" />

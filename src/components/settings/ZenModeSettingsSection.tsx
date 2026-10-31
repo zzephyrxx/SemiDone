@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '../../ui/icons';
 import { useState } from 'react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { normalizeZenModeSettings } from '../../utils/zenModeSettings';

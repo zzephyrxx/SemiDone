@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, X } from 'lucide-react';
+import { Power, X } from '../ui/icons';
 import { useDialogMotion } from '../ui/useDialogMotion';
 import { Surface } from '../ui/Surface';
 import { useDraggableDialog } from '../ui/useDraggableDialog';

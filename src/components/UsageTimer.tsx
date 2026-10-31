@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, RotateCcw, Settings, BarChart3, Timer, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, BarChart3, Timer, X } from '../ui/icons';
 import { useUsageStore } from '../store/usageStore';
 import { Overlay } from '../ui/Overlay';
 

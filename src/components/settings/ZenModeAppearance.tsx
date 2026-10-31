@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw } from '../../ui/icons';
 import NumberWheel from './NumberWheel';
 import ZenColorPicker from './ZenColorPicker';
 import type { ZenModeSettings } from '../../types';

@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isBefore, isSameDay, isSameMonth, isValid, parseISO, startOfDay, startOfMonth, startOfWeek } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from '../ui/icons';
 
 interface Props { id: string; value: string; onConfirm: (value: string) => void; onCancel: () => void; onClear: () => void; inDialog?: boolean }
 

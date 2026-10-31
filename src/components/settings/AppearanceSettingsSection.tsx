@@ -10,7 +10,7 @@ import {
   Droplet,
   Sparkles,
   Minimize2,
-} from 'lucide-react';
+} from '../../ui/icons';
 import { type ReactElement } from 'react';
 import type { LiquidGlassSettings, Settings, Theme } from '../../types';
 import GlassControls from './GlassControls';
@@ -31,17 +31,16 @@ interface AppearanceSettingsSectionProps {
   onAnimationsChange?: (enabled: boolean) => void;
 }
 
-const THEMES: Theme[] = ['light', 'dark', 'pink'];
+const THEMES: Theme[] = ['light', 'dark'];
 
 function themeName(theme: Theme): string {
   if (theme === 'light') return '明亮';
   if (theme === 'dark') return '深色';
-  return '梦粉';
+  return '明亮';
 }
 
 function themeIcon(theme: Theme): ReactElement {
   if (theme === 'dark') return <Moon className="h-3.5 w-3.5 text-blue-400" />;
-  if (theme === 'pink') return <Heart className="h-3.5 w-3.5 text-rose-500" />;
   return <Sun className="h-3.5 w-3.5 text-amber-500" />;
 }
 

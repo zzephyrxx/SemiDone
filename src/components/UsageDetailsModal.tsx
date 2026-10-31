@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, BarChart3, TrendingUp, Trophy } from 'lucide-react';
+import { X, Calendar, Clock, BarChart3, TrendingUp, Trophy } from '../ui/icons';
 import { useUsageStore } from '../store/usageStore';
 import { useDialogMotion } from '../ui/useDialogMotion';
 

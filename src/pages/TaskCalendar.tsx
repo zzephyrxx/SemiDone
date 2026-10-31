@@ -8,7 +8,7 @@ import {
   isToday,
 } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2 } from '../ui/icons';
 import { Link } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import type { Task } from '../types';

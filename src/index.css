@@ -1,6 +1,5 @@
 /* 导入主题样式 */
 @import './styles/themes/light.css';
-@import './styles/themes/pink.css';
 @import './styles/themes/glass.css';
 
 @tailwind base;

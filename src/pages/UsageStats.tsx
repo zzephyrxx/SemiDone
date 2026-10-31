@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3 } from '../ui/icons';
 import { useUsageStore } from '../store/usageStore';
 import UsageTimer from '../components/UsageTimer';
 import UsageChart from '../components/UsageChart';

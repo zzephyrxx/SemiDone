@@ -25,7 +25,7 @@ beforeEach(async () => {
   localStorage.clear();
   await api.settings.updateSettings(useSettingsStore.getState().settings);
   useSettingsStore.setState((state) => ({ settings: {
-    ...state.settings, theme: 'pink', animationsEnabled: true, zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS, enabled: true, active: true },
+    ...state.settings, theme: 'dark', animationsEnabled: true, zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS, enabled: true, active: true },
   } }));
   useTaskStore.setState({
     tasks: [], filter: 'completed', searchQuery: '不匹配的搜索', loading: false,
@@ -54,8 +54,8 @@ describe('Zen mode', () => {
         expect(panel).toHaveAttribute('data-material', enabled ? 'glass' : 'solid');
         const filter = (panel as HTMLElement).style.getPropertyValue('--surface-filter');
         if (enabled) {
-          expect(filter).toMatch(/^blur\(/);
-          if (preset === 'extreme') expect(filter).toContain('chromatic-refraction');
+          expect(panel).toHaveAttribute('data-glass-renderer', 'rdev');
+          expect(panel.querySelector('.glass__warp')).toBeInTheDocument();
         } else {
           expect(filter).toBe('none');
           expect(getComputedStyle(panel).getPropertyValue('backdrop-filter')).toBe('none');
@@ -178,7 +178,7 @@ describe('Zen mode', () => {
     fireEvent.click(screen.getByRole('button', { name: '返回完整模式' }));
     await waitFor(() => expect(useSettingsStore.getState().settings.zenMode?.active).toBe(false));
     expect(useSettingsStore.getState().settings.zenMode?.enabled).toBe(true);
-    expect(useSettingsStore.getState().settings.theme).toBe('pink');
+    expect(useSettingsStore.getState().settings.theme).toBe('dark');
     expect((await api.settings.getSettings()).data?.zenMode?.textColor).toBe('#aabbcc');
   });
 
@@ -198,7 +198,7 @@ describe('Zen mode', () => {
     document.head.append(style);
     render(<ZenMode onClose={vi.fn()} />);
     await screen.findByText(pending.title);
-    expect(screen.getByText('SemiDone Zen')).toBeVisible();
+    expect(screen.getByText('SemiDone')).toBeVisible();
     expect(screen.queryByRole('region', { name: 'Zen 模式配置' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Zen 模式配置' }));
     const font = screen.getByRole('spinbutton', { name: '字体大小' });

@@ -58,7 +58,9 @@ export function useSelectionIndicator(ref: RefObject<HTMLElement>, selected: str
     };
     const up = (event: PointerEvent) => {
       if (!pointer || event.pointerId !== pointer.id) return;
-      update(event);
+      // WebKit accessibility activation can report a zero-coordinate mouseup.
+      // A click keeps its pressed item; only a real pointermove starts a drag.
+      if (pointer.dragged) update(event);
       const destination = pointer.at;
       const target = destination.item;
       settle(); paint(destination);

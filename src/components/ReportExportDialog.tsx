@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, FileDown, Clock, X, CheckCircle } from 'lucide-react';
+import { Calendar, FileDown, Clock, X, CheckCircle } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
 import { 
   generateReportMarkdown, 

@@ -12,10 +12,13 @@ import { usePinnedWindowGuard } from './hooks/usePinnedWindowGuard';
 import { useSettingsStore } from './store/settingsStore'
 import { Toaster } from 'sonner'
 import { TooltipLayer } from './ui/TooltipLayer';
-import { useContextMenuGuard } from './hooks/useGlobalInteractionGuards';
+import { useNativePinMode } from './hooks/useNativePinMode';
+import LiquidGlassRuntime from './components/LiquidGlassRuntime';
 
 function App() {
-  useContextMenuGuard();
+  useGlobalInteractionGuards();
+  const isPinned = useSettingsStore(state => state.settings.isPinned);
+  usePinnedWindowGuard(isPinned);
   const theme = useSettingsStore(state => state.settings.theme);
   const loadSettings = useSettingsStore(state => state.loadSettings);
   const compact = useSettingsStore(state => state.settings.collapseMode !== 'expanded');
@@ -63,7 +66,6 @@ function App() {
         </Routes>
       </Router>
       <StartupTip />
-      <UpdateNotifier />
       <TooltipLayer />
       {!compact && <Toaster richColors position="top-center" duration={2000} />}
     </>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp } from '../ui/icons';
 
 interface ChartData {
   date: string;

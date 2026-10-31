@@ -39,25 +39,7 @@ html[data-theme='dark'] {
   --ring: 231 82% 79%;
 }
 
-html[data-theme='pink'] {
-  --background: 340 22% 97%;
-  --foreground: 337 15% 23%;
-  --card: 0 0% 100%;
-  --card-foreground: 337 15% 23%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 337 15% 23%;
-  --primary: 339 39% 45%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 338 26% 93%;
-  --secondary-foreground: 337 15% 28%;
-  --muted: 338 20% 94%;
-  --muted-foreground: 337 9% 45%;
-  --accent: 339 35% 92%;
-  --accent-foreground: 339 39% 38%;
-  --border: 338 18% 89%;
-  --input: 338 18% 87%;
-  --ring: 339 39% 45%;
-}
+
 
 html[data-theme] body { background-image: none; }
 
@@ -95,7 +77,7 @@ html[data-theme] body { background-image: none; }
 .workspace-profile > span { display: none; }
 .workspace-shell .titlebar > div:last-child { animation: none; gap: 2px; }
 .workspace-shell .titlebar > div:last-child > button { display: flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 6px; }
-.workspace-shell .titlebar > div:last-child > button > svg { width: 17px; height: 17px; }
+.workspace-shell .titlebar > div:last-child > button svg { width: 17px; height: 17px; }
 
 .workspace-body { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .workspace-navigation { position: absolute; z-index: 30; top: 10px; left: 18px; right: 18px; }
@@ -165,7 +147,7 @@ html[data-theme] body { background-image: none; }
 .workspace-shell .home-task-row .task-card:not(.is-editing) > div { height: 100%; align-items: stretch; }
 .workspace-shell .home-task-row .task-card:not(.is-editing) > div > button { align-self: flex-start; }
 .workspace-shell .home-task-row .task-card.completed { background: hsl(var(--muted) / .65); }
-.home-task-row .task-card > div > button > svg { width: 21px; height: 21px; }
+.home-task-row .task-card > div > button svg { width: 21px; height: 21px; }
 .home-task-row .task-card > div > button { padding-top: 5px; }
 .home-task-row .task-card :is(h3, .task-title-input) { font-size: calc(15px * var(--ui-font-scale, 1)); }
 .task-card-summary { display: flex; flex-direction: column; justify-content: space-between; height: 100%; min-height: calc(72px * var(--ui-font-scale, 1)); }

@@ -30,7 +30,7 @@ it.each([true, false])('follows the global glass switch live and saves without c
   for (const active of [enabled, !enabled, enabled]) {
     act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, liquidGlass: { ...state.settings.liquidGlass, enabled: active } } })));
     expect(surface).toHaveAttribute('data-material', active ? 'glass' : 'solid');
-    if (active) expect(surface.style.getPropertyValue('--surface-filter')).toMatch(/^blur\(/);
+    if (active) expect(surface).toHaveAttribute('data-glass-renderer', 'rdev');
     else {
       expect(surface.style.getPropertyValue('--surface-filter')).toBe('none');
       expect(getComputedStyle(surface).getPropertyValue('backdrop-filter')).toBe('none');

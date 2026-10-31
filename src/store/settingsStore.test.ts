@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }));
 
+vi.mock('../services/zenWindowService', () => ({ setZenWindowMode: mocks.setZenWindowMode }));
+
 vi.mock('../api/tauri', () => ({
   isDesktopRuntime: true,
   api: {
@@ -406,10 +408,10 @@ describe('settings action notifications', () => {
   it('rolls back failed zen-mode saves while preserving an unrelated setting change', async () => {
     mocks.updateSettings.mockResolvedValue({ success: false, error: '磁盘写入失败' });
     const save = useSettingsStore.getState().setZenMode({ enabled: true });
-    useSettingsStore.setState((state) => ({ settings: { ...state.settings, theme: 'pink' } }));
+    useSettingsStore.setState((state) => ({ settings: { ...state.settings, theme: 'dark' } }));
     await save;
     expect(useSettingsStore.getState().settings.zenMode).toBeUndefined();
-    expect(useSettingsStore.getState().settings.theme).toBe('pink');
+    expect(useSettingsStore.getState().settings.theme).toBe('dark');
     expect(mocks.toastError).toHaveBeenCalledWith('磁盘写入失败');
   });
 
@@ -440,4 +442,11 @@ describe('settings action notifications', () => {
     expect(useSettingsStore.getState().settings.minimalMode).toBeUndefined();
   });
 
+});
+
+it('migrates the removed pink theme to light while retaining other preferences', async () => {
+  mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings, theme: 'pink', username: '保留资料' } });
+  await useSettingsStore.getState().loadSettings();
+  expect(useSettingsStore.getState().settings.theme).toBe('light');
+  expect(useSettingsStore.getState().settings.username).toBe('保留资料');
 });

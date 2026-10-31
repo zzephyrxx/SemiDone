@@ -1,5 +1,6 @@
+import { isMacOS } from '../platform/runtime';
 import React, { useId, useState, useRef, useEffect } from 'react';
-import { Plus, X, Calendar, Flag, Type, AlignLeft, Paperclip, Repeat } from 'lucide-react';
+import { Plus, X, Calendar, Flag, Type, AlignLeft, Paperclip, Repeat } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
 import type { Priority, CreateTaskRequest, Attachment, RecurrenceRule } from '../types';
@@ -407,7 +408,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
         {/* 操作按钮 */}
         <div className="flex items-center justify-between pt-3 border-t border-border">
           <div className="text-xs text-muted-foreground">
-            Ctrl+Enter 快速创建
+            {isMacOS ? '⌘' : 'Ctrl+'}Enter 快速创建
           </div>
 
           <div className="flex space-x-3">
