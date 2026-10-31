@@ -1,168 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import { BarChart3 } from '../ui/icons';
+import { useEffect, useState } from 'react';
 import { useUsageStore } from '../store/usageStore';
 import UsageTimer from '../components/UsageTimer';
 import UsageChart from '../components/UsageChart';
+import { Surface } from '../ui/Surface';
+import { usageLevel, usageSeries } from '../utils/usageChart';
 
 export default function UsageStats() {
-  const {
-    stats,
-    formatMinutes,
-    loadUsageData,
-    calculateStats,
-    isTrackingEnabled,
-    weeklyUsage,
-    monthlyUsage,
-  } = useUsageStore();
-
-  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('week');
-
+  const { stats, formatMinutes, loadUsageData, calculateStats, isTrackingEnabled, weeklyUsage, monthlyUsage } = useUsageStore();
+  const [period, setPeriod] = useState<'week' | 'month'>('week');
   useEffect(() => {
     void loadUsageData();
-
-    // 每分钟更新一次
-    const interval = setInterval(() => {
-      calculateStats();
-    }, 60000);
-
+    const interval = setInterval(calculateStats, 60000);
     return () => clearInterval(interval);
   }, [loadUsageData, calculateStats]);
-
-  const getUsageHistory = () => {
-    if (selectedPeriod === 'week') {
-      const result = [];
-      // 获取本周一到现在
-      const today = new Date();
-      for (let i = 0; i < 7; i++) {
-        const date = new Date();
-        date.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1) + i);
-        // 使用本地日期，与 usageStore 保持一致
-        const dateStr = date.toLocaleDateString('zh-CN');
-        const weekday = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i];
-        result.push({
-          date: dateStr,
-          minutes: weeklyUsage[dateStr] || 0,
-          dayName: weekday
-        });
-      }
-      return result;
-    } else {
-      // 月视图显示整个月的数据
-      const result = [];
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        // 使用本地日期，与 usageStore 保持一致
-        const dateStr = date.toLocaleDateString('zh-CN');
-        result.push({
-          date: dateStr,
-          minutes: monthlyUsage[dateStr] || 0
-        });
-      }
-      return result;
-    }
-  };
-
-  const usageHistory = getUsageHistory();
-  return (
-    <div className="workspace-page usage-page min-h-full bg-background">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* 番茄钟组件 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-
-            <UsageTimer />
-          </div>
-          {/* 统计概览 */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-primary" />
-                使用概览
-              </h2>
-              {/* 状态指示灯移到标题旁，更节省空间 */}
-              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium ${isTrackingEnabled
-                  ? 'bg-green-50 border-green-100 text-green-600'
-                  : 'bg-gray-50 border-gray-100 text-gray-500'
-                }`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${isTrackingEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-                  }`} />
-                {isTrackingEnabled ? '记录中' : '静止'}
-              </div>
-            </div>
-
-            {/* 改为 4 列布局，更加扁平化 */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* 今日使用 */}
-              <div className="bg-blue-50/50 hover:bg-blue-50 transition-colors border border-blue-100/50 rounded-xl p-3">
-                <p className="text-[11px] font-bold text-blue-600/80 uppercase tracking-tight mb-1">今日</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-black text-blue-700">{formatMinutes(stats.today)}</span>
-                </div>
-              </div>
-
-              {/* 平均每日 */}
-              <div className="bg-green-50/50 hover:bg-green-50 transition-colors border border-green-100/50 rounded-xl p-3">
-                <p className="text-[11px] font-bold text-green-600/80 uppercase tracking-tight mb-1">日均</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-black text-green-700">{formatMinutes(stats.averageDaily)}</span>
-                </div>
-              </div>
-
-              {/* 本周总计 */}
-              <div className="bg-purple-50/50 hover:bg-purple-50 transition-colors border border-purple-100/50 rounded-xl p-3">
-                <p className="text-[11px] font-bold text-purple-600/80 uppercase tracking-tight mb-1">本周</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-black text-purple-700">{formatMinutes(stats.thisWeek)}</span>
-                </div>
-              </div>
-
-              {/* 本月总计 */}
-              <div className="bg-orange-50/50 hover:bg-orange-50 transition-colors border border-orange-100/50 rounded-xl p-3">
-                <p className="text-[11px] font-bold text-orange-600/80 uppercase tracking-tight mb-1">本月</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-black text-orange-700">{formatMinutes(stats.thisMonth)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 时间期间选择 */}
-        <div className="flex items-center justify-center gap-4 mb-6">
-          <div className="flex bg-accent rounded-lg p-1">
-            <button
-              onClick={() => setSelectedPeriod('week')}
-              className={`px-6 py-2 text-sm font-medium rounded-md transition-colors ${selectedPeriod === 'week'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-                }`}
-            >
-              📊 周视图
-            </button>
-            <button
-              onClick={() => setSelectedPeriod('month')}
-              className={`px-6 py-2 text-sm font-medium rounded-md transition-colors ${selectedPeriod === 'month'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-                }`}
-            >
-              📅 月视图
-            </button>
-          </div>
-        </div>
-
-        {/* 使用趋势图表 */}
-        <UsageChart
-          data={usageHistory}
-          formatMinutes={formatMinutes}
-          period={selectedPeriod}
-        />
-      </div>
+  const history = usageSeries(period, { ...monthlyUsage, ...weeklyUsage });
+  const activeDays = history.filter(day => day.minutes > 0).length;
+  return <div className="workspace-page usage-page">
+    <div className="usage-dashboard">
+      <header className="usage-page-heading"><div><span className="usage-eyebrow">YOUR RHYTHM</span><h1>把时间留给重要的事</h1><p>看见日常的节奏，让专注慢慢累积。</p></div>
+        <span className="usage-tracking-status" data-active={isTrackingEnabled}><i />{isTrackingEnabled ? '记录中' : '已暂停记录'}</span></header>
+      <div className="usage-overview-grid">{[
+        ['今日使用', stats.today, '今天的积累'], ['平均每日', stats.averageDaily, '每一天的节奏'],
+        ['本周累计', stats.thisWeek, '从周一开始'], ['本月累计', stats.thisMonth, '本月的足迹'],
+      ].map(([label, minutes, hint]) => <div className="usage-metric" key={label}><span>{label}</span><strong>{formatMinutes(Number(minutes))}</strong><small>{hint}</small></div>)}</div>
+      <div className="usage-section-heading usage-period-heading"><div><h2>专注足迹</h2><p>{activeDays} 天活跃 · {history.length} 天记录范围</p></div>
+        <div className="calendar-view-switch" role="group" aria-label="统计范围">{(['week', 'month'] as const).map(value => <button type="button" key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{value === 'week' ? '本周' : '本月'}</button>)}</div></div>
+      <UsageChart data={history} formatMinutes={formatMinutes} period={period} />
+      <Surface role="chart" className="usage-frequency-card"><div className="usage-section-heading"><div><h2>使用频率</h2><p>每格一天，颜色越深，使用时长越多。</p></div></div>
+        <div className="usage-frequency-grid" role="list" aria-label="每日使用频率">{history.map(day => <div key={day.date} role="listitem" className="usage-frequency-day" data-level={usageLevel(day.minutes)} title={`${day.date} · ${formatMinutes(day.minutes)}`} aria-label={`${day.date}，${formatMinutes(day.minutes)}`}><span>{day.dayName}</span><strong>{day.minutes > 0 ? formatMinutes(day.minutes) : '—'}</strong></div>)}</div>
+        <div className="usage-frequency-legend"><span>少</span>{[0, 1, 2, 3, 4].map(level => <i key={level} data-level={level} />)}<span>多</span><small>0 · 15 · 30 · 60 分钟</small></div>
+      </Surface>
+      <UsageTimer />
     </div>
-  );
+  </div>;
 }

@@ -5,7 +5,7 @@ import type { LiquidGlassSettings } from '../types';
 import { normalizeLiquidGlassSettings } from '../utils/liquidGlassSettings';
 
 export function Surface({ children, className = '', settings, role = 'panel', htmlRole, elementRef, material = 'auto', style, ...props }: Omit<HTMLAttributes<HTMLDivElement>, 'role'> & {
-  children?: ReactNode; settings?: LiquidGlassSettings; role?: 'panel' | 'dialog' | 'navigation' | 'preview' | 'selection';
+  children?: ReactNode; settings?: LiquidGlassSettings; role?: 'panel' | 'dialog' | 'navigation' | 'preview' | 'selection' | 'chart';
   htmlRole?: AriaRole; elementRef?: RefObject<HTMLDivElement>;
   material?: 'auto' | 'frosted';
 }) {

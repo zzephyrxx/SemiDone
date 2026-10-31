@@ -14,7 +14,9 @@
     "check": "tsc --noEmit",
     "tauri": "tauri",
     "build:mac": "sh scripts/package-macos.sh",
-    "icons:tray": "node scripts/render-tray.mjs"
+    "icons:tray": "node scripts/render-tray.mjs",
+    "build:mac:native": "sh native/macos/scripts/package.sh",
+    "test:mac:native": "sh native/macos/scripts/swift.sh test"
   },
   "dependencies": {
     "@tauri-apps/api": "2.10.1",

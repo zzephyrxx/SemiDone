@@ -22,7 +22,10 @@
 Mac 版以 GitHub `master` 的 V7.0 源码为基线，目标为 macOS 26+ / Apple silicon。
 Windows 和 Mac 共用同一套 React 界面、任务逻辑和数据模型；窗口原生行为集中在
 `src-tauri/src/platform/`，打包差异使用 `tauri.windows.conf.json` 和 `tauri.macos.conf.json`。
-不使用长期的平台分支，也不复制两套应用。
+不使用长期的平台分支，也不复制两套 Tauri 应用。
+
+另有正在建设的 **Swift / SwiftUI 原生基础版**，位于 [`native/macos/`](native/macos/README.md)，
+与当前版本并行试用。原生版使用独立数据目录；当前完成基础待办与窗口功能，尚未迁移全部 V7 特性。
 
 - 本机开发：安装 Node.js 22、Rust stable、Xcode Command Line Tools 后，执行 `npm ci`、`npm run dev`。
 - 检查：`npm run check`、`npm test`、`cargo test --manifest-path src-tauri/Cargo.toml --locked`。
