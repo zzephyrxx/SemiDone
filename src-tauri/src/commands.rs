@@ -750,33 +750,3 @@ pub fn is_primary_mouse_down() -> bool {
         false
     }
 }
-
-/// Animate the borderless window in AppKit while keeping its top-left corner fixed.
-#[tauri::command]
-pub async fn animate_main_window_size(window: tauri::WebviewWindow, width: f64, height: f64) -> Result<(), String> {
-    if !width.is_finite() || !height.is_finite() || width < 30.0 || height < 30.0 || width > 10000.0 || height > 10000.0 {
-        return Err("Invalid window size".into());
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let (send, receive) = std::sync::mpsc::sync_channel(1);
-        let target = window.clone();
-        window.run_on_main_thread(move || {
-            let result = (|| {
-                let pointer = target.ns_window().map_err(|e| e.to_string())?;
-                // Tauri owns the live window and this closure runs on its UI thread.
-                let native = unsafe { (pointer as *const tauri_nspanel::NSWindow).as_ref() }.ok_or("Window unavailable")?;
-                let mut frame = native.frame();
-                frame.origin.y += frame.size.height - height;
-                frame.size.width = width;
-                frame.size.height = height;
-                native.setFrame_display_animate(frame, true, true);
-                Ok::<(), String>(())
-            })();
-            let _ = send.send(result);
-        }).map_err(|e| e.to_string())?;
-        receive.recv().map_err(|e| e.to_string())?
-    }
-    #[cfg(not(target_os = "macos"))]
-    window.set_size(tauri::LogicalSize::new(width, height)).map_err(|e| e.to_string())
-}

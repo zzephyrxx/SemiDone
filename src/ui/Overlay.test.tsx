@@ -55,38 +55,13 @@ function enableAnimationHost() {
   return { cancel, animate };
 }
 
-it('plays entry and exit with different timings, retaining a non-interactive portal until exit completes', () => {
+it('opens and closes immediately without starting animations and restores focus', () => {
   const { animate } = enableAnimationHost();
   const trigger = document.createElement('button'); document.body.append(trigger); trigger.focus();
-  const view = render(<Overlay label="Motion" onClose={() => {}}><input aria-label="Draft" /></Overlay>);
-  expect(animate.mock.calls[0][1]).toMatchObject({ duration: 120 });
-  view.rerender(<Overlay open={false} label="Motion" onClose={() => {}}><input aria-label="Draft" /></Overlay>);
-  const dialog = screen.getByRole('dialog');
-  expect(dialog.parentElement!.inert).toBe(true);
-  expect(animate.mock.calls[2][1]).toMatchObject({ duration: 100 });
-  act(() => vi.advanceTimersByTime(99)); expect(dialog).toBeInTheDocument();
-  act(() => vi.advanceTimersByTime(1)); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(trigger).toHaveFocus(); trigger.remove();
-});
-
-it('cancels a pending exit on reopen without losing draft input or removing the reopened dialog', () => {
-  enableAnimationHost();
-  const view = render(<Overlay label="Motion" onClose={() => {}}><input aria-label="Draft" defaultValue="kept" /></Overlay>);
-  view.rerender(<Overlay open={false} label="Motion" onClose={() => {}}><input aria-label="Draft" defaultValue="kept" /></Overlay>);
-  act(() => vi.advanceTimersByTime(60));
-  view.rerender(<Overlay open label="Motion" onClose={() => {}}><input aria-label="Draft" defaultValue="kept" /></Overlay>);
-  act(() => vi.advanceTimersByTime(300));
-  expect(screen.getByLabelText('Draft')).toHaveValue('kept');
-  expect(screen.getByRole('dialog').parentElement!.inert).toBe(false);
-});
-
-it('cancels in-flight motion and completes an exit immediately when interface animations are disabled', () => {
-  const { cancel } = enableAnimationHost();
-  const view = render(<Overlay label="Motion" onClose={() => {}}>Content</Overlay>);
-  view.rerender(<Overlay open={false} label="Motion" onClose={() => {}}>Content</Overlay>);
-  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: false } })));
+  const view = render(<Overlay label="Immediate" onClose={() => {}}><input aria-label="Draft" /></Overlay>);
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(animate).not.toHaveBeenCalled();
+  view.rerender(<Overlay open={false} label="Immediate" onClose={() => {}}><input aria-label="Draft" /></Overlay>);
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  // jsdom queues a zero-delay selectionchange when the input receives focus.
-  act(() => vi.advanceTimersByTime(0));
-  expect(cancel).toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0);
+  expect(trigger).toHaveFocus(); trigger.remove();
 });

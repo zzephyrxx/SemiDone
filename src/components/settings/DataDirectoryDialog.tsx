@@ -1,4 +1,4 @@
-import { useDialogMotion } from '../../ui/useDialogMotion';
+import { Overlay } from '../../ui/Overlay';
 
 interface DataDirectoryDialogProps {
   isOpen: boolean;
@@ -19,28 +19,22 @@ export default function DataDirectoryDialog({
   onConfirm,
   onCancel,
 }: DataDirectoryDialogProps) {
-  const { root, present } = useDialogMotion(isOpen);
-  if (!present) return null;
 
   return (
-    <div ref={root} className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="data-directory-title"
-        className="liquid-glass-modal-surface bg-card border border-border rounded-lg shadow-lg p-6 w-full max-w-md"
-      >
+    <Overlay label="更改数据目录" open={isOpen} onClose={() => { if (!isMigrating) onCancel(); }} dialogClassName="data-directory-dialog">
+      <div className="p-5">
         <h3 id="data-directory-title" className="text-lg font-semibold text-foreground mb-4">更改数据目录</h3>
-        <p className="text-sm text-muted-foreground mb-4">当前目录：{currentDataDir}</p>
+        <p className="text-sm text-muted-foreground mb-4 break-all">当前目录：{currentDataDir}</p>
         <div className="mb-4">
-          <label className="block text-sm font-medium text-foreground mb-2">目标目录</label>
+          <label htmlFor="data-directory-target" className="block text-sm font-medium text-foreground mb-2">目标目录</label>
           <div className="flex gap-2">
             <input
+              id="data-directory-target"
               type="text"
               value={newDataDir}
               readOnly
               placeholder="请选择新的目录根路径"
-              className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground text-sm font-mono"
+              className="min-w-0 flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground text-sm font-mono"
             />
             <button
               onClick={onPickDirectory}
@@ -73,6 +67,6 @@ export default function DataDirectoryDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

@@ -61,7 +61,8 @@ describe('Zen mode', () => {
           expect(getComputedStyle(panel).getPropertyValue('backdrop-filter')).toBe('none');
         }
         expect(getComputedStyle(panel).position).toBe('absolute');
-        expect(getComputedStyle(panel).overflowY).toBe('auto');
+        expect(getComputedStyle(panel).overflow).toBe('hidden');
+        expect(getComputedStyle(panel.querySelector('.zen-appearance-scroll')!).overflowY).toBe('auto');
         expect(screen.getByRole('spinbutton', { name: '字体大小' })).toBe(font);
         expect(view.container.querySelector<HTMLElement>('.zen-mode')!.style.cssText).toBe(windowStyle);
         expect(screen.getByText(pending.title)).toBeVisible();

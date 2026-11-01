@@ -49,7 +49,7 @@ describe('TaskItem pin action', () => {
 
     expect(title.parentElement).toContainElement(pinButton);
     expect(pinButton).toHaveClass('text-primary');
-    expect(pinButton.querySelector('.animated-icon')).toHaveClass('fill-current');
+    expect(pinButton.querySelector('.animated-icon')).toHaveAttribute('data-animated-icon', 'pin');
 
     fireEvent.click(pinButton);
     expect(updateTask).toHaveBeenCalledWith('focus', { isPinned: false });

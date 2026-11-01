@@ -12,6 +12,7 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const settings: Settings = {
@@ -137,7 +138,7 @@ describe('settings page sections', () => {
 
     const section = screen.getByRole('region', { name: '数据与记录' });
     expect(within(section).getByText('C:/SemiDone/SemiDoneData')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '打开' }));
+    fireEvent.click(screen.getByRole('button', { name: '打开数据目录' }));
     fireEvent.click(screen.getByRole('button', { name: '更改' }));
     fireEvent.click(screen.getByRole('button', { name: '导出' }));
     fireEvent.click(screen.getByRole('button', { name: '清除数据' }));
@@ -185,7 +186,7 @@ describe('settings page sections', () => {
     expect(await screen.findByText('已是最新')).toBeVisible();
   });
 
-  it('keeps the public-account QR code collapsed until requested', () => {
+  it('always shows the public-account QR code without a disclosure', () => {
     render(
       <AboutSettingsSection
         appVersion="5.0.0"
@@ -193,8 +194,7 @@ describe('settings page sections', () => {
       />,
     );
 
-    expect(screen.queryByAltText('公众号二维码')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '公众号' }));
+    expect(screen.queryByRole('button', { name: '公众号' })).not.toBeInTheDocument();
     expect(screen.getByAltText('公众号二维码')).toBeVisible();
   });
 
@@ -208,15 +208,6 @@ describe('settings page sections', () => {
 
     const donationButton = screen.getByRole('button', { name: '打赏' });
     expect(donationButton).toHaveAttribute('aria-haspopup', 'dialog');
-    expect(donationButton).not.toHaveClass('liquid-glass-control--accent');
-    expect(donationButton).toHaveClass('liquid-glass-donation-trigger');
-
-    const dialogFilter = document.getElementById('donation-dialog-chromatic-edge');
-    const buttonFilter = document.getElementById('donation-button-chromatic-edge');
-    expect(dialogFilter?.querySelectorAll('feDisplacementMap')).toHaveLength(3);
-    expect(buttonFilter?.querySelectorAll('feDisplacementMap')).toHaveLength(3);
-    expect(dialogFilter?.querySelector('feImage')?.getAttribute('href')).toMatch(/^data:image\//);
-
     fireEvent.click(donationButton);
 
     const dialog = screen.getByRole('dialog', { name: '微信扫码打赏' });
@@ -236,78 +227,17 @@ describe('settings page sections', () => {
     expect(
       screen.getByText('您的每一份认可，都是对我的肯定。'),
     ).toBeVisible();
-    const closeButton = screen.getByRole('button', { name: '关闭打赏弹窗' });
-    expect(closeButton).toHaveAttribute('data-glass-circle');
-    expect(closeButton).toHaveClass('absolute', 'right-2.5', 'top-2.5');
-
-    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(dialog.querySelector('.ui-surface--dialog')).toHaveAttribute('data-glass-renderer', 'rdev');
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: '微信扫码打赏' })).not.toBeInTheDocument();
   });
 
-  it('uses the reference wrap, pivot, shadow, and forced class restart sequence', () => {
-    vi.useFakeTimers();
-    vi.spyOn(Math, 'random')
-      .mockReturnValueOnce(0)
-      .mockReturnValueOnce(0.6)
-      .mockReturnValue(1);
-    render(
-      <AboutSettingsSection
-        appVersion="5.0.0"
-        checkForUpdate={vi.fn().mockResolvedValue(currentResult)}
-      />,
-    );
-
-    const wrap = screen.getByTestId('easter-egg-motion-wrap');
-    const pivot = screen.getByTestId('easter-egg-pivot');
-    const shadow = screen.getByTestId('easter-egg-shadow');
-    expect(pivot).not.toHaveClass('is-wobbling', 'is-jump-tilt');
-    expect(wrap).not.toHaveClass('is-jumping');
-
-    act(() => vi.advanceTimersByTime(900));
-    expect(pivot).toHaveClass('is-wobbling');
-
-    act(() => vi.advanceTimersByTime(1240));
-    expect(pivot).not.toHaveClass('is-wobbling');
-
-    act(() => vi.advanceTimersByTime(360));
-    expect(wrap).toHaveClass('is-jumping');
-    expect(pivot).toHaveClass('is-jump-tilt');
-    expect(shadow).toHaveClass('is-jumping');
+  it('shows the current update date and removes the easter egg', () => {
+    render(<AboutSettingsSection appVersion="7.0.0" checkForUpdate={vi.fn().mockResolvedValue(currentResult)} />);
+    expect(screen.getByText('2026.11')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '打开彩蛋' })).not.toBeInTheDocument();
   });
-  it('opens the glass preview with its movable sample', () => {
-    render(
-      <AboutSettingsSection
-        appVersion="5.0.0"
-        checkForUpdate={vi.fn().mockResolvedValue(currentResult)}
-      />,
-    );
-
-    const trigger = screen.getByRole('button', { name: '打开彩蛋' });
-    const icon = trigger.querySelector('img');
-    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    expect(icon).toHaveAttribute('src', '/easter-egg.png');
-    expect(icon).toHaveClass('easter-egg-icon');
-
-    fireEvent.click(trigger);
-
-    const dialog = screen.getByRole('dialog', { name: '液态玻璃效果预览' });
-    const sample = screen.getByRole('group', { name: '可拖动的玻璃预览小窗' });
-    expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveClass('liquid-glass-dialog');
-    expect(dialog).toHaveClass('liquid-glass-dialog--white-preview');
-    expect(dialog.parentElement).not.toHaveClass('bg-[#061421]/25');
-    expect(dialog.style.translate).toBe('');
-    expect(screen.queryByTestId('easter-egg-dialog-drag-handle')).not.toBeInTheDocument();
-    expect(sample).toBeVisible();
-
-    fireEvent.click(screen.getByRole('button', { name: '关闭彩蛋弹窗' }));
-    expect(
-      screen.queryByRole('dialog', { name: '液态玻璃效果预览' }),
-    ).not.toBeInTheDocument();
-  });
-  it('drags the donation dialog by its title and keeps it inside the app viewport', () => {
+  it('drags the donation dialog by its title and keeps it inside the app viewport', async () => {
     render(
       <AboutSettingsSection
         appVersion="5.0.0"
@@ -344,14 +274,14 @@ describe('settings page sections', () => {
       clientX: 260,
       clientY: 240,
     });
-    expect(dialog.style.translate).toBe('60px 40px');
+    await waitFor(() => expect(dialog.style.translate).toBe('60px 40px'));
 
     fireEvent.pointerMove(dragHandle, {
       pointerId: 7,
       clientX: 2000,
       clientY: 2000,
     });
-    expect(dialog.style.translate).toBe('340px 172px');
+    await waitFor(() => expect(dialog.style.translate).toBe('344px 176px'));
     fireEvent.pointerUp(dragHandle, { pointerId: 7 });
   });
 });

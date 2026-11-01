@@ -1,6 +1,8 @@
 mod autostart;
 mod commands;
 mod models;
+#[cfg(target_os = "macos")]
+mod macos_tray;
 mod storage;
 mod window_interaction;
 mod window_lifecycle;
@@ -64,7 +66,6 @@ pub fn run() {
             commands::set_window_topmost,
             commands::set_window_pin_mode,
             commands::is_primary_mouse_down,
-            commands::animate_main_window_size,
             commands::get_tasks,
             commands::reassert_window_topmost,
             commands::create_task,
@@ -122,10 +123,10 @@ pub fn run() {
             let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
             let tray = TrayIconBuilder::with_id("main")
                 .tooltip("事半·SemiDone")
-                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray-template.png"))?)
-                .icon_as_template(cfg!(target_os = "macos"))
+                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray-logo.png"))?)
+                .icon_as_template(false)
                 .menu(&menu)
-                // Left click restores the window; right click opens its native menu.
+                // Left press restores immediately on macOS; only right-click opens the menu.
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => show_main_window(app),
@@ -133,19 +134,26 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
+                    let restore_on = if cfg!(target_os = "macos") {
+                        tauri::tray::MouseButtonState::Down
+                    } else {
+                        tauri::tray::MouseButtonState::Up
+                    };
                     if matches!(
                             event,
                             TrayIconEvent::Click {
                                 button: tauri::tray::MouseButton::Left,
-                                button_state: tauri::tray::MouseButtonState::Up,
+                                button_state,
                                 ..
-                            }
+                            } if button_state == restore_on
                         )
                     {
                         show_main_window(tray.app_handle());
                     }
                 })
                 .build(app)?;
+            #[cfg(target_os = "macos")]
+            macos_tray::install(&tray)?;
             app.manage(tray);
             if std::env::args().any(|arg| arg == "--hidden") {
                 if let Some(window) = app.get_webview_window("main") {

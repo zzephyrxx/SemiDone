@@ -20,7 +20,7 @@ vi.mock('./vendor/check', async () => {
 beforeEach(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: true } })));
 afterEach(cleanup);
 it('animates for pointer and keyboard interaction only while enabled', () => {
-  render(<button>Complete<Check /></button>);
+  render(<nav className="workspace-nav"><button>Complete<Check /></button></nav>);
   const button = screen.getByRole('button');
   fireEvent.mouseEnter(button);
   expect(screen.getByTestId('glyph')).toHaveAttribute('data-pose', 'playing');
@@ -40,5 +40,11 @@ it('renders disabled icons in their resting pose from the first frame', () => {
   useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: false } }));
   render(<a href="#tasks"><Check />Tasks</a>);
   fireEvent.mouseEnter(screen.getByRole('link'));
+  expect(screen.getByTestId('glyph')).toHaveAttribute('data-pose', 'rest');
+});
+
+it('keeps icons outside navigation and selected settings static', () => {
+  render(<button>Other action<Check /></button>);
+  fireEvent.mouseEnter(screen.getByRole('button')); fireEvent.focusIn(screen.getByRole('button'));
   expect(screen.getByTestId('glyph')).toHaveAttribute('data-pose', 'rest');
 });

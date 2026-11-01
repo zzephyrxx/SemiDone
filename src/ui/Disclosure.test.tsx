@@ -12,14 +12,14 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('disclosure interruption', () => {
-  it('makes closing controls inert and cancels removal when reopened quickly', () => {
+  it('removes closing controls immediately and reopens without delay', () => {
     const view = render(<AnimatedCollapse open><button>Control</button></AnimatedCollapse>);
     view.rerender(<AnimatedCollapse open={false}><button>Control</button></AnimatedCollapse>);
-    expect(screen.getByText('Control').closest<HTMLElement>('.ui-collapse')?.inert).toBe(true);
+    expect(screen.queryByText('Control')).not.toBeInTheDocument();
     view.rerender(<AnimatedCollapse open><button>Control</button></AnimatedCollapse>);
     act(() => vi.advanceTimersByTime(500));
     expect(screen.getByText('Control')).toBeVisible();
-    expect(screen.getByText('Control').closest<HTMLElement>('.ui-collapse')?.inert).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
   });
   it('removes closed content immediately when interface animations are disabled', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));

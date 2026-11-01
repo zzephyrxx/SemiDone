@@ -107,7 +107,7 @@ html[data-zen-mode='true'] #root {
 .zen-task-title { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: var(--zen-effective-font-size); line-height: var(--zen-line-height); }
 .zen-empty { padding: 20px 12px; text-align: center; font-size: calc(13px * var(--ui-font-scale, 1)); }
 
-/* The shared surface controls glass; the small Zen panel keeps its own scroll area. */
+/* The frame stays outside the scrolling content so its border never scrolls away. */
 .zen-appearance-panel.ui-surface {
   position: absolute;
   z-index: 10;
@@ -115,10 +115,19 @@ html[data-zen-mode='true'] #root {
   left: 8px;
   right: 8px;
   max-height: calc(100% - 51px);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 8px;
   border: 1px solid hsl(var(--border));
   color: hsl(var(--foreground));
+}
+.zen-appearance-panel > .zen-appearance-heading { flex-shrink: 0; }
+.zen-appearance-scroll { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
+/* A 30% tint reduces backdrop transparency while leaving text fully opaque. */
+.zen-appearance-panel.ui-surface[data-material='glass']::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  border-radius: inherit; background: hsl(var(--card) / .3);
 }
 .zen-settings-panel { color: hsl(var(--foreground)); }
 .zen-settings-panel[data-material='solid'], .zen-appearance-panel[data-material='solid'] { background: hsl(var(--card)); }

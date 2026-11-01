@@ -47,7 +47,9 @@ it.each([[550, 900, '6.4px', '65.4px'], [400, 700, '4.8px', '65.4px'], [1040, 90
   const view = render(<div className="workspace-shell"><main className="workspace-content"><Pages /></main><main className="workspace-content workspace-content--home" /></div>);
   expect(getComputedStyle(view.container.querySelector('.workspace-shell')!).getPropertyValue('--page-inset-top').trim()).toBe(top);
   const parents = view.container.querySelectorAll('.workspace-content');
-  expect(getComputedStyle(parents[0]).paddingTop).toBe(offset); expect(getComputedStyle(parents[1]).paddingTop).toBe(offset);
-  const paddings = Array.from(view.container.querySelectorAll('.workspace-page'), page => getComputedStyle(page).paddingTop);
+  expect(getComputedStyle(parents[0]).paddingTop).toBe(offset);
+  // Home owns its scroll root: navigation spacing belongs inside scrolling content.
+  expect(getComputedStyle(parents[1]).paddingTop).toBe('0px');
+  const paddings = Array.from(view.container.querySelectorAll('.workspace-page:not(.home-page-content)'), page => getComputedStyle(page).paddingTop);
   expect(new Set(paddings).size).toBe(1);
 });

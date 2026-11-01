@@ -49,6 +49,7 @@ describe('TaskCalendarContent', () => {
     expect(views).toBeVisible();
     expect(views.closest('section')).not.toBeNull();
     expect(screen.queryByText('任务视图')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '月视图' }));
     expect(screen.getByText('2026年7月')).toBeVisible();
     expect(screen.getByText('本月完成')).toBeVisible();
     expect(screen.getByText('写完日历视图')).toBeVisible();
@@ -65,7 +66,6 @@ describe('TaskCalendarContent', () => {
     expect(screen.getByRole('button', { name: '月视图' })).toBeVisible();
     expect(screen.queryByRole('button', { name: '日视图' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '周视图' }));
     expect(screen.getByRole('button', { name: '周视图' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('7月13日 - 7月19日')).toBeVisible();
     expect(screen.getByText('本周完成')).toBeVisible();

@@ -444,9 +444,22 @@ describe('settings action notifications', () => {
 
 });
 
-it('migrates the removed pink theme to light while retaining other preferences', async () => {
-  mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings, theme: 'pink', username: '保留资料' } });
+it.each(['pink', 'glass'])('migrates removed theme %s to light while retaining other preferences', async theme => {
+  mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings, theme, username: '保留资料' } });
   await useSettingsStore.getState().loadSettings();
   expect(useSettingsStore.getState().settings.theme).toBe('light');
   expect(useSettingsStore.getState().settings.username).toBe('保留资料');
+});
+
+it('persists and reloads an optional accent color while preserving other preferences', async () => {
+  useSettingsStore.setState({ settings: { ...defaultSettings, closeToTray: false } });
+  await useSettingsStore.getState().updateSettings({ accentColor: '#8B5CF6' });
+  const saved = mocks.updateSettings.mock.lastCall?.[0];
+  expect(saved.accentColor).toBe('#8b5cf6');
+  expect(saved.closeToTray).toBe(false);
+  mocks.getSettings.mockResolvedValue({ success: true, data: saved });
+  await useSettingsStore.getState().loadSettings();
+  expect(useSettingsStore.getState().settings.accentColor).toBe('#8b5cf6');
+  await useSettingsStore.getState().updateSettings({ accentColor: undefined });
+  expect(mocks.updateSettings.mock.lastCall?.[0].accentColor).toBeUndefined();
 });

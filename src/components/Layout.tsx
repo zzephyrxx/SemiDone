@@ -1,7 +1,7 @@
 import React, { useState, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays, ListTodo, ChartNoAxesCombined } from '../ui/icons';
+import { Settings, User, Pin, PinOff, ChevronsDownUp, ChevronsUpDown, X, CalendarDays, ListTodo, ChartNoAxesCombined } from '../ui/icons';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../store/settingsStore';
@@ -225,10 +225,10 @@ export default function Layout() {
               setIsUserProfileOpen(true);
             }}
             className="workspace-profile flex items-center gap-2 p-1 rounded-lg hover:bg-accent transition-colors"
-            title="用户资料"
+            title="我的信息"
           >
             {getUserAvatarDisplay()}
-            <span className="text-sm text-muted-foreground hidden sm:block">
+            <span className="max-w-[120px] truncate text-sm text-muted-foreground hidden sm:block">
               {settings.username || '用户'}
             </span>
           </button>
@@ -236,28 +236,30 @@ export default function Layout() {
 
           {/* 折叠按钮 */}
           <button
+            data-window-action="collapse"
             onClick={toggleIsCollapsed}
             className={`p-2 rounded-full transition-all duration-200 ${
               settings.collapseMode === 'bar'
-                ? 'bg-purple-500/10 text-purple-600 hover:bg-purple-500/20'
+                ? 'text-primary hover:bg-accent'
                 : 'hover:bg-accent text-muted-foreground hover:text-foreground'
             }`}
             title={settings.collapseMode === 'bar' ? '展开窗口' :
                   settings.useCapsuleMode ? '折叠为悬浮球' : '折叠为条状'}
           >
             {settings.collapseMode === 'bar' ? (
-              <ChevronDown className="w-5 h-5" />
+              <ChevronsUpDown className="w-5 h-5" />
             ) : (
-              <ChevronUp className="w-5 h-5" />
+              <ChevronsDownUp className="w-5 h-5" />
             )}
           </button>
 
           {/* 置顶按钮 */}
           <button
+            data-window-action="pin"
             onClick={toggleIsPinned}
             className={`p-2 rounded-full transition-all duration-200 ${
               settings.isPinned
-                ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
+                ? 'text-primary hover:bg-accent'
                 : 'hover:bg-accent text-muted-foreground hover:text-foreground'
             }`}
             title={settings.isPinned ? '取消置顶' : '置顶窗口'}
@@ -286,7 +288,7 @@ export default function Layout() {
             className="p-2 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
             title={settings.closeToTray !== false ? '关闭到托盘' : settings.collapseMode === 'bar' ? '展开并关闭应用' : '关闭应用'}
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>

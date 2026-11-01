@@ -2,6 +2,7 @@ import type { Task, Settings, CreateTaskRequest, UpdateTaskRequest, TaskStats, A
 import { v4 as uuidv4 } from 'uuid';
 import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeGlassPresetSettings } from '../utils/liquidGlassSettings';
 import { DEFAULT_ZEN_MODE_SETTINGS, normalizeZenModeSettings } from '../utils/zenModeSettings';
+import { normalizeAccentColor } from '../utils/accentColor';
 import { normalizeFontScale } from '../utils/interfaceSettings';
 
 // localStorage键名常量
@@ -195,6 +196,7 @@ export const settingsApi = {
         ...currentSettings,
         liquidGlass: normalizeGlassPresetSettings(storedSettings.liquidGlass),
         zenMode: normalizeZenModeSettings(currentSettings.zenMode ?? legacyZenMode),
+        accentColor: normalizeAccentColor(currentSettings.accentColor),
         closeToTray: currentSettings.closeToTray !== false,
         fontScale: normalizeFontScale(currentSettings.fontScale),
         animationsEnabled: currentSettings.animationsEnabled !== false,

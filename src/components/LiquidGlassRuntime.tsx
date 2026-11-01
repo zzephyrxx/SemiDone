@@ -1,3 +1,4 @@
+import { accentTokens } from '../utils/accentColor';
 import { useEffect } from 'react';
 import { useSettingsStore } from '../store/settingsStore';
 import type { LiquidGlassSettings } from '../types';
@@ -30,6 +31,14 @@ function VectorField({ href, result, geometry }: { href: string; result: string;
 }
 
 export default function LiquidGlassRuntime() {
+  const accentColor = useSettingsStore(state => state.settings.accentColor);
+  const theme = useSettingsStore(state => state.settings.theme);
+  useEffect(() => {
+    const root = document.documentElement;
+    const tokens = accentTokens(accentColor, theme);
+    if (tokens) Object.entries(tokens).forEach(([key, value]) => root.style.setProperty(key, value));
+    return () => { ['--primary', '--primary-foreground', '--ring', '--accent', '--accent-foreground'].forEach(key => root.style.removeProperty(key)); };
+  }, [accentColor, theme]);
   const fontScale = useSettingsStore(state => normalizeFontScale(state.settings.fontScale));
   const shape = useSettingsStore(state => state.settings.collapseMode);
   const reduced = useReducedMotion();

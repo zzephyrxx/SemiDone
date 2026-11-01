@@ -1,3 +1,4 @@
+import { Surface } from '../../ui/Surface';
 import {
   Circle,
   Eye,
@@ -13,6 +14,7 @@ import {
 } from '../../ui/icons';
 import { type ReactElement } from 'react';
 import type { LiquidGlassSettings, Settings, Theme } from '../../types';
+import AccentColorControls from './AccentColorControls';
 import GlassControls from './GlassControls';
 import { AnimatedCollapse } from '../../ui/Disclosure';
 import { FontSizeControls, TransparencyControls } from './InterfaceControls';
@@ -20,6 +22,7 @@ import { FontSizeControls, TransparencyControls } from './InterfaceControls';
 interface AppearanceSettingsSectionProps {
   settings: Settings;
   onThemeChange: (theme: Theme) => void;
+  onAccentColorChange?: (color?: string) => void;
   onLiquidGlassChange: (updates: Partial<LiquidGlassSettings>) => void;
   onToggleAutoStart: () => void;
   autoStartAvailable?: boolean;
@@ -91,7 +94,7 @@ interface SettingTileProps {
 function SettingTile({ icon, iconClass, title, description, control }: SettingTileProps) {
   return (
     <div className="settings-tile flex min-h-[76px] items-center gap-3 rounded-xl border border-border/80 bg-background/35 p-3 transition-colors hover:border-primary/25">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
+      <div className={`settings-row-icon flex h-5 w-5 shrink-0 items-center justify-center ${iconClass}`}>
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -106,6 +109,7 @@ function SettingTile({ icon, iconClass, title, description, control }: SettingTi
 export default function AppearanceSettingsSection({
   settings,
   onThemeChange,
+  onAccentColorChange,
   onLiquidGlassChange,
   onToggleAutoStart,
   autoStartAvailable = true,
@@ -119,7 +123,7 @@ export default function AppearanceSettingsSection({
   const transparencyDisabled = settings.theme !== 'dark' && !settings.transparentEnabled;
 
   return (
-    <section
+    <Surface as="section" htmlRole="region"
       aria-labelledby="appearance-settings-title"
       className="settings-section card card-shadow rounded-2xl p-3"
     >
@@ -130,8 +134,8 @@ export default function AppearanceSettingsSection({
         </h2>
       </div>
 
-      <div className="appearance-grid grid grid-cols-1 gap-2.5">
-        <div className="theme-picker">
+      <div className="appearance-grid appearance-rows">
+        <div className="theme-picker appearance-setting-row">
           <div className="mb-2 flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
               <Palette className="h-4 w-4 text-blue-500" />
@@ -159,6 +163,8 @@ export default function AppearanceSettingsSection({
             ))}
           </div>
         </div>
+
+        <AccentColorControls value={settings.accentColor} onChange={color => onAccentColorChange?.(color)} />
 
         <SettingTile
           icon={<Rocket className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
@@ -213,20 +219,20 @@ export default function AppearanceSettingsSection({
         />
 
         <SettingTile
-          icon={<Minimize2 className="h-5 w-5 text-primary" />}
+          icon={<Minimize2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
           iconClass="bg-primary/10"
           title="关闭到托盘"
-          description="关闭窗口后继续运行，从托盘恢复；关闭此项后退出应用"
+          description="关闭时隐藏到托盘"
           control={(
             <SettingSwitch label="关闭到托盘" checked={settings.closeToTray !== false}
               onChange={() => onCloseToTrayChange?.(settings.closeToTray === false)} accentClass="bg-primary" />
           )}
         />
 
-        <div className="min-[480px]:col-span-2 rounded-xl border border-border/80 bg-background/35 p-3 transition-colors hover:border-primary/25">
+        <div className="appearance-setting-row glass-settings-row">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-              <Droplet className="h-5 w-5 text-primary" />
+            <div className="settings-row-icon flex h-5 w-5 shrink-0 items-center justify-center">
+              <Droplet className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">液态玻璃</p>
@@ -247,13 +253,13 @@ export default function AppearanceSettingsSection({
           )}
         </div>
 
-        <SettingTile icon={<Sparkles className="h-5 w-5 text-primary" />} iconClass="bg-primary/10"
-          title="界面动效" description="独立控制导航跟手、任务退场、弹窗与页面过渡；以此开关为准"
+        <SettingTile icon={<Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400" />} iconClass="bg-primary/10"
+          title="界面动效" description="任务完成、导航与图标动效"
           control={<SettingSwitch label="界面动效" checked={settings.animationsEnabled !== false}
             onChange={() => onAnimationsChange?.(settings.animationsEnabled === false)} accentClass="bg-primary" />} />
         <FontSizeControls value={settings.fontScale ?? 100} onCommit={value => onFontScaleChange?.(value)} />
 
       </div>
-    </section>
+    </Surface>
   );
 }

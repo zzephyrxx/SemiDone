@@ -1,4 +1,4 @@
-import { ChevronDown } from '../../ui/icons';
+import { ChevronDown, SlidersHorizontal } from '../../ui/icons';
 import { useState } from 'react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { normalizeZenModeSettings } from '../../utils/zenModeSettings';
@@ -15,7 +15,7 @@ export default function ZenModeSettingsSection() {
     <Surface role="dialog" htmlRole="region" aria-labelledby="zen-mode-settings-title" className="zen-settings-panel p-3">
       <div className={`flex items-center gap-3 px-1 ${settings.enabled ? 'mb-3' : ''}`}>
         <ZenIcon variant={settings.enabled ? 'on' : 'off'} size={22}
-          className={settings.enabled ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500 dark:text-slate-400'} />
+          className="text-violet-600 dark:text-violet-400" />
         <div className="min-w-0 flex-1">
           <h2 id="zen-mode-settings-title" className="text-base font-semibold text-foreground">Zen 模式</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">只看未完成待办，背景透明、文字清晰</p>
@@ -30,15 +30,16 @@ export default function ZenModeSettingsSection() {
           <span aria-hidden="true" />
         </button>
       </div>
-      {settings.enabled && <details open={expanded} className="group rounded-xl border border-border/70">
+      {settings.enabled && <details open={expanded} className="zen-config-disclosure group">
         <summary
           onClick={(event) => {
             event.preventDefault();
             setExpanded((open) => !open);
           }}
-          className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-medium text-foreground [&::-webkit-details-marker]:hidden">
-          Zen 模式配置
-          <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
+          className="zen-config-summary">
+          <SlidersHorizontal size={16} />
+          <span>Zen 模式配置</span>
+          <ChevronDown size={16} className={expanded ? 'rotate-180' : ''} />
         </summary>
         {expanded && <div className="px-2 pb-2">
           <ZenModeAppearance settings={settings} onChange={(updates) => void setZenMode(updates)} />

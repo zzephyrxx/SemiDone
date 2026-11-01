@@ -19,7 +19,7 @@ function createRule(type: RecurrenceType): RecurrenceRule {
 export function RecurrenceEditor({
   value,
   onChange,
-  buttonClassName = 'w-full px-3 py-2 text-left bg-background border border-border rounded-lg hover:bg-muted transition-colors text-foreground text-sm',
+  buttonClassName = 'w-full px-3 py-2 text-right bg-background border border-border rounded-lg hover:bg-muted transition-colors text-foreground text-sm',
 }: RecurrenceEditorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);

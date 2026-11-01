@@ -17,7 +17,7 @@ export default function UsageChart({ data, formatMinutes, period }: UsageChartPr
         <span>{selected?.date ?? '暂无记录'}</span></div>
     </div>
     {points.length ? <>
-      <svg className="usage-trend-svg" viewBox="0 0 600 216" role="img" aria-label="每日使用时长趋势，可在下方表格查看全部数据">
+      <svg className="usage-trend-svg" viewBox="0 0 600 216" role="group" aria-label="每日使用时长趋势，可聚焦或悬停数据点查看时长">
         <defs><linearGradient id={`usage-fill-${id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity=".26" /><stop offset="100%" stopColor="currentColor" stopOpacity=".015" /></linearGradient></defs>
         {[0, 1, 2, 3, 4].map(i => <g key={i} className="usage-chart-grid">
           <line x1="44" x2="556" y1={182 - i * 38.5} y2={182 - i * 38.5} />
@@ -37,7 +37,7 @@ export default function UsageChart({ data, formatMinutes, period }: UsageChartPr
         </g>)}
       </svg>
       <div className="usage-chart-footer"><span><i />使用时长</span><span>日均 <b>{formatMinutes(Math.round(sum / data.length))}</b> · 最高 <b>{formatMinutes(Math.max(...data.map(item => item.minutes)))}</b></span></div>
-      <details className="usage-data-table"><summary>查看每日数据</summary><table><caption className="sr-only">每日使用时长</caption><thead><tr><th scope="col">日期</th><th scope="col">时长</th></tr></thead><tbody>{data.map(item => <tr key={item.date}><th scope="row">{item.date}</th><td>{formatMinutes(item.minutes)}</td></tr>)}</tbody></table></details>
+
     </> : <div className="usage-chart-empty">还没有使用记录，接下来每一天都从这里开始。</div>}
   </Surface>;
 }

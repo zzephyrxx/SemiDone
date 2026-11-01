@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeGlassPresetSettings } from '../utils/liquidGlassSettings';
 import { DEFAULT_ZEN_MODE_SETTINGS, normalizeZenModeSettings } from '../utils/zenModeSettings';
 import { setZenWindowMode } from '../services/zenWindowService';
+import { normalizeAccentColor } from '../utils/accentColor';
 import { normalizeFontScale } from '../utils/interfaceSettings';
 
 interface SettingsState {
@@ -33,6 +34,7 @@ interface SettingsState {
 
 const defaultSettings: Settings = {
   theme: 'light',
+  accentColor: undefined,
   fontScale: 100,
   animationsEnabled: true,
   liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
@@ -138,6 +140,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               ...defaultSettings,
               ...storedSettings,
               theme: storedSettings.theme === 'dark' ? 'dark' : 'light',
+              accentColor: normalizeAccentColor(storedSettings.accentColor),
               liquidGlass: normalizeGlassPresetSettings(response.data?.liquidGlass),
               zenMode: normalizeZenModeSettings(storedSettings.zenMode ?? legacyZenMode),
               closeToTray: storedSettings.closeToTray !== false,
@@ -248,6 +251,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         const newSettings = {
           ...currentSettings,
           ...updates,
+          ...('accentColor' in updates ? { accentColor: normalizeAccentColor(updates.accentColor) } : {}),
           ...(updates.fontScale !== undefined ? { fontScale: normalizeFontScale(updates.fontScale) } : {}),
           ...(updates.liquidGlass ? { liquidGlass: normalizeGlassPresetSettings(updates.liquidGlass) } : {}),
           ...(updates.zenMode ? { zenMode: normalizeZenModeSettings(updates.zenMode) } : {}),
@@ -377,15 +381,11 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           const appWindow = getCurrentWindow();
           
           const animated = isMacOS && currentSettings.animationsEnabled !== false;
-          const resize = async (width: number, height: number) => {
-            if (animated) {
-              const { invoke } = await import('@tauri-apps/api/core');
-              await invoke('animate_main_window_size', { width, height });
-            } else await appWindow.setSize(new LogicalSize(width, height));
-          };
-          if (animated && newCollapsedState && currentSettings.useCapsuleMode) {
+          const resize = (width: number, height: number) => appWindow.setSize(new LogicalSize(width, height));
+          // A short content fade on collapse only; expansion resizes immediately.
+          if (animated && newCollapsedState) {
             document.documentElement.dataset.windowTransition = 'collapsing';
-            await new Promise(resolve => setTimeout(resolve, 110));
+            await new Promise(resolve => setTimeout(resolve, 45));
           }
           let newCollapseMode: import('../types').CollapseMode;
           

@@ -85,3 +85,18 @@ describe('LiquidGlassRuntime', () => {
     expect(root.style.getPropertyValue('--liquid-glass-dialog-blur')).toBe('0px');
   });
 });
+
+it('applies the accent in both themes and removes overrides on reset, independently of glass', () => {
+  useSettingsStore.setState(state => ({ settings: { ...state.settings, theme: 'light', accentColor: '#8b5cf6', liquidGlass: { ...state.settings.liquidGlass, enabled: false } } }));
+  render(<LiquidGlassRuntime />);
+  const root = document.documentElement;
+  const light = root.style.getPropertyValue('--primary');
+  expect(light).not.toBe('');
+  expect(root.style.getPropertyValue('--ring')).toBe(light);
+  expect(root.style.getPropertyValue('--card')).toBe('');
+  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, theme: 'dark' } })));
+  expect(root.style.getPropertyValue('--primary')).not.toBe(light);
+  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, accentColor: undefined } })));
+  expect(root.style.getPropertyValue('--primary')).toBe('');
+  expect(root.style.getPropertyValue('--accent')).toBe('');
+});

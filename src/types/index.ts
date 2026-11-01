@@ -85,6 +85,7 @@ export interface ZenModeSettings {
 
 export interface Settings {
   theme: Theme;
+  accentColor?: string;
   fontScale?: number;
   animationsEnabled?: boolean;
   liquidGlass: LiquidGlassSettings;
