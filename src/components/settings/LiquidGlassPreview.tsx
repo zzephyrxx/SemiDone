@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Check, Circle } from 'lucide-react';
+import { Check, Circle } from '../../ui/icons';
 import type { CSSProperties } from 'react';
 import type { LiquidGlassSettings } from '../../types';
 import { liquidGlassBackdrop, liquidGlassBlurLevelToPixels, normalizeLiquidGlassSettings } from '../../utils/liquidGlassSettings';
-import { LiquidGlassFilters } from '../LiquidGlassRuntime';
+import { Surface } from '../../ui/Surface';
 import { scheduleFrame } from '../../ui/motion';
 
 export default function LiquidGlassPreview({ settings }: { settings: LiquidGlassSettings }) {
@@ -61,8 +61,8 @@ export default function LiquidGlassPreview({ settings }: { settings: LiquidGlass
           <span>SEMIDONE</span>
           <span>保持专注，轻松完成</span>
         </div>
-        <div ref={card} className={`liquid-glass-modal-surface liquid-glass-preview-card${dragging ? ' is-dragging' : ''}`}
-          style={style} tabIndex={0} role="group" aria-label="可拖动的玻璃预览小窗"
+        <Surface elementRef={card} role="preview" settings={settings} className={`liquid-glass-modal-surface liquid-glass-preview-card${dragging ? ' is-dragging' : ''}`}
+          style={style} tabIndex={0} htmlRole="group" aria-label="可拖动的玻璃预览小窗"
           title="拖动小窗，或使用方向键移动，预览不同背景下的玻璃效果"
           onPointerDown={(event) => {
             if (event.button !== 0 || drag.current) return;
@@ -101,57 +101,9 @@ export default function LiquidGlassPreview({ settings }: { settings: LiquidGlass
           <span className="liquid-glass-preview-card-label">今日待办</span>
           <div className="liquid-glass-preview-task"><Circle size={14} /><span>专注做好一件事</span></div>
           <div className="liquid-glass-preview-task liquid-glass-preview-task-done"><Check size={14} /><span>给自己留一点空白</span></div>
-        </div>
-      </header>
-
-      <div className="lgp-toolbar">
-        <label>
-          <span>全局模糊</span>
-          <input
-            aria-label="液态玻璃全局模糊"
-            type="range"
-            min="0"
-            max="24"
-            step="1"
-            value={blur}
-            onChange={(event) => setBlur(Number(event.target.value))}
-          />
-          <output>{blur}px</output>
-        </label>
-        <label>
-          <span>折射强度</span>
-          <input
-            aria-label="液态玻璃折射强度"
-            type="range"
-            min="0"
-            max="2"
-            step="0.05"
-            value={refraction}
-            onChange={(event) => setRefraction(Number(event.target.value))}
-          />
-          <output>{refraction.toFixed(2)}×</output>
-        </label>
-        <label>
-          <span>圆角程度</span>
-          <input
-            aria-label="液态玻璃圆角程度"
-            type="range"
-            min="16"
-            max="72"
-            step="1"
-            value={radius}
-            onChange={(event) => setRadius(Number(event.target.value))}
-          />
-          <output>{radius}px</output>
-        </label>
-        <button type="button" onClick={() => setAlternateBackground((current) => !current)}>
-          切换演示背景
-        </button>
-        <button type="button" onClick={() => setAnimateNoise((current) => !current)}>
-          {animateNoise ? '暂停动态噪声' : '继续动态噪声'}
-        </button>
+        </Surface>
       </div>
-      {glass.enabled && (glass.strength > 0 || glass.magnify > 0 || glass.dispersion) && <LiquidGlassFilters settings={glass} idPrefix={prefix} geometry={geometry} />}
+
     </figure>
   );
 }

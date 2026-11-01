@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { isTauri } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Palette, Database, Info } from 'lucide-react';
+import { Palette, Database, Info } from '../ui/icons';
 import ZenIcon from '../components/icons/ZenIcon';
 import { toast } from 'sonner';
 import ClearCacheDialog from '../components/ClearCacheDialog';

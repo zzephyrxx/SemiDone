@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays, ListTodo, ChartNoAxesCombined } from 'lucide-react';
+import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays, ListTodo, ChartNoAxesCombined } from '../ui/icons';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../store/settingsStore';
@@ -121,6 +122,7 @@ export default function Layout() {
       <>
         <FloatingBall
           onExpand={handleExpandFromFloating}
+          onClose={handleCloseApp}
         />
 
         {/* User Profile Modal */}
@@ -203,14 +205,14 @@ export default function Layout() {
             )}
           </div>
         ) : (
-          <Link
-            to="/"
-            className="workspace-brand flex items-center gap-2 hover:opacity-80 transition-opacity"
+          <div
+            aria-label="拖动 SemiDone 窗口"
+            className="workspace-brand flex items-center gap-2 cursor-grab active:cursor-grabbing"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10" />
             <span className="workspace-wordmark font-semibold text-foreground">SemiDone</span>
-          </Link>
+          </div>
         )}
         
         <div 

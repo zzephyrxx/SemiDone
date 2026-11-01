@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { CheckCircle2, ChevronRight, LoaderCircle, RefreshCw, Rocket } from 'lucide-react';
+import { CheckCircle2, ChevronRight, LoaderCircle, RefreshCw, Rocket } from '../../ui/icons';
 import {
   checkForGithubUpdate,
   type UpdateCheckResult,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Search, X, ListTodo } from 'lucide-react';
+import { Plus, Search, X, ListTodo } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useShallow } from 'zustand/react/shallow';

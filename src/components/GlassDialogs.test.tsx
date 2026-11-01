@@ -99,38 +99,16 @@ it('defers the welcome in a Zen window while allowing an explicit exit dialog', 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
-it('uses each actual border-box size and a common parameter path for navigation, exit and welcome surfaces', () => {
-  const observers: Array<{ callback: ResizeObserverCallback; target?: Element }> = [];
-  vi.stubGlobal('ResizeObserver', class {
-    item: typeof observers[number];
-    constructor(callback: ResizeObserverCallback) { this.item = { callback }; observers.push(this.item); }
-    observe(target: Element) { this.item.target = target; }
-    disconnect() {}
-  });
+it('uses the same library renderer across navigation, selection and native-style dialogs', () => {
   render(<><Surface role="navigation" /><Surface role="selection" /><CloseConfirmDialog isOpen onConfirm={vi.fn()} onCancel={vi.fn()} /><StartupTip /></>);
   act(() => vi.advanceTimersByTime(800));
-  const surfaces = document.querySelectorAll<HTMLElement>('.ui-surface'); expect(surfaces).toHaveLength(4);
-  act(() => {
-    for (const item of observers) if (item.target?.classList.contains('ui-surface')) item.callback([{ target: item.target, borderBoxSize: [{ inlineSize: 160, blockSize: 80 }] } as unknown as ResizeObserverEntry], {} as ResizeObserver);
-  });
-  const maps = Array.from(surfaces, surface => {
-    const id = surface.style.getPropertyValue('--surface-filter').match(/url\(#([^)]*)\)/)![1];
-    const definition = document.getElementById(id)!;
-    expect(definition).toHaveAttribute('primitiveUnits', 'userSpaceOnUse');
-    expect(definition.querySelector('feImage')).toHaveAttribute('width', '160');
-    return definition.querySelector('feImage')!.getAttribute('href');
-  });
-  const atTop = (map: string | null) => {
-    const bytes = Uint8Array.from(atob(map!.split(',')[1]), char => char.charCodeAt(0));
-    const stride = 160 * 3, offset = 54 + (80 - 1 - 1) * stride + 80 * 3;
-    return Array.from(bytes.slice(offset, offset + 3));
-  };
-  // Corner radii differ by shape; the same straight-edge position shares the shader.
-  maps.slice(1).forEach(map => expect(atTop(map)).toEqual(atTop(maps[0])));
-  expect(maps[2] === maps[3]).toBe(true);
-  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, liquidGlass: { ...state.settings.liquidGlass, preset: undefined, strength: 45, rimWidth: .8, magnify: .5 } } })));
+  const surfaces = document.querySelectorAll<HTMLElement>('.ui-surface');
+  expect(surfaces).toHaveLength(4);
+  const filters = new Set<string>();
   for (const surface of surfaces) {
-    const id = surface.style.getPropertyValue('--surface-filter').match(/url\(#([^)]*)\)/)![1];
-    expect(document.getElementById(id)!.querySelector('feImage')!.getAttribute('href') === maps[0]).toBe(false);
+    expect(surface).toHaveAttribute('data-glass-renderer', 'rdev');
+    const filter = surface.querySelector('filter')!;
+    expect(filter).toBeInTheDocument(); filters.add(filter.id);
   }
+  expect(filters.size).toBe(4);
 });

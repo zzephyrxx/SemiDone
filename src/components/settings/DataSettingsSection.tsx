@@ -1,4 +1,4 @@
-import { Database, ExternalLink, FileDown, Folder, Trash2 } from 'lucide-react';
+import { Database, ExternalLink, FileDown, Folder, Trash2 } from '../../ui/icons';
 import type { ReactNode } from 'react';
 
 interface DataSettingsSectionProps {
@@ -19,7 +19,7 @@ interface DataRowProps {
 
 function DataRow({ icon, iconClass, title, description, actions }: DataRowProps) {
   return (
-    <div className="flex min-h-[76px] items-center gap-3 px-3 py-2.5">
+    <div className="settings-data-row min-h-[76px] items-center px-3 py-2.5">
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
         {icon}
       </div>
@@ -27,7 +27,7 @@ function DataRow({ icon, iconClass, title, description, actions }: DataRowProps)
         <p className="text-sm font-semibold text-foreground">{title}</p>
         <div className="mt-0.5 truncate text-xs text-muted-foreground">{description}</div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      <div className="settings-data-actions flex items-center gap-2">{actions}</div>
     </div>
   );
 }

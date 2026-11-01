@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, RotateCcw, Settings, BarChart3, Timer, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, BarChart3, Timer, X } from '../ui/icons';
 import { useUsageStore } from '../store/usageStore';
 import { Overlay } from '../ui/Overlay';
 
@@ -46,7 +46,7 @@ export default function UsageTimer({ onShowDetails }: UsageTimerProps) {
 
 
   return (
-    <div className="bg-background border border-border rounded-lg shadow-sm p-4">
+    <div className="usage-focus-card bg-background border border-border rounded-lg shadow-sm p-4">
       {/* 标题 */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">

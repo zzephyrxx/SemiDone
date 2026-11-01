@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useId, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit3, Save, Trash2, Calendar, Flag, Type, AlignLeft, Clock, CheckCircle, Circle, Repeat, Clock12 } from 'lucide-react';
+import { ArrowLeft, Edit3, Save, Trash2, Calendar, Flag, Type, AlignLeft, Clock, CheckCircle, Circle, Repeat, Clock12 } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import RecurrenceEditor from '../components/RecurrenceEditor';

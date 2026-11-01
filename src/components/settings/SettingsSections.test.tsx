@@ -274,7 +274,7 @@ describe('settings page sections', () => {
     expect(pivot).toHaveClass('is-jump-tilt');
     expect(shadow).toHaveClass('is-jumping');
   });
-  it('opens a fixed liquid-glass lab whose five sample panes remain independently draggable', () => {
+  it('opens the glass preview with its movable sample', () => {
     render(
       <AboutSettingsSection
         appVersion="5.0.0"
@@ -292,7 +292,7 @@ describe('settings page sections', () => {
     fireEvent.click(trigger);
 
     const dialog = screen.getByRole('dialog', { name: '液态玻璃效果预览' });
-    const samplePanes = screen.getAllByTestId(/^liquid-preview-glass-/);
+    const sample = screen.getByRole('group', { name: '可拖动的玻璃预览小窗' });
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog).toHaveClass('liquid-glass-dialog');
@@ -300,11 +300,7 @@ describe('settings page sections', () => {
     expect(dialog.parentElement).not.toHaveClass('bg-[#061421]/25');
     expect(dialog.style.translate).toBe('');
     expect(screen.queryByTestId('easter-egg-dialog-drag-handle')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '液态玻璃效果预览' })).toBeVisible();
-    expect(samplePanes).toHaveLength(5);
-    samplePanes.forEach((pane) => {
-      expect(pane.style.transform).toContain('translate(0px, 0px)');
-    });
+    expect(sample).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: '关闭彩蛋弹窗' }));
     expect(

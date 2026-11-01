@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X } from '../ui/icons';
 import type { Task } from '../types';
 import { useDialogMotion } from '../ui/useDialogMotion';
 import { Surface } from '../ui/Surface';

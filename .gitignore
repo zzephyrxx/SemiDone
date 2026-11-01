@@ -61,3 +61,9 @@ start.txt
 user-data/
 *.db
 *.sqlite
+
+# Native Swift/macOS build products
+native/macos/.build/
+native/macos/.swiftpm/
+*.xcuserstate
+xcuserdata/

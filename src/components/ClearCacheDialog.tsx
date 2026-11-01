@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, Trash2 } from 'lucide-react';
+import { X, AlertTriangle, Trash2 } from '../ui/icons';
 import { useDialogMotion } from '../ui/useDialogMotion';
 import { Surface } from '../ui/Surface';
 

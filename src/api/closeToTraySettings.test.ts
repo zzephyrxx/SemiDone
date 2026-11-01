@@ -7,10 +7,10 @@ beforeEach(() => localStorage.clear());
 describe('close-to-tray settings compatibility', () => {
   it('enables the option for a new profile and an older saved profile', async () => {
     expect((await settingsApi.getSettings()).data?.closeToTray).toBe(true);
-    localStorage.setItem('windows-todo-settings', JSON.stringify({ theme: 'pink', username: '保留用户资料' }));
+    localStorage.setItem('windows-todo-settings', JSON.stringify({ theme: 'dark', username: '保留用户资料' }));
     const { data } = await settingsApi.getSettings();
     expect(data?.closeToTray).toBe(true);
-    expect(data?.theme).toBe('pink');
+    expect(data?.theme).toBe('dark');
     expect(data?.username).toBe('保留用户资料');
   });
 

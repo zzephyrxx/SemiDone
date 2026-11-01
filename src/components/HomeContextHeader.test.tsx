@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import HomeContextHeader from './HomeContextHeader';
 import { useSettingsStore } from '../store/settingsStore';
 
-vi.mock('../data/quotes', () => ({ getQuotesByTheme: (theme: string) => theme === 'pink' ? ['粉色短语一', '粉色短语二'] : ['励志短语一', '励志短语二'] }));
+vi.mock('../data/quotes', () => ({ getQuotesByTheme: (theme: string) => theme === 'dark' ? ['粉色短语一', '粉色短语二'] : ['励志短语一', '励志短语二'] }));
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-26T12:00:00')); localStorage.clear();
   useSettingsStore.setState(state => ({ settings: { ...state.settings, theme: 'light' } }));
@@ -20,7 +20,7 @@ it('rotates the existing phrases every five seconds, keeps its index, and releas
   act(() => vi.advanceTimersByTime(5000));
   expect(screen.getByLabelText('励志短语')).toHaveTextContent('励志短语二');
   expect(localStorage.getItem('quoteIndex')).toBe('1');
-  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, theme: 'pink' } })));
+  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, theme: 'dark' } })));
   expect(screen.getByLabelText('励志短语')).toHaveTextContent('粉色短语二');
   expect(start).toHaveBeenCalledTimes(2); expect(stop).toHaveBeenCalledTimes(1);
   view.unmount(); expect(stop).toHaveBeenCalledTimes(2);

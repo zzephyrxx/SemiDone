@@ -74,3 +74,10 @@ describe('navigation pointer interaction', () => {
     expect(frames.size).toBe(1); view.unmount(); expect(frames.size).toBe(0);
   });
 });
+
+it('keeps a plain activation on its pressed tab when WebKit reports a zero-coordinate release', () => {
+  render(<Scene />);
+  fireEvent.pointerDown(screen.getByText('Tab 3'), { button: 0, clientX: 348, clientY: 20, pointerId: 1 });
+  fireEvent.pointerUp(screen.getByTestId('nav'), { clientX: 0, clientY: 0, pointerId: 1 });
+  expect(screen.getByText('Page 3')).toBeVisible();
+});

@@ -14,11 +14,21 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
 });
 
-const methodIds = ['css', 'noise', 'edge', 'chromatic', 'interactive'] as const;
+const initialSettings: Settings = {
+  theme: 'light', liquidGlass: { enabled: true, blur: 6, refraction: 42, dispersion: true },
+  notifications: true, autoSave: true, isPinned: false, isCollapsed: false,
+  collapseMode: 'expanded', useCapsuleMode: false,
+};
 
-describe('LiquidGlassPreview', () => {
-  it('renders all five reference implementations and their SVG filters', () => {
-    render(<LiquidGlassPreview />);
+function EditableAppearance() {
+  const [settings, setSettings] = useState(initialSettings);
+  return <AppearanceSettingsSection settings={settings}
+    onLiquidGlassChange={(updates) => setSettings((current) => ({
+      ...current, liquidGlass: { ...current.liquidGlass, ...updates },
+    }))}
+    onThemeChange={vi.fn()} onToggleAutoStart={vi.fn()} onTransparencyToggle={vi.fn()}
+    onTransparencyLevelChange={vi.fn()} onToggleCapsuleMode={vi.fn()} />;
+}
 
 describe('liquid-glass parameter preview', () => {
   it('drags the miniature within the scene and keeps its position when parameters change', () => {
@@ -35,7 +45,7 @@ describe('liquid-glass parameter preview', () => {
     expect(card.style.translate).toBe('25px 15px');
     view.rerender(<LiquidGlassPreview settings={normalizeGlassPresetSettings({ ...initialSettings.liquidGlass, preset: 'extreme' })} />);
     expect(card.style.translate).toBe('25px 15px');
-    expect(card.style.getPropertyValue('--surface-filter')).toContain('blur(3.06px)');
+    expect(card).toHaveAttribute('data-glass-renderer', 'rdev');
     fireEvent.pointerMove(card, { clientX: 1000, clientY: 1000 });
     expect(card.style.translate).toBe('62px 27px');
     fireEvent.pointerUp(card);

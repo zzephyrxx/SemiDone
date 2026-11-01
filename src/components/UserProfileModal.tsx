@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Camera, Save } from 'lucide-react';
+import { X, User, Camera, Save } from '../ui/icons';
 import { useSettingsStore } from '../store/settingsStore';
 import { useDialogMotion } from '../ui/useDialogMotion';
 

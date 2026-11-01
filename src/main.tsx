@@ -14,3 +14,5 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>
 );
+
+import './styles/macosRefresh.css';

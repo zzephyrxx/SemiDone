@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
 import { AnimatedCollapse } from '../ui/Disclosure';
 

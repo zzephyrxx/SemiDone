@@ -17,7 +17,7 @@ import {
   FileText,
   Repeat,
   Pin
-} from 'lucide-react';
+} from '../ui/icons';
 import type { Task, Priority, UpdateTaskRequest } from '../types';
 import { useTaskStore } from '../store/taskStore';
 import DeleteConfirmDialog from './DeleteConfirmDialog';

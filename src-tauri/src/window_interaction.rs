@@ -95,10 +95,9 @@ mod native {
         use super::*;
         use std::sync::atomic::{AtomicUsize, Ordering};
         use windows::core::w;
-        use windows::Win32::Foundation::HINSTANCE;
         use windows::Win32::UI::WindowsAndMessaging::{
             CreateWindowExW, DestroyWindow, GetWindowLongW, IsWindowVisible, SendMessageW,
-            GWL_EXSTYLE, HMENU, WINDOW_EX_STYLE, WM_LBUTTONDOWN, WM_LBUTTONUP, WS_OVERLAPPEDWINDOW,
+            GWL_EXSTYLE, WINDOW_EX_STYLE, WM_LBUTTONDOWN, WM_LBUTTONUP, WS_OVERLAPPEDWINDOW,
         };
 
         unsafe extern "system" fn probe(
@@ -137,9 +136,9 @@ mod native {
                     0,
                     1,
                     1,
-                    HWND::default(),
-                    HMENU::default(),
-                    HINSTANCE::default(),
+                    None,
+                    None,
+                    None,
                     None,
                 )
                 .unwrap();
@@ -163,7 +162,10 @@ mod native {
                     WM_NCRBUTTONUP,
                     WM_NCRBUTTONDBLCLK,
                 ] {
-                    assert_eq!(SendMessageW(hwnd, message, WPARAM(0), LPARAM(0)).0, 0);
+                    assert_eq!(
+                        SendMessageW(hwnd, message, Some(WPARAM(0)), Some(LPARAM(0))).0,
+                        0
+                    );
                 }
                 assert_eq!(count.load(Ordering::SeqCst), 0);
                 for command in [SC_MOUSEMENU, SC_KEYMENU] {
@@ -172,8 +174,8 @@ mod native {
                             SendMessageW(
                                 hwnd,
                                 WM_SYSCOMMAND,
-                                WPARAM((command | low_bits) as usize),
-                                LPARAM(0)
+                                Some(WPARAM((command | low_bits) as usize)),
+                                Some(LPARAM(0))
                             )
                             .0,
                             0
@@ -186,15 +188,24 @@ mod native {
                     windows::Win32::UI::WindowsAndMessaging::SC_CLOSE,
                 ] {
                     assert_eq!(
-                        SendMessageW(hwnd, WM_SYSCOMMAND, WPARAM(command as usize), LPARAM(0)).0,
+                        SendMessageW(
+                            hwnd,
+                            WM_SYSCOMMAND,
+                            Some(WPARAM(command as usize)),
+                            Some(LPARAM(0))
+                        )
+                        .0,
                         7
                     );
                 }
                 for message in [WM_LBUTTONDOWN, WM_LBUTTONUP] {
-                    assert_eq!(SendMessageW(hwnd, message, WPARAM(0), LPARAM(0)).0, 7);
+                    assert_eq!(
+                        SendMessageW(hwnd, message, Some(WPARAM(0)), Some(LPARAM(0))).0,
+                        7
+                    );
                 }
                 assert_eq!(count.load(Ordering::SeqCst), 4);
-                SendMessageW(hwnd, WM_EXITSIZEMOVE, WPARAM(0), LPARAM(0));
+                SendMessageW(hwnd, WM_EXITSIZEMOVE, Some(WPARAM(0)), Some(LPARAM(0)));
                 assert_eq!(completed.load(Ordering::SeqCst), 1);
                 assert_eq!(GetWindowLongW(hwnd, GWL_EXSTYLE), styles);
                 assert!(!IsWindowVisible(hwnd).as_bool());

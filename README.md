@@ -11,15 +11,33 @@
 
 
 <p align="center">
-  一款为 Windows 用户打造的轻量级桌面待办应用
+  支持 Windows，并正在适配 macOS 的轻量级桌面待办应用
 </p>
 
 
 ---
 
+## macOS 首版开发
+
+Mac 版以 GitHub `master` 的 V7.0 源码为基线，目标为 macOS 26+ / Apple silicon。
+Windows 和 Mac 共用同一套 React 界面、任务逻辑和数据模型；窗口原生行为集中在
+`src-tauri/src/platform/`，打包差异使用 `tauri.windows.conf.json` 和 `tauri.macos.conf.json`。
+不使用长期的平台分支，也不复制两套 Tauri 应用。
+
+另有正在建设的 **Swift / SwiftUI 原生基础版**，位于 [`native/macos/`](native/macos/README.md)，
+与当前版本并行试用。原生版使用独立数据目录；当前完成基础待办与窗口功能，尚未迁移全部 V7 特性。
+
+- 本机开发：安装 Node.js 22、Rust stable、Xcode Command Line Tools 后，执行 `npm ci`、`npm run dev`。
+- 检查：`npm run check`、`npm test`、`cargo test --manifest-path src-tauri/Cargo.toml --locked`。
+- Mac 打包：在 Apple 芯片 Mac 执行 `npm run build:mac`，安装镜像输出到 `release/macos/`。
+- Windows 打包：在 Windows 执行 `npm run build:tauri`，继续生成 NSIS 安装器。
+- 完整适配说明与手工验收清单见 [macOS 开发说明](MACOS.md)。
+
+---
+
 ## 📖 应用简介
 
-**事半·SemiDone** 是一款专为 Windows 用户设计的轻量级桌面待办应用。它采用现代化的技术栈，提供流畅的用户体验，帮助你高效管理日常任务。
+**事半·SemiDone** 是一款轻量级桌面待办应用，支持 Windows，并正在开发 macOS 首版。它采用现代化的技术栈，提供流畅的用户体验，帮助你高效管理日常任务。
 
 > 💡 **名字由来**：「事半」取自成语「事半功倍」，寓意用更少的时间完成更多的事情。SemiDone 则是 Semi（一半）+ Done（完成）的组合，呼应中文名的含义。
 
@@ -38,7 +56,7 @@
 
 ### 🎨 个性化体验
 
-- **三套主题**：明亮、深色、梦粉，满足不同审美需求
+- **两套主题**：明亮与深色；旧梦粉设置自动迁移为明亮
 - **透明模式**：可在深色主题下开启，窗口不透明度支持 1%–100% 调节（100% 为不透明）
 - **励志名言**：待办页日期旁及折叠栏自动轮播
 - **液态玻璃 UI**：提供“标准、极致”两档预设及效果预览，导航文字与图标保持清晰
@@ -73,10 +91,10 @@
 
 | 层级         | 技术选型              |
 | ------------ | --------------------- |
-| **前端框架** | React 18 + TypeScript |
+| **前端框架** | React 19 + TypeScript |
 | **状态管理** | Zustand               |
 | **样式方案** | TailwindCSS           |
-| **图标库**   | Lucide React          |
+| **图标库**   | pqoqubbw/icons + Motion          |
 | **桌面框架** | Tauri 2.0             |
 | **后端语言** | Rust                  |
 | **数据存储** | 本地 JSON 文件        |

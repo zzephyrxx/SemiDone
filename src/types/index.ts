@@ -2,7 +2,7 @@
 export type Priority = 'high' | 'medium' | 'low';
 
 // 主题类型枚举
-export type Theme = 'light' | 'dark' | 'pink';
+export type Theme = 'light' | 'dark';
 
 // 折叠模式类型枚举
 export type CollapseMode = 'expanded' | 'bar' | 'floating';

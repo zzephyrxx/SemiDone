@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Palette, Pin, PinOff, X } from 'lucide-react';
+import { Palette, Pin, PinOff, X } from '../ui/icons';
 import { useShallow } from 'zustand/react/shallow';
 import { useSettingsStore } from '../store/settingsStore';
 import { getFilteredTasks, useTaskStore } from '../store/taskStore';
@@ -96,7 +96,7 @@ export default function ZenMode({ onClose }: Props) {
   return (
     <div className="zen-mode" style={zenModeStyle(appearance)}>
       <header className="zen-toolbar" onMouseDown={startWindowDragging}>
-        <span className="zen-drag-label">SemiDone Zen</span>
+        <span className="zen-drag-label">SemiDone</span>
         <div className="zen-toolbar-actions">
           <button type="button" ref={appearanceButton} title="Zen 模式配置" aria-label="Zen 模式配置"
             aria-expanded={showAppearance} aria-controls="zen-appearance-panel"

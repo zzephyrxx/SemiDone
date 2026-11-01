@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
     zenMode: undefined as { enabled: boolean; active: boolean } | undefined,
     closeToTray: undefined as boolean | undefined,
   },
+  pomodoro: { isActive: false, currentMode: 'work', timeLeft: 1500, cycle: 0 },
+  startDragging: vi.fn().mockResolvedValue(undefined),
   toggleIsPinned: vi.fn(),
   toggleIsCollapsed: vi.fn(),
   setZenMode: vi.fn(),
@@ -36,7 +38,7 @@ vi.mock('../store/settingsStore', () => ({
 
 vi.mock('../store/usageStore', () => ({
   useUsageStore: (selector: (state: { pomodoro: { isActive: boolean; currentMode: string; timeLeft: number; cycle: number }; formatTime: () => string }) => unknown) => selector({
-    pomodoro: { isActive: false, currentMode: 'work', timeLeft: 1500, cycle: 0 },
+    pomodoro: mocks.pomodoro,
     formatTime: () => '25:00',
   }),
 }));
@@ -45,6 +47,7 @@ vi.mock('../data/quotes', () => ({
   getQuotesByTheme: () => ['第一条名言', '第二条名言'],
 }));
 
+vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: () => ({ startDragging: mocks.startDragging }) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: mocks.isTauri }));
 vi.mock('sonner', () => ({ toast: { error: mocks.toastError, info: mocks.toastInfo } }));
 vi.mock('./UserProfileModal', () => ({ default: () => null }));
@@ -201,9 +204,21 @@ describe('Layout header', () => {
     expect(screen.getByTitle('展开窗口')).toBeVisible();
   });
 
-  it('drags the window from nested title-bar content but not from controls or right-click', () => {
+  it('keeps settings accessible in full mode when Zen is disabled', () => {
+    mocks.settings.collapseMode = 'expanded';
     render(<MemoryRouter><Layout /></MemoryRouter>);
     expect(screen.queryByRole('button', { name: /进入.*Zen/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '设置' })).toBeVisible();
   });
+});
+
+it('uses the SemiDone wordmark as a left-button drag area instead of a home link', () => {
+  mocks.settings.collapseMode = 'expanded';
+  render(<MemoryRouter initialEntries={['/settings']}><Layout /></MemoryRouter>);
+  const brand = screen.getByText('SemiDone');
+  expect(brand.closest('a')).toBeNull();
+  fireEvent.mouseDown(brand, { button: 0 });
+  expect(mocks.startDragging).toHaveBeenCalledOnce();
+  fireEvent.mouseDown(brand, { button: 2 });
+  expect(mocks.startDragging).toHaveBeenCalledOnce();
 });

@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from './icons';
 import { MOTION, scheduleFrame, useReducedMotion } from './motion';
 
 export function AnimatedCollapse({ open, children, id }: { open: boolean; children: ReactNode; id?: string }) {
