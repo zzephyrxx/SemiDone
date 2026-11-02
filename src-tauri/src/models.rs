@@ -240,6 +240,8 @@ impl Default for ZenModeSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub theme: String,
+    #[serde(rename = "accentColor", default, skip_serializing_if = "Option::is_none")]
+    pub accent_color: Option<String>,
     #[serde(rename = "fontScale", default = "default_font_scale")]
     pub font_scale: u16,
     #[serde(rename = "animationsEnabled", default = "default_animations_enabled")]
@@ -306,6 +308,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: "light".to_string(),
+            accent_color: None,
             font_scale: default_font_scale(),
             animations_enabled: true,
             liquid_glass: LiquidGlassSettings::default(),
@@ -501,5 +504,22 @@ mod zen_mode_tests {
         let saved = serde_json::to_value(settings).unwrap();
         assert!(saved.get("minimalMode").is_none());
         assert!(saved["zenMode"]["enabled"].as_bool().unwrap());
+    }
+}
+
+#[cfg(test)]
+mod accent_settings_tests {
+    use super::Settings;
+    #[test]
+    fn optional_accent_round_trips_and_old_settings_keep_the_default() {
+        let old = serde_json::to_value(Settings::default()).unwrap();
+        assert!(old.get("accentColor").is_none());
+        let restored: Settings = serde_json::from_value(old).unwrap();
+        assert_eq!(restored.accent_color, None);
+        let settings = Settings { accent_color: Some("#8b5cf6".into()), ..Settings::default() };
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["accentColor"], "#8b5cf6");
+        let restored: Settings = serde_json::from_value(json).unwrap();
+        assert_eq!(restored.accent_color.as_deref(), Some("#8b5cf6"));
     }
 }

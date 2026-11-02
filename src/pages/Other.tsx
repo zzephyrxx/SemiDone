@@ -187,7 +187,7 @@ export default function Other() {
           {[{ id: 'appearance', label: '外观', icon: Palette }, { id: 'zen', label: 'Zen', icon: ZenIcon },
             { id: 'data', label: '数据', icon: Database }, { id: 'about', label: '关于', icon: Info }].map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => document.getElementById(`settings-${id}`)?.scrollIntoView({ block: 'start', behavior: 'instant' })}>
-              <Icon size={15} /><span>{label}</span>
+              <Icon size={15} className={({ appearance: 'text-violet-500', zen: 'text-purple-500', data: 'text-cyan-600 dark:text-cyan-400', about: 'text-amber-600 dark:text-amber-400' })[id]} /><span>{label}</span>
             </button>
           ))}
         </nav>
@@ -195,6 +195,7 @@ export default function Other() {
           <div id="settings-appearance">
           <AppearanceSettingsSection
             settings={settings}
+            onAccentColorChange={(accentColor) => void updateSettings({ accentColor })}
             onThemeChange={(theme) => void handleThemeChange(theme)}
             onFontScaleChange={(fontScale) => void updateSettings({ fontScale })}
             onAnimationsChange={(animationsEnabled) => void updateSettings({ animationsEnabled })}

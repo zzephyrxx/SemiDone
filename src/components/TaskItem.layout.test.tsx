@@ -44,9 +44,12 @@ it('keeps completed and pending completion icons at the same size', () => {
     <div className="home-task-row"><TaskItem task={{ ...base, id: 'done', title: '已完成', completed: true }} /></div>
   </div></MemoryRouter>);
   for (const name of ['完成待办：未完成', '标记未完成：已完成']) {
-    const svg = screen.getByRole('button', { name }).querySelector('svg')!;
-    expect(getComputedStyle(svg).width).toBe('21px');
-    expect(getComputedStyle(svg).height).toBe('21px');
+    const button = screen.getByRole('button', { name });
+    const icon = button.querySelector('.animated-icon')!;
+    expect(getComputedStyle(button).width).toBe('28px');
+    expect(getComputedStyle(button).height).toBe('28px');
+    expect(getComputedStyle(icon).width).toBe('22px');
+    expect(getComputedStyle(icon).height).toBe('22px');
   }
 });
 

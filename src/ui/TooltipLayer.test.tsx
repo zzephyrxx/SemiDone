@@ -109,3 +109,10 @@ it('keeps the hint inside the window and dismisses it on scroll', () => {
   expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   expect(screen.getByRole('button')).toHaveAttribute('title', '');
 });
+
+it('shows heatmap values without the default delay', () => {
+  render(<><div tabIndex={0} title="2026/11/1 · 30 分钟" data-tooltip-delay="0">day</div><TooltipLayer /></>);
+  fireEvent.mouseOver(screen.getByText('day'));
+  act(() => vi.advanceTimersByTime(0));
+  expect(screen.getByRole('tooltip')).toHaveTextContent('2026/11/1 · 30 分钟');
+});

@@ -24,6 +24,7 @@
         "decorations": false,
         "shadow": false,
         "dragDropEnabled": false,
+        "acceptFirstMouse": true,
         "maximizable": false
       }
     ]

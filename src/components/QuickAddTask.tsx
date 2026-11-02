@@ -160,13 +160,13 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
   const getPriorityLabel = (p: Priority) => {
     switch (p) {
       case 'high':
-        return '高优先级';
+        return '高';
       case 'medium':
-        return '中优先级';
+        return '中';
       case 'low':
-        return '低优先级';
+        return '低';
       default:
-        return '中优先级';
+        return '中';
     }
   };
 
@@ -191,7 +191,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
         <button
           onClick={onClose}
           aria-label="关闭新建待办"
-          className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="dialog-close-button p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
@@ -252,20 +252,22 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
               </div>
             </div>
 
+            <div className="quick-add-options-row">
             {/* 优先级 */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 <Flag className="inline w-4 h-4 mr-1" />
                 优先级
               </label>
-              <div className="flex space-x-2">
+              <div className="quick-priority-options flex gap-1" role="group" aria-label="优先级">
                 {(['high', 'medium', 'low'] as Priority[]).map((p) => (
                   <button
                     key={p}
                     type="button"
+                    aria-pressed={priority === p}
                     onClick={() => setPriority(p)}
                     className={`
-                      flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors
+                      flex-1 min-w-0 px-2 py-2 rounded-lg border text-sm font-medium transition-colors
                       ${priority === p
                         ? getPriorityColor(p)
                         : 'border-border bg-background text-muted-foreground hover:bg-muted'
@@ -288,13 +290,14 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
                 <button
                   type="button"
                   ref={dateButtonRef}
+                  aria-label="设置截止日期"
                   aria-expanded={showDatePicker}
                   aria-haspopup="dialog"
                   aria-controls={showDatePicker ? datePickerId : undefined}
                   onClick={() => {
                     setShowDatePicker(!showDatePicker);
                   }}
-                  className="w-full px-3 py-2 text-left bg-background border border-border rounded-lg hover:bg-muted transition-colors text-foreground text-sm"
+                  className="quick-due-date w-full px-2 py-2 text-right bg-background border border-border rounded-lg hover:bg-muted transition-colors text-foreground text-sm"
                 >
                   {dueDate ? new Date(dueDate).toLocaleString('zh-CN', {
                     year: 'numeric',
@@ -312,6 +315,7 @@ export default function QuickAddTask({ onClose }: QuickAddTaskProps) {
               </div>
             </div>
 
+            </div>
             {/* 附件上传 - 使用原生input收集File对象，保存时再存储 */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">

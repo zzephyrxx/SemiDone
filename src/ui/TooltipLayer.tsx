@@ -69,7 +69,7 @@ export function TooltipLayer() {
         const ids = new Set((active.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean));
         ids.add(id); active.setAttribute('aria-describedby', [...ids].join(' '));
         setHint({ anchor: active, text });
-      }, TOOLTIP_DELAY);
+      }, next.dataset.tooltipDelay === '0' ? 0 : TOOLTIP_DELAY);
     };
     const over = (event: MouseEvent) => { hovered = findAnchor(event.target); select(hovered ?? focused); };
     const out = (event: MouseEvent) => {

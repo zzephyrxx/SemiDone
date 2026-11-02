@@ -141,7 +141,8 @@ export default function ReportExportDialog({ isOpen, onClose }: ReportExportDial
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-accent rounded-lg transition-colors"
+            aria-label="关闭记录导出弹窗"
+            className="dialog-close-button hover:bg-accent"
           >
             <X className="w-5 h-5" />
           </button>

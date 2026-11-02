@@ -14,7 +14,7 @@ export default function UsageDetailsModal({ isOpen, onClose }: UsageDetailsModal
   const activeDays = details.filter(item => item.totalMinutes > 0).length;
   const sessions = details.reduce((sum, item) => sum + item.sessions, 0);
   return <Overlay label="使用详情" open={isOpen} onClose={onClose} dialogClassName="usage-details-dialog">
-    <header className="usage-section-heading"><div><span className="usage-eyebrow">YOUR RHYTHM</span><h2>使用详情统计</h2></div><button type="button" onClick={onClose} aria-label="关闭使用详情" className="usage-details-close"><X size={17} /></button></header>
+    <header className="usage-section-heading"><div><span className="usage-eyebrow">YOUR RHYTHM</span><h2>使用详情统计</h2></div><button type="button" onClick={onClose} aria-label="关闭使用详情" className="dialog-close-button usage-details-close"><X size={17} /></button></header>
     <div className="usage-details-body">
       <div className="calendar-view-switch" role="group" aria-label="统计范围">{(['week', 'month'] as const).map(value => <button type="button" key={value} aria-pressed={period === value} onClick={() => setPeriod(value)}>{value === 'week' ? '最近7天' : '最近30天'}</button>)}</div>
       <div className="usage-overview-grid">{[['今日使用', formatMinutes(stats.today)], ['平均每日', formatMinutes(Math.round(total / details.length))], ['活跃天数', `${activeDays} 天`], ['会话次数', `${sessions} 次`]].map(([label, value]) => <div className="usage-metric" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>

@@ -69,7 +69,8 @@ export default function ClearCacheDialog({ isOpen, onClose, onConfirm }: ClearCa
             <button
               onClick={handleClose}
               disabled={isClearing}
-              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+              aria-label="关闭数据清除弹窗"
+              className="dialog-close-button text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
             >
               <X className="w-5 h-5" />
             </button>

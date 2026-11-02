@@ -35,7 +35,7 @@ export default function CloseConfirmDialog({ isOpen, onConfirm, onCancel }: Clos
           <button
             onClick={onCancel}
             aria-label="取消关闭"
-            className="close-dialog-dismiss p-1 rounded-full hover:bg-accent transition-colors"
+            className="dialog-close-button close-dialog-dismiss p-1 rounded-full hover:bg-accent transition-colors"
           >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>

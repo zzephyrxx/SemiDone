@@ -1,3 +1,4 @@
+import { Surface } from '../ui/Surface';
 import { useEffect, useMemo, useState } from 'react';
 import {
   addMonths,
@@ -79,7 +80,14 @@ interface TaskCalendarContentProps {
 }
 
 export function TaskCalendarContent({ tasks, initialAnchor = new Date() }: TaskCalendarContentProps) {
-  const [view, setView] = useState<TaskCalendarView>('month');
+  const [view, setView] = useState<TaskCalendarView>(() => {
+    try { return localStorage.getItem('semidone-calendar-view') === 'month' ? 'month' : 'week'; }
+    catch { return 'week'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('semidone-calendar-view', view); }
+    catch { /* A disabled/full WebView store must not prevent changing views. */ }
+  }, [view]);
   const [anchor, setAnchor] = useState(() => initialAnchor);
   const completedTasks = useMemo(
     () => getCompletedTasksInPeriod(tasks, view, anchor),
@@ -92,7 +100,7 @@ export function TaskCalendarContent({ tasks, initialAnchor = new Date() }: TaskC
     <div className="workspace-page calendar-page min-h-full bg-background text-foreground">
       <h1 className="sr-only">任务日历</h1>
       <div className="mx-auto max-w-2xl space-y-3">
-        <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <Surface as="section" className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4">
             <div>
               <div className="calendar-view-switch mb-1 rounded-lg border border-border bg-muted/50" role="group" aria-label="日历视图">
@@ -180,9 +188,9 @@ export function TaskCalendarContent({ tasks, initialAnchor = new Date() }: TaskC
               );
             })}
           </div>
-        </section>
+        </Surface>
 
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <Surface as="section" className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-bold text-foreground">{taskListLabel(view)}</h2>
             <span className="text-xs text-muted-foreground">共 {completedTasks.length} 项</span>
@@ -211,7 +219,7 @@ export function TaskCalendarContent({ tasks, initialAnchor = new Date() }: TaskC
               })}
             </div>
           )}
-        </section>
+        </Surface>
       </div>
     </div>
   );

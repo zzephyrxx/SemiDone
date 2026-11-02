@@ -32,7 +32,7 @@ export default function DeleteConfirmDialog({ isOpen, task, onConfirm, onCancel 
           </div>
           <button
             onClick={onCancel}
-            className="p-1 hover:bg-accent rounded-md transition-colors"
+            className="dialog-close-button p-1 hover:bg-accent rounded-md transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

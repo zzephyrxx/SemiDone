@@ -92,7 +92,7 @@ describe('V7 home workflows with browser persistence', () => {
       await screen.findByRole('heading', { name: fixture.title });
       const page = screen.getByRole('region', { name: '待办页面' });
       expect(getComputedStyle(page).overflowX).toBe('hidden');
-      expect(getComputedStyle(page).overflowY).toBe('auto');
+      expect(getComputedStyle(page).overflowY).toBe('scroll');
       const input = screen.getByRole('textbox', { name: '搜索待办' });
       const icon = view.container.querySelector('.home-search-icon')!;
       for (const enabled of [true, false, true]) {

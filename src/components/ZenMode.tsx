@@ -117,7 +117,9 @@ export default function ZenMode({ onClose }: Props) {
               appearanceButton.current?.focus();
             }}><X size={16} /></button>
           </div>
-          <ZenModeAppearance settings={appearance} onChange={(updates) => void setZenMode(updates)} />
+          <div className="zen-appearance-scroll">
+            <ZenModeAppearance settings={appearance} onChange={(updates) => void setZenMode(updates)} />
+          </div>
         </Surface>
       )}
       <main className="zen-task-list" aria-label="未完成待办" aria-busy={loading}>

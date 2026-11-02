@@ -35,6 +35,7 @@ export default function AnimatedTaskList({ tasks, editingTaskId, resetKey, empty
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const previousTops = useRef(new Map<string, number>());
   const animations = useRef(new Map<string, Animation>());
+  const completionFlight = useRef(false);
   const finishExit = useCallback((id: string) => {
     clearTimeout(timers.current.get(id)); timers.current.delete(id);
     setEntries(items => {
@@ -73,9 +74,14 @@ export default function AnimatedTaskList({ tasks, editingTaskId, resetKey, empty
         clearTimeout(timers.current.get(id)); timers.current.delete(id);
         continue;
       }
+      const canonical = useTaskStore.getState().tasks?.find(task => task.id === id);
+      if (!nextKeys.has(id) && !entry.leaving && !canonical?.completed) {
+        clearTimeout(timers.current.get(id)); timers.current.delete(id);
+        continue;
+      }
       const duplicate = next.findIndex(item => item.task.id === id);
       if (duplicate >= 0) next.splice(duplicate, 1);
-      next.splice(Math.min(index, next.length), 0, { task: updated ?? useTaskStore.getState().tasks?.find(task => task.id === id) ?? entry.task, leaving: true });
+      next.splice(Math.min(index, next.length), 0, { task: updated ?? canonical ?? entry.task, leaving: true });
       // animationend owns normal removal. Allow a frame of scheduling slack in the fallback.
       if (!timers.current.has(id)) timers.current.set(id, setTimeout(() => finishExit(id), MOTION.taskExit + 40));
     }
@@ -132,6 +138,9 @@ export default function AnimatedTaskList({ tasks, editingTaskId, resetKey, empty
   }, [container, editingTaskId, range.start, range.end]);
   useLayoutEffect(() => {
     if (!container) return;
+    const leaving = entries.some(entry => entry.leaving);
+    const relatedToCompletion = leaving || completionFlight.current;
+    completionFlight.current = leaving;
     const nextTops = new Map<string, number>();
     container.querySelectorAll<HTMLElement>('[data-task-row]').forEach(row => {
       const id = row.dataset.taskRow!;
@@ -139,7 +148,7 @@ export default function AnimatedTaskList({ tasks, editingTaskId, resetKey, empty
       const oldTop = previousTops.current.get(id);
       animations.current.get(id)?.cancel(); animations.current.delete(id);
       nextTops.set(id, currentTop);
-      if (!reduced && oldTop !== undefined && Math.abs(oldTop - currentTop) > 1 && !row.inert) {
+      if (!reduced && relatedToCompletion && oldTop !== undefined && Math.abs(oldTop - currentTop) > 1 && !row.inert) {
         const animation = row.animate?.([{ transform: `translateY(${oldTop - currentTop}px)` }, { transform: 'translateY(0)' }],
           { duration: MOTION.list, easing: 'cubic-bezier(.2,.8,.2,1)' });
         if (animation) animations.current.set(id, animation);

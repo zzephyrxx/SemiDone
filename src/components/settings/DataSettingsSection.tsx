@@ -1,4 +1,6 @@
-import { Database, ExternalLink, FileDown, Folder, Trash2 } from '../../ui/icons';
+import { GlassButton } from '../../ui/GlassButton';
+import { Surface } from '../../ui/Surface';
+import { Database, FileDown, Folder, FolderLock, ExternalLink } from '../../ui/icons';
 import type { ReactNode } from 'react';
 
 interface DataSettingsSectionProps {
@@ -20,7 +22,7 @@ interface DataRowProps {
 function DataRow({ icon, iconClass, title, description, actions }: DataRowProps) {
   return (
     <div className="settings-data-row min-h-[76px] items-center px-3 py-2.5">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
+      <div className={`settings-row-icon flex h-5 w-5 shrink-0 items-center justify-center ${iconClass}`}>
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -33,7 +35,7 @@ function DataRow({ icon, iconClass, title, description, actions }: DataRowProps)
 }
 
 const baseButtonClass =
-  'inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
+  'inline-flex items-center justify-center gap-1 font-medium';
 
 export default function DataSettingsSection({
   dataDir,
@@ -43,7 +45,7 @@ export default function DataSettingsSection({
   onClear,
 }: DataSettingsSectionProps) {
   return (
-    <section
+    <Surface as="section" htmlRole="region"
       aria-labelledby="data-settings-title"
       className="card card-shadow slide-up rounded-2xl p-3"
     >
@@ -54,21 +56,20 @@ export default function DataSettingsSection({
         </h2>
       </div>
 
-      <div className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-background/35">
+      <div className="divide-y divide-border/40">
         <DataRow
           icon={<FileDown className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
           iconClass="bg-blue-500/10"
           title="记录导出"
           description="导出待办记录为 Markdown 格式"
           actions={(
-            <button
+            <GlassButton
               type="button"
               onClick={onExport}
-              className={`${baseButtonClass} bg-blue-600 text-white hover:bg-blue-700`}
+              className={`${baseButtonClass} text-primary hover:text-primary/80`}
             >
-              <FileDown className="h-3.5 w-3.5" />
               导出
-            </button>
+            </GlassButton>
           )}
         />
 
@@ -79,44 +80,43 @@ export default function DataSettingsSection({
           description={<span title={dataDir}>{dataDir || '正在读取数据目录…'}</span>}
           actions={(
             <>
-              <button
+              <GlassButton
                 type="button"
                 onClick={onOpenDirectory}
-                className={`${baseButtonClass} border border-orange-500/60 text-orange-600 hover:bg-orange-500/10 dark:text-orange-400`}
+                className={`${baseButtonClass} text-primary hover:text-primary/80`}
+                aria-label="打开数据目录"
                 title="在文件管理器中打开"
               >
-                <ExternalLink className="h-3.5 w-3.5" />
-                打开
-              </button>
-              <button
+                <ExternalLink className="h-4 w-4" />
+              </GlassButton>
+              <GlassButton
                 type="button"
                 onClick={onChangeDirectory}
-                className={`${baseButtonClass} bg-muted text-foreground hover:bg-accent`}
+                className={`${baseButtonClass} text-primary hover:text-primary/80`}
                 title="更改数据目录"
               >
                 更改
-              </button>
+              </GlassButton>
             </>
           )}
         />
 
         <DataRow
-          icon={<Database className="h-5 w-5 text-red-600 dark:text-red-400" />}
+          icon={<FolderLock className="h-5 w-5 text-red-600 dark:text-red-400" />}
           iconClass="bg-red-500/10"
           title="数据管理"
           description="清除应用数据和缓存"
           actions={(
-            <button
+            <GlassButton
               type="button"
               onClick={onClear}
-              className={`${baseButtonClass} border border-red-500/60 text-red-600 hover:bg-red-500/10 dark:text-red-400`}
+              className={`${baseButtonClass} text-destructive hover:text-destructive/80`}
             >
-              <Trash2 className="h-3.5 w-3.5" />
               清除数据
-            </button>
+            </GlassButton>
           )}
         />
       </div>
-    </section>
+    </Surface>
   );
 }

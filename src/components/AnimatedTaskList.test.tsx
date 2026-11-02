@@ -6,6 +6,7 @@ import type { Task } from '../types';
 import AnimatedTaskList from './AnimatedTaskList';
 import { ROW, taskWindow } from '../ui/taskWindow';
 import { useSettingsStore } from '../store/settingsStore';
+import { useTaskStore } from '../store/taskStore';
 import { useState } from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -19,6 +20,7 @@ function PageList({ resetKey = 'all' }: { resetKey?: string }) {
     <AnimatedTaskList tasks={tasks} editingTaskId={null} resetKey={resetKey} scrollRoot={root} scrollInset={42} /></div>;
 }
 beforeEach(() => {
+  useTaskStore.setState({ tasks });
   useSettingsStore.setState(state => ({ settings: { ...state.settings, fontScale: 100, animationsEnabled: true } }));
   vi.useFakeTimers(); counter.renders = 0;
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
@@ -65,6 +67,7 @@ describe('keyed virtual task transitions', () => {
     expect(screen.getByText('Task 28')).toBeVisible();
   });
   it('keeps a completed task through both exit stages, then removes it from the active view', () => {
+    useTaskStore.setState({ tasks: [{ ...tasks[0], completed: true }, tasks[1]] });
     const style = document.createElement('style');
     style.textContent = readFileSync(resolve('src/styles/ui.css'), 'utf8');
     document.head.append(style);
@@ -111,7 +114,8 @@ describe('keyed virtual task transitions', () => {
     expect(screen.getByLabelText('待办列表').firstElementChild).toHaveStyle({ height: `${210 + ROW}px` });
     expect(screen.getByText('Task 0').closest<HTMLElement>('[data-task-row]')?.style.height).toBe('');
   });
-  it('keeps the final removed row inert during exit then reveals the empty state', () => {
+  it('keeps the final completed row inert during exit then reveals the empty state', () => {
+    useTaskStore.setState({ tasks: [{ ...tasks[0], completed: true }] });
     const view = render(<AnimatedTaskList tasks={tasks.slice(0, 1)} editingTaskId={null} resetKey="pending" empty={<p>Empty</p>} />);
     view.rerender(<AnimatedTaskList tasks={[]} editingTaskId={null} resetKey="pending" empty={<p>Empty</p>} />);
     expect(screen.getByText('Task 0').closest<HTMLElement>('[data-task-row]')?.inert).toBe(true);
@@ -119,6 +123,7 @@ describe('keyed virtual task transitions', () => {
     expect(screen.queryByText('Task 0')).not.toBeInTheDocument(); expect(screen.getByText('Empty')).toBeVisible();
   });
   it('cancels a pending exit on immediate undo without duplicates or late removal', () => {
+    useTaskStore.setState({ tasks: [{ ...tasks[0], completed: true }, tasks[1]] });
     const view = render(<AnimatedTaskList tasks={tasks.slice(0, 2)} editingTaskId={null} resetKey="pending" />);
     view.rerender(<AnimatedTaskList tasks={tasks.slice(1, 2)} editingTaskId={null} resetKey="pending" />);
     view.rerender(<AnimatedTaskList tasks={tasks.slice(0, 2)} editingTaskId={null} resetKey="pending" />);
@@ -146,7 +151,7 @@ describe('keyed virtual task transitions', () => {
     expect(taskWindow(100, 2, 10 * ROW, 400).start).toBe(2);
     expect(taskWindow(0, -1, 0, 400)).toEqual({ start: 0, end: 0, offset: 0, total: 0 });
   });
-  it('moves stable keyed rows to their new positions and releases animations on unmount', () => {
+  it('reorders stable keyed rows immediately without unrelated motion', () => {
     const notifications: (() => void)[] = [];
     vi.stubGlobal('ResizeObserver', class { constructor(callback: () => void) { notifications.push(callback); } observe() {} disconnect() {} });
     const cancel = vi.fn(); const animate = vi.fn<(keyframes: Keyframe[], options: KeyframeAnimationOptions) => Animation>(() => ({ cancel } as unknown as Animation));
@@ -158,9 +163,8 @@ describe('keyed virtual task transitions', () => {
     // A layout measurement without scrolling must not erase the previous positions.
     act(() => notifications.forEach(notify => notify()));
     view.rerender(<AnimatedTaskList tasks={[tasks[1], tasks[0]]} editingTaskId={null} resetKey="all" />);
-    expect(animate).toHaveBeenCalledTimes(2);
-    expect(animate.mock.calls[0][0]).toEqual([{ transform: 'translateY(104px)' }, { transform: 'translateY(0)' }]);
-    view.unmount(); expect(cancel).toHaveBeenCalledTimes(2);
+    expect(animate).not.toHaveBeenCalled();
+    view.unmount(); expect(cancel).not.toHaveBeenCalled();
     Reflect.deleteProperty(HTMLElement.prototype, 'animate');
   });
   it('mounts only the viewport and overscan for a thousand tasks', () => {

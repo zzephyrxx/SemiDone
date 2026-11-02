@@ -12,11 +12,13 @@ const focusable = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLEl
 const stack: HTMLElement[] = [];
 const inertLocks = new Map<HTMLElement, { original: boolean; owners: Set<HTMLElement> }>();
 
-export function Overlay({ label, onClose, children, returnFocus, open = true, dialogClassName = '', material = 'auto', anchor }: {
+export function Overlay({ label, onClose, children, returnFocus, open = true, dialogClassName = '', material = 'auto', anchor, dialogRef }: {
   label: string; onClose: () => void; children: ReactNode; returnFocus?: RefObject<HTMLElement>; open?: boolean; dialogClassName?: string; material?: 'auto' | 'frosted';
   anchor?: RefObject<HTMLElement>;
+  dialogRef?: RefObject<HTMLDivElement | null>;
 }) {
-  const node = useRef<HTMLDivElement>(null);
+  const internalNode = useRef<HTMLDivElement>(null);
+  const node = dialogRef ?? internalNode;
   const close = useRef(onClose); close.current = onClose;
   const { root, present } = useDialogMotion(open);
   useAnchoredDialog(present, node, anchor);
@@ -33,7 +35,7 @@ export function Overlay({ label, onClose, children, returnFocus, open = true, di
       const lock = inertLocks.get(element) ?? { original: element.inert, owners: new Set<HTMLElement>() };
       lock.owners.add(target); inertLocks.set(element, lock); element.inert = true;
     });
-    if (!target.contains(document.activeElement)) (target.querySelector<HTMLElement>('input:not([type="file"]), textarea') ?? focusable(target)[0] ?? target).focus();
+    if (!target.contains(document.activeElement)) (target.querySelector<HTMLElement>('input:not([type="file"]):not([readonly]), textarea:not([readonly])') ?? focusable(target)[0] ?? target).focus();
     const handleKey = (event: KeyboardEvent) => {
       if (stack[stack.length - 1] !== target) return;
       if (event.key === 'Escape') { event.preventDefault(); close.current(); return; }

@@ -1,3 +1,4 @@
+import { Surface } from '../ui/Surface';
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Search, X, ListTodo } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
@@ -39,6 +40,12 @@ export default function Home() {
 
   const theme = useSettingsStore(state => state.settings.theme);
   const completedCount = useTaskStore(state => state.stats.completed);
+  const [narrowWindow, setNarrowWindow] = useState(() => window.innerWidth < 840);
+  useEffect(() => {
+    const resize = () => setNarrowWindow(window.innerWidth < 840);
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const newTaskButton = useRef<HTMLButtonElement>(null);
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
@@ -71,10 +78,10 @@ export default function Home() {
     <div ref={setScrollRoot} className="home-page h-full min-h-0 overflow-y-auto bg-transparent text-foreground" role="region" aria-label="待办页面">
       <div className="home-page-content workspace-page">
       <HomeContextHeader />
-      <section className="home-overview" aria-label="任务与使用概览">
+      <Surface htmlRole="region" className="home-overview" aria-label="任务与使用概览">
         <TaskStats collapsed={statsBarCollapsed} onCollapsedChange={setStatsBarCollapsed} />
         <UsageButton />
-      </section>
+      </Surface>
 
       {/* Search and Add Task Row */}
       <div className="home-toolbar flex-shrink-0 flex gap-2">
@@ -114,7 +121,7 @@ export default function Home() {
       </div>
 
       {/* Task List */}
-      <AnimatedTaskList tasks={filteredTasks} editingTaskId={editingTaskId} resetKey={taskListResetKey} scrollRoot={scrollRoot} scrollInset={42}
+      <AnimatedTaskList tasks={filteredTasks} editingTaskId={editingTaskId} resetKey={taskListResetKey} scrollRoot={scrollRoot} scrollInset={narrowWindow ? 107.4 : 42}
         empty={loading ? <div className="home-loading" role="status">正在载入待办…</div> : (
         <div className="home-empty">
           <div className="text-center py-8">

@@ -55,7 +55,7 @@ html[data-ui-motion='false'] .ui-selection-host[data-nav-pressed='true'] { --sel
 .ui-overlay--anchored { display: block; }
 .ui-overlay--anchored .ui-overlay-dialog { position: fixed; width: calc(100% - 32px); }
 .ui-overlay-dialog.ui-overlay-dialog--recurrence { max-width: 340px; overflow-y: auto; }
-.ui-overlay-dialog.ui-overlay-dialog--pomodoro { max-width: 380px; overflow-y: auto; }
+.ui-overlay-dialog.ui-overlay-dialog--pomodoro { max-width: 248px; overflow-y: auto; }
 .ui-overlay-dialog--pomodoro .ui-surface[data-material='solid'] { background: hsl(var(--card)); }
 .ui-overlay-dialog .quick-add-card { border-radius: 20px; max-height: calc(100dvh - 32px); }
 /* Keep the horizontal exit inside its original row; transformed cards must
@@ -88,7 +88,7 @@ html:not([data-window-shape='floating']) body { background-color: transparent; }
 .workspace-shell { border-radius: var(--window-radius); overflow: hidden; }
 html[data-window-shape='bar'] { clip-path: none; }
 html[data-window-shape='bar'] #root { clip-path: inset(1px round var(--window-radius)); isolation: isolate; }
-.workspace-bar { border-radius: var(--window-radius); }
+.workspace-bar { border-radius: var(--window-radius); background: hsl(var(--background) / var(--window-opacity, 1)); border: 1px solid hsl(var(--border) / .6); }
 .workspace-bar .titlebar { height: 100%; min-height: 0; border-bottom: 0; }
 .home-task-row .task-card.is-editing { height: auto; min-height: 0; cursor: default; }
 .task-edit-form .task-description-input { font-size: calc(12px * var(--ui-font-scale)); line-height: 1.5; }

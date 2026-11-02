@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartGeometry, usageLevel, usageSeries } from './usageChart';
+import { chartGeometry, usageHeatmap, usageLevel, usageSeries } from './usageChart';
 describe('usage charts', () => {
   it('centres a single day and never produces invalid SVG coordinates', () => {
     const result = chartGeometry([{ date: '2026/11/1', minutes: 0 }]);
@@ -23,6 +23,17 @@ describe('usage charts', () => {
     expect(usageSeries('month', { [key]: Infinity }, today)[0].minutes).toBe(0);
     expect(usageSeries('month', { [key]: -10 }, today)[0].minutes).toBe(0);
     expect(usageSeries('month', { [key]: 4000 }, today)[0].minutes).toBe(1440);
-    expect([0, 1, 14, 15, 29, 30, 59, 60, 120].map(usageLevel)).toEqual([0, 1, 1, 2, 2, 3, 3, 4, 4]);
+    expect([-1, 0, 1, 60, 61, 180, 181, 360, 361, 720, 721, 1200, 1201, 1440, 1800, NaN].map(usageLevel)).toEqual([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 6, 0]);
   });
+});
+
+it('lays out twenty Monday-first weeks and distinguishes future or missing days', () => {
+  const days = usageHeatmap({ '2026/11/1': 90, '2026/10/31': -10, '2026/10/30': Infinity }, new Date(2026, 10, 1));
+  expect(days).toHaveLength(140);
+  expect(new Date(days[0].date).getDay()).toBe(1);
+  expect(days.at(-1)).toMatchObject({ date: '2026/11/1', minutes: 90, future: false, recorded: true });
+  expect(days.find(day => day.date === '2026/10/31')?.minutes).toBe(0);
+  expect(days.find(day => day.date === '2026/10/30')?.recorded).toBe(false);
+  const midweek = usageHeatmap({}, new Date(2026, 10, 4));
+  expect(midweek.filter(day => day.future)).toHaveLength(4);
 });

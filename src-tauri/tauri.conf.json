@@ -55,6 +55,9 @@
               "allow": [
                 {
                   "url": "https://github.com/zzephyrxx/SemiDone/releases/*"
+                },
+                {
+                  "url": "https://zzephyrxx.github.io/"
                 }
               ]
             },

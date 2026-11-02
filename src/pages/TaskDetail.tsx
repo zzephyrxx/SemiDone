@@ -1,10 +1,11 @@
+import { Surface } from '../ui/Surface';
 import React, { useState, useEffect, useId, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit3, Save, Trash2, Calendar, Flag, Type, AlignLeft, Clock, CheckCircle, Circle, Repeat, Clock12 } from '../ui/icons';
+import { ArrowLeft, Edit3, Save, Trash2, Calendar, Flag, Type, AlignLeft, Clock, CheckCircle, Circle, Repeat, Clock12, Info } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import RecurrenceEditor from '../components/RecurrenceEditor';
-import InlineDueDatePicker from '../components/InlineDueDatePicker';
+import DueDateDialog from '../components/DueDateDialog';
 import TaskAttachmentsSection from '../components/TaskAttachmentsSection';
 import type { Priority, UpdateTaskRequest, Attachment, RecurrenceRule } from '../types';
 import { api } from '../api/tauri';
@@ -343,7 +344,7 @@ export default function TaskDetail() {
       {/* 待办详情：两栏布局 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 左侧主内容区域 */}
-        <div className="task-detail-content lg:col-span-2 bg-card border border-border rounded-lg p-4 space-y-4">
+        <Surface className="task-detail-content lg:col-span-2 bg-card border border-border rounded-lg p-4 space-y-4">
           {/* 待办标题 */}
           <div>
             <label htmlFor="task-detail-title" className="block text-sm font-medium text-muted-foreground mb-2 flex items-center">
@@ -406,13 +407,13 @@ export default function TaskDetail() {
               setNewlyAddedAttachments(previous => [...previous, ...newFiles]);
             }}
           />
-        </div>
+        </Surface>
 
         {/* 右侧侧边栏 */}
         <div className="lg:col-span-1 space-y-3">
           {/* 详情模块 */}
-          <div className="bg-card border border-border rounded-lg p-3 space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground">详情</h3>
+          <Surface className="bg-card border border-border rounded-lg p-3 space-y-3">
+            <h3 className="task-detail-section-heading flex items-center gap-2 font-semibold text-foreground"><Info className="h-4 w-4 text-muted-foreground" />详情</h3>
             
             {/* 优先级 */}
             <div className="flex items-center justify-between">
@@ -428,7 +429,7 @@ export default function TaskDetail() {
                       type="button"
                       onClick={() => setPriority(p)}
                       className={`flex-1 px-2 py-1 rounded-md border text-xs font-medium transition-colors ${priority === p ? getPriorityColor(p) : 'border-border bg-background text-muted-foreground hover:bg-muted'}`}>
-                      {getPriorityLabel(p)}
+                      {getPriorityLabel(p).charAt(0)}
                     </button>
                   ))}
                 </div>
@@ -440,31 +441,33 @@ export default function TaskDetail() {
             </div>
 
             {/* 截止日期 */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center text-sm text-foreground">
+            <div className="task-detail-due-row flex items-center justify-between gap-3">
+              <div className="flex shrink-0 items-center text-sm text-foreground">
                 <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
                 <span>截止日期</span>
               </div>
               {isEditing ? (
-                <div className="w-full">
+                <div className="min-w-0 flex-1">
                   <button
                     type="button"
                     ref={dateButtonRef}
+                    aria-label="设置截止日期"
+                    aria-haspopup="dialog"
                     aria-expanded={showDatePicker}
                     aria-controls={showDatePicker ? datePickerId : undefined}
                     onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="w-full px-2 py-1 text-xs bg-background border border-border rounded-md hover:bg-muted transition-colors text-left"
+                    className="task-detail-date-trigger w-full px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted text-right"
                   >
                     {dueDate ? (() => {
                       const date = new Date(dueDate);
-                      return isNaN(date.getTime()) ? '设置日期' : date.toLocaleString();
+                      return isNaN(date.getTime()) ? '设置日期' : date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                     })() : '设置日期'}
                   </button>
                   
-                  {showDatePicker && <InlineDueDatePicker id={datePickerId} value={dueDate}
-                    onCancel={() => { setShowDatePicker(false); dateButtonRef.current?.focus(); }}
-                    onClear={() => { setDueDate(''); setShowDatePicker(false); dateButtonRef.current?.focus(); }}
-                    onConfirm={value => { setDueDate(value); setShowDatePicker(false); dateButtonRef.current?.focus(); }} />}
+                  <DueDateDialog open={showDatePicker} id={datePickerId} value={dueDate} returnFocus={dateButtonRef}
+                    onCancel={() => setShowDatePicker(false)}
+                    onClear={() => { setDueDate(''); setShowDatePicker(false); }}
+                    onConfirm={value => { setDueDate(value); setShowDatePicker(false); }} />
                 </div>
               ) : (
                 <div className="text-right">
@@ -495,7 +498,7 @@ export default function TaskDetail() {
                   <RecurrenceEditor
                     value={recurrence}
                     onChange={setRecurrence}
-                    buttonClassName="w-full px-2 py-1 text-xs bg-background border border-border rounded-md hover:bg-muted transition-colors text-left"
+                    buttonClassName="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted text-right"
                   />
                 </div>
               ) : (
@@ -540,10 +543,10 @@ export default function TaskDetail() {
                 </div>
               </div>
             )}
-          </div>
+          </Surface>
 
           {/* 状态模块 - 移到下面 */}
-          <div className="bg-card border border-border rounded-lg p-3">
+          <Surface className="bg-card border border-border rounded-lg p-3">
             <label className="block text-sm font-medium text-muted-foreground mb-3">状态</label>
             <button
               onClick={handleToggleComplete}
@@ -556,7 +559,7 @@ export default function TaskDetail() {
               {task.completed ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
               <span>{task.completed ? '已完成' : '标记为完成'}</span>
             </button>
-          </div>
+          </Surface>
         </div>
       </div>
 

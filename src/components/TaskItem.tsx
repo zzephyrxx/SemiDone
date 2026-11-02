@@ -1,3 +1,4 @@
+import { Surface } from '../ui/Surface';
 import React, { useState, useRef, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, isBefore, startOfDay } from 'date-fns';
@@ -22,6 +23,7 @@ import type { Task, Priority, UpdateTaskRequest } from '../types';
 import { useTaskStore } from '../store/taskStore';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 import DueDateDialog from './DueDateDialog';
+import { IsoPushPin } from './icons/IsoPushPin';
 import { useShallow } from 'zustand/react/shallow';
 
 interface TaskItemProps {
@@ -146,7 +148,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
       case 'high':
         return 'text-red-500';
       case 'medium':
-        return 'text-yellow-500';
+        return 'text-amber-700 dark:text-amber-400';
       case 'low':
         return 'text-green-500';
       default:
@@ -159,7 +161,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
       case 'high':
         return 'bg-red-50 border-red-200';
       case 'medium':
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-amber-50 border-amber-200 dark:bg-amber-400/10 dark:border-amber-400/25';
       case 'low':
         return 'bg-green-50 border-green-200';
       default:
@@ -195,7 +197,8 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
   };
 
   return (
-    <div
+    <>
+    <Surface
       className={`
         group relative p-2 rounded-lg border transition-all duration-200 cursor-pointer task-card ${isEditing ? 'is-editing' : ''}
         ${task.completed
@@ -228,7 +231,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
           aria-busy={isCompleting}
           aria-label={task.completed ? `标记未完成：${task.title}` : `完成待办：${task.title}`}
           className={`
-            flex-shrink-0 transition-all duration-200 pt-1
+            task-completion-button flex-shrink-0 transition-colors
             ${task.completed
               ? 'text-emerald-600 hover:text-emerald-700'
               : 'text-muted-foreground hover:text-primary'
@@ -236,9 +239,9 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
           `}
         >
           {task.completed ? (
-            <CheckCircle2 className="w-7 h-7" />
+            <CheckCircle2 size={22} />
           ) : (
-            <Circle className="w-7 h-7" />
+            <Circle size={22} />
           )}
         </button>
 
@@ -340,23 +343,12 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
             /* 显示模式 */
             <div className="task-card-summary">
               {/* 上半部分: 标题和右侧信息 */}
-              <div className="task-card-top flex items-center justify-between">
+              <div className="task-card-top min-h-7 flex items-center justify-between">
                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                  {task.isPinned && (
-                    <button
-                      type="button"
-                      onClick={handleTogglePin}
-                      className="flex-shrink-0 -ml-1 p-1.5 rounded-full text-primary hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition-colors"
-                      title="取消置顶"
-                      aria-label="取消置顶"
-                    >
-                      <Pin className="w-3.5 h-3.5 fill-current -rotate-12" strokeWidth={2.2} />
-                    </button>
-                  )}
                   <h3
                     className={`
                       flex-1 min-w-0 text-base font-medium leading-6 transition-colors duration-200
-                      whitespace-nowrap overflow-hidden text-ellipsis mt-1
+                      whitespace-nowrap overflow-hidden text-ellipsis
                       ${task.completed
                         ? 'line-through text-emerald-700/80 decoration-emerald-400 decoration-2'
                         : 'text-foreground'
@@ -444,7 +436,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                     <button
                       type="button"
                       onClick={handleTogglePin}
-                      className="p-2 rounded text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                      className="task-card-action p-2 rounded text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
                       title="置顶待办"
                       aria-label="置顶待办"
                     >
@@ -454,7 +446,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
 
                   <button
                     onClick={handleEdit}
-                    className="p-2 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    className="task-card-action p-2 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                     title="编辑待办"
                   >
                     <Edit3 className="w-4 h-4" />
@@ -465,7 +457,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                       e.stopPropagation();
                       handleDelete(e);
                     }}
-                    className="p-2 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    className="task-card-action p-2 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     title="删除待办"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -477,7 +469,14 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         </div>
       </div>
 
-
+      {task.isPinned && !isEditing && (
+        <button type="button" onClick={handleTogglePin}
+          className="task-corner-pin focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+          title="取消置顶" aria-label="取消置顶">
+          <IsoPushPin className="task-pin-icon" size={40} color={task.priority === 'high' ? 'red' : task.priority === 'medium' ? 'yellow' : 'green'} />
+        </button>
+      )}
+    </Surface>
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         isOpen={showDeleteDialog}
@@ -485,7 +484,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setShowDeleteDialog(false)}
       />
-    </div>
+    </>
   );
 });
 

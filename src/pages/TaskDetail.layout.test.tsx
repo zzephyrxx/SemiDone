@@ -64,7 +64,7 @@ it('keeps empty descriptions compact and retains edit and delete actions as acce
   await waitFor(() => expect(updateTask).toHaveBeenCalledWith(task.id, expect.objectContaining({ description: '补充描述' })));
 });
 
-it('edits the deadline using the shared in-page date and time picker', async () => {
+it('edits the deadline in the same date dialog used by task-card editing', async () => {
   const task: Task = { id: 'deadline', title: '修改日期', completed: false, priority: 'medium', dueDate: '2099-01-15T09:00', createdAt: '', updatedAt: '' };
   const updateTask = vi.fn().mockResolvedValue(undefined);
   useTaskStore.setState({ tasks: [task], updateTask });
@@ -73,6 +73,9 @@ it('edits the deadline using the shared in-page date and time picker', async () 
   const trigger = document.querySelector<HTMLButtonElement>('button[aria-expanded]')!;
   fireEvent.click(trigger);
   const picker = screen.getByRole('group', { name: '选择截止日期' });
+  const dateDialog = screen.getByRole('dialog', { name: '选择截止日期' });
+  expect(dateDialog).toContainElement(picker);
+  expect(document.querySelector('.task-detail-content')).not.toContainElement(dateDialog);
   expect(picker.querySelector('input[type="date"], input[type="time"]')).toBeNull();
   fireEvent.click(within(picker).getByRole('button', { name: '2099年1月16日' }));
   fireEvent.change(within(picker).getByRole('spinbutton', { name: '小时' }), { target: { value: '17' } });
