@@ -57,15 +57,15 @@ html[data-zen-mode='true'] #root {
 }
 .zen-toolbar-actions button:hover,
 .zen-toolbar-actions button[aria-expanded='true'],
-.zen-toolbar-actions button[aria-pressed='true'] { background: #ddd6fe; color: #5b21b6; }
+.zen-toolbar-actions button[aria-pressed='true'] { background: hsl(var(--primary) / .15); color: hsl(var(--primary)); }
 .zen-toolbar-actions button:last-child:hover { background: #fee2e2; color: #b91c1c; }
 /* 保留与调色板按钮相同的浅色底；置顶与退出 Zen 不使用紫色选中底。 */
 .zen-toolbar-actions button.zen-icon-only { background: #f1f5f9; color: #334155; }
-.zen-toolbar-actions button.zen-icon-only:hover { background: #ddd6fe; color: #5b21b6; }
+.zen-toolbar-actions button.zen-icon-only:hover { background: hsl(var(--primary) / .15); color: hsl(var(--primary)); }
 .zen-mode button:focus-visible,
 .zen-mode input:focus-visible,
 .zen-appearance button:focus-visible,
-.zen-appearance input:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 3px; }
+.zen-appearance input:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
 
 .zen-task-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 5.4px 9px 9px; }
 .zen-task-list ul { display: flex; flex-direction: column; gap: calc(var(--zen-effective-font-size) * .28); list-style: none; margin: 0; padding: 0; }
@@ -95,7 +95,7 @@ html[data-zen-mode='true'] #root {
 }
 .zen-task-toggle svg { width: 16px; height: 16px; pointer-events: none; }
 .zen-task-toggle:has(input:hover:not(:disabled)) { background: #a78bfa33; }
-.zen-task-toggle:has(input:focus-visible) { outline: 2px solid #8b5cf6; outline-offset: 2px; }
+.zen-task-toggle:has(input:focus-visible) { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
 .zen-task-toggle input:disabled { cursor: wait; }
 .zen-task-progress { stroke-dasharray: 42 9; transform-origin: center; }
 .zen-task-toggle.is-saving .zen-task-progress { animation: zen-task-spin 163ms linear infinite; }
@@ -142,12 +142,12 @@ html[data-zen-mode='true'] #root {
 .zen-color-field { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; font-size: calc(12px * var(--ui-font-scale, 1)); }
 .zen-color-trigger { display: block; width: 100%; height: 24px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px; background: #fff; cursor: pointer; }
 .zen-color-trigger > span { display: block; width: 100%; height: 100%; border-radius: 3px; }
-.zen-color-trigger[aria-expanded='true'] { border-color: #7c3aed; box-shadow: 0 0 0 1px #7c3aed; }
+.zen-color-trigger[aria-expanded='true'] { border-color: hsl(var(--primary)); box-shadow: 0 0 0 1px hsl(var(--primary)); }
 .zen-color-picker { margin-top: 10px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; }
 .zen-color-picker-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; font-size: calc(12px * var(--ui-font-scale, 1)); }
 .zen-color-picker-heading button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 5px; background: #f1f5f9; color: #334155; cursor: pointer; }
 .zen-color-plane { position: relative; height: 96px; margin: 5px; border-radius: 4px; touch-action: none; cursor: crosshair; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); }
-.zen-color-plane:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 3px; }
+.zen-color-plane:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
 .zen-color-cursor { position: absolute; width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #334155; transform: translate(-50%, -50%); pointer-events: none; }
 .zen-color-hue { display: flex; padding: 0 5px; }
 .zen-color-hue input { appearance: none; -webkit-appearance: none; flex: 1; min-width: 0; width: 100%; height: 8px; margin: 8px 0; border: 0; border-radius: 4px; background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); cursor: pointer; }
@@ -155,23 +155,26 @@ html[data-zen-mode='true'] #root {
 .zen-color-hue input::-moz-range-thumb { width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; background: transparent; box-shadow: 0 0 0 1px #64748b; }
 .zen-color-swatches { display: flex; gap: 7px; padding: 4px 0 8px; }
 .zen-color-swatches button { flex: 1; min-width: 0; height: 18px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; }
-.zen-color-swatches button[aria-pressed='true'] { outline: 2px solid #7c3aed; outline-offset: 1px; }
+.zen-color-swatches button[aria-pressed='true'] { outline: 2px solid hsl(var(--primary)); outline-offset: 1px; }
 .zen-color-hex { display: flex; align-items: center; gap: 8px; font-size: calc(11px * var(--ui-font-scale, 1)); }
 .zen-color-hex input { min-width: 0; width: 100%; height: 28px; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 6px; background: #fff; color: #334155; font-size: calc(12px * var(--ui-font-scale, 1)); }
 .zen-color-value { font-size: calc(10px * var(--ui-font-scale, 1)); font-variant-numeric: tabular-nums; }
 .zen-number-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 340px; margin: 0 auto 6px; }
-.zen-number-wheel { min-width: 0; }
-.zen-wheel-label { display: flex; align-items: center; justify-content: center; min-height: 2.7em; margin-bottom: 2px; font-size: calc(11px * var(--ui-font-scale, 1)); line-height: 1.35; text-align: center; }
-.zen-wheel-frame { position: relative; width: 100%; max-width: 88px; margin-inline: auto; border: 1px solid #e2e8f0; border-radius: 7px; overflow: hidden; background: #fff; }
-.zen-wheel-frame::before { content: ''; position: absolute; inset: var(--wheel-row-height) 3px; border-radius: 4px; background: #ede9fe; pointer-events: none; }
-.zen-wheel-scroll { position: relative; box-sizing: border-box; height: calc(var(--wheel-row-height) * 3); padding: var(--wheel-row-height) 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-width: none; scroll-snap-type: y mandatory; touch-action: pan-y; cursor: ns-resize; mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent); }
-.zen-wheel-scroll::-webkit-scrollbar { display: none; }
-.zen-wheel-frame:focus-within { outline: 2px solid #8b5cf6; outline-offset: 2px; }
-.zen-wheel-scroll:focus-visible { outline: none; }
-.zen-wheel-scroll[data-dragging='true'] { scroll-snap-type: none; cursor: grabbing; user-select: none; }
-.zen-appearance .zen-wheel-scroll .zen-wheel-value { display: block; width: 100%; height: var(--wheel-row-height); padding: 0; border: 0; background: transparent; color: #64748b; font-size: calc(11px * var(--ui-font-scale, 1)); line-height: var(--wheel-row-height); text-align: center; font-variant-numeric: tabular-nums; scroll-snap-align: center; user-select: none; cursor: inherit; }
-.zen-appearance .zen-wheel-value[data-selected='true'] { color: #5b21b6; font-size: calc(14px * var(--ui-font-scale, 1)); font-weight: 600; }
-.zen-wheel-value span { margin-left: 2px; font-size: calc(10px * var(--ui-font-scale, 1)); }
+.zen-number-stepper { min-width: 0; }
+.zen-stepper-label { display: block; margin-bottom: 6px; font-size: calc(11px * var(--ui-font-scale, 1)); line-height: 1.4; text-align: center; white-space: nowrap; }
+.zen-stepper-control { display: flex; align-items: stretch; gap: 4px; height: 34px; }
+.zen-stepper-value { position: relative; display: flex; flex: 1; min-width: 0; align-items: center; border: 1px solid hsl(var(--border)); border-radius: 7px; background: hsl(var(--muted) / .6); color: hsl(var(--foreground)); font-size: calc(14px * var(--ui-font-scale, 1)); font-weight: 500; font-variant-numeric: tabular-nums; }
+.zen-appearance .zen-stepper-input { width: 100%; min-width: 0; height: 100%; padding: 0 23px 0 8px; border: 0; border-radius: inherit; background: transparent; color: inherit; font: inherit; text-align: center; }
+.zen-stepper-value span { position: absolute; right: 8px; pointer-events: none; font-size: calc(10px * var(--ui-font-scale, 1)); color: hsl(var(--muted-foreground)); }
+.zen-stepper-buttons { display: grid; grid-template-rows: repeat(2, 1fr); width: 24px; flex-shrink: 0; overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: 6px; background: hsl(var(--muted) / .6); }
+.zen-stepper-buttons button { display: flex; min-height: 0; align-items: center; justify-content: center; width: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; color: hsl(var(--muted-foreground)); cursor: pointer; touch-action: none; user-select: none; -webkit-touch-callout: none; }
+.zen-stepper-buttons button + button { border-top: 1px solid hsl(var(--border) / .6); }
+.zen-stepper-buttons button:hover:not(:disabled) { background: hsl(var(--primary) / .15); color: hsl(var(--primary)); }
+.zen-stepper-buttons button:active:not(:disabled) { background: hsl(var(--primary) / .25); }
+.zen-stepper-buttons button:disabled { opacity: .35; cursor: default; }
+.zen-stepper-value:focus-within { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+.zen-appearance .zen-stepper-input:focus-visible { outline: none; }
+.zen-stepper-buttons button:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: -2px; }
 .zen-preview-checker {
   margin-top: 8px;
   overflow: hidden;
@@ -181,7 +184,7 @@ html[data-zen-mode='true'] #root {
 }
 .zen-preview { padding: 8px; background: var(--zen-background); color: var(--zen-text); }
 .zen-appearance-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; font-size: calc(10px * var(--ui-font-scale, 1)); }
-.zen-appearance-footer button { display: flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #6d28d9; cursor: pointer; }
+.zen-appearance-footer button { display: flex; align-items: center; gap: 4px; border: 0; background: transparent; color: hsl(var(--primary)); cursor: pointer; }
 .zen-task-row.is-exiting { pointer-events: none; animation: zen-task-exit 375ms cubic-bezier(0.4, 0, 0.8, 1) both; }
 .zen-task-row.is-exiting .zen-task-title {
   text-decoration: line-through;
