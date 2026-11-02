@@ -11,18 +11,24 @@ import { useGlobalInteractionGuards } from './hooks/useGlobalInteractionGuards';
 import { usePinnedWindowGuard } from './hooks/usePinnedWindowGuard';
 import { useSettingsStore } from './store/settingsStore'
 import { Toaster } from 'sonner'
+import { TooltipLayer } from './ui/TooltipLayer';
+import { useNativePinMode } from './hooks/useNativePinMode';
+import LiquidGlassRuntime from './components/LiquidGlassRuntime';
 
 function App() {
-  const { settings, loadSettings } = useSettingsStore()
   useGlobalInteractionGuards();
-  usePinnedWindowGuard(settings.isPinned);
+  const isPinned = useSettingsStore(state => state.settings.isPinned);
+  usePinnedWindowGuard(isPinned);
+  const theme = useSettingsStore(state => state.settings.theme);
+  const loadSettings = useSettingsStore(state => state.loadSettings);
+  const compact = useSettingsStore(state => state.settings.collapseMode !== 'expanded');
+  const zenModeActive = useSettingsStore(state => state.settings.zenMode?.enabled === true && state.settings.zenMode.active && state.settings.collapseMode === 'expanded');
 
   useEffect(() => {
     loadSettings()
   }, [loadSettings])
 
-  const zenModeActive = settings.zenMode?.enabled === true && settings.zenMode.active && settings.collapseMode === 'expanded';
-  useNativePinMode(zenModeActive || settings.collapseMode !== 'expanded');
+  useNativePinMode(zenModeActive || compact);
   useEffect(() => {
     document.documentElement.dataset.zenMode = String(zenModeActive);
     return () => { delete document.documentElement.dataset.zenMode; };
@@ -32,18 +38,18 @@ function App() {
     const root = document.documentElement;
 
     // Handle Tailwind's dark mode class
-    if (settings.theme === 'dark') {
+    if (theme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
 
     // Set data-theme for other theme variations (like 'pink')
-    root.setAttribute('data-theme', settings.theme);
+    root.setAttribute('data-theme', theme);
 
     // Add a class to the body for smooth transitions
     document.body.classList.add('theme-transition');
-  }, [settings.theme]);
+  }, [theme]);
 
   return (
     <>
@@ -60,7 +66,8 @@ function App() {
         </Routes>
       </Router>
       <StartupTip />
-      <Toaster richColors position="top-center" duration={2000} />
+      <TooltipLayer />
+      {!compact && <Toaster richColors position="top-center" duration={2000} />}
     </>
   );
 }

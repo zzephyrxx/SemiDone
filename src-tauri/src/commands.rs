@@ -1,205 +1,37 @@
 use crate::models::*;
 use crate::storage::Storage;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Mutex, MutexGuard,
-};
-use tauri::{Manager, State, WebviewWindow};
-use tauri_plugin_autostart::ManagerExt;
+use std::sync::Mutex;
+use tauri::{Manager, State};
 
 type StorageState<'a> = State<'a, Mutex<Storage>>;
 
-pub(crate) struct TopmostState {
-    enabled: AtomicBool,
-    transition_lock: Mutex<()>,
-}
-
-impl TopmostState {
-    pub(crate) fn new(enabled: bool) -> Self {
-        Self {
-            enabled: AtomicBool::new(enabled),
-            transition_lock: Mutex::new(()),
-        }
-    }
-
-    pub(crate) fn is_enabled(&self) -> bool {
-        self.enabled.load(Ordering::Acquire)
-    }
-
-    fn lock_transition(&self) -> Result<MutexGuard<'_, ()>, String> {
-        self.transition_lock
-            .lock()
-            .map_err(|error| error.to_string())
-    }
-
-    fn swap_unlocked(&self, enabled: bool) -> bool {
-        self.enabled.swap(enabled, Ordering::AcqRel)
-    }
-
-    fn set_unlocked(&self, enabled: bool) {
-        self.enabled.store(enabled, Ordering::Release);
-    }
-
-    fn set(&self, enabled: bool) {
-        let _transition = self
-            .transition_lock
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        self.set_unlocked(enabled);
-    }
-}
-
-fn set_native_window_topmost(window: &WebviewWindow, enabled: bool) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        use windows::Win32::UI::WindowsAndMessaging::{
-            SetWindowPos, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
-        };
-
-        let hwnd = window.hwnd().map_err(|error| error.to_string())?;
-        let insert_after = if enabled {
-            HWND_TOPMOST
-        } else {
-            HWND_NOTOPMOST
-        };
-        unsafe {
-            // 同步更新 Z 序，确保取消置顶返回前 HWND_NOTOPMOST 已真正生效。
-            SetWindowPos(
-                hwnd,
-                Some(insert_after),
-                0,
-                0,
-                0,
-                0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
-            )
-            .map_err(|error| error.to_string())?;
-        }
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    window
-        .set_always_on_top(enabled)
-        .map_err(|error| error.to_string())?;
-
-    Ok(())
-}
-
-pub(crate) fn force_window_topmost(window: &WebviewWindow) -> Result<(), String> {
-    set_native_window_topmost(window, true)
-}
-
-pub(crate) fn clear_window_topmost(window: &WebviewWindow) -> Result<(), String> {
-    set_native_window_topmost(window, false)
-}
-
-fn apply_configured_window_topmost(
-    window: &WebviewWindow,
-    topmost_state: &TopmostState,
-) -> Result<(), String> {
-    if topmost_state.is_enabled() {
-        force_window_topmost(window)
-    } else {
-        clear_window_topmost(window)
-    }
-}
-
-pub(crate) fn restore_configured_window_topmost(
-    app: &tauri::AppHandle,
-    window: &WebviewWindow,
-) -> Result<(), String> {
-    let topmost_state = app
-        .try_state::<TopmostState>()
-        .ok_or_else(|| "topmost state is unavailable".to_string())?;
-    let _transition = topmost_state.lock_transition()?;
-    apply_configured_window_topmost(window, &topmost_state)
-}
-
-#[cfg(target_os = "windows")]
-fn maintain_window_topmost(window: &WebviewWindow) -> Result<(), String> {
-    use windows::Win32::UI::WindowsAndMessaging::{
-        IsIconic, IsWindowVisible, ShowWindowAsync, SW_SHOWNOACTIVATE,
-    };
-
-    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
-    unsafe {
-        // 关闭按钮会将窗口隐藏到托盘；隐藏状态下不应被守卫重新显示。
-        if !IsWindowVisible(hwnd).as_bool() {
-            return Ok(());
-        }
-
-        // Win+D 会将窗口置为 iconic。用不激活的方式恢复，避免抢走键盘焦点。
-        if IsIconic(hwnd).as_bool() {
-            let _ = ShowWindowAsync(hwnd, SW_SHOWNOACTIVATE);
-        }
-    }
-
-    // 即使系统仍报告 topmost，也重新确认 Z 序，修复显示桌面后的层级漂移。
-    force_window_topmost(window)
-}
-
-#[cfg(target_os = "windows")]
-pub(crate) fn start_topmost_watchdog(app: tauri::AppHandle) -> std::io::Result<()> {
-    use std::thread;
-    use std::time::Duration;
-
-    thread::Builder::new()
-        .name("semidone-topmost-watchdog".to_string())
-        .spawn(move || loop {
-            if let Some(topmost_state) = app.try_state::<TopmostState>() {
-                if topmost_state.is_enabled() {
-                    // 与取消置顶命令串行，并在拿到锁后重新读取状态，避免旧的一轮
-                    // 看门狗在 HWND_NOTOPMOST 之后又写回 HWND_TOPMOST。
-                    if let Ok(_transition) = topmost_state.lock_transition() {
-                        if topmost_state.is_enabled() {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = maintain_window_topmost(&window);
-                            }
-                        }
-                    }
-                }
-            }
-
-            thread::sleep(Duration::from_millis(500));
-        })
-        .map(|_| ())
-}
-
-#[tauri::command]
-pub fn set_window_topmost(
-    window: WebviewWindow,
-    topmost_state: State<'_, TopmostState>,
-    enabled: bool,
-) -> Result<(), String> {
-    let _transition = topmost_state.lock_transition()?;
-    let previous = topmost_state.swap_unlocked(enabled);
-    let result = set_native_window_topmost(&window, enabled);
-
-    if result.is_err() {
-        topmost_state.set_unlocked(previous);
-    }
-
-    result
-}
-
-#[tauri::command]
-pub fn reassert_window_topmost(
-    window: WebviewWindow,
-    topmost_state: State<'_, TopmostState>,
-) -> Result<(), String> {
-    let _transition = topmost_state.lock_transition()?;
-    apply_configured_window_topmost(&window, &topmost_state)
-}
-
 #[tauri::command]
 pub async fn set_window_topmost(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
-    let pinning = window.state::<crate::window_pinning::WindowPinning>().inner().clone();
+    let pinning = window
+        .state::<crate::window_pinning::WindowPinning>()
+        .inner()
+        .clone();
     pinning.configure(window, Some(enabled), None)
 }
 
 #[tauri::command]
-pub async fn set_window_pin_mode(window: tauri::WebviewWindow, compact: bool) -> Result<(), String> {
-    let pinning = window.state::<crate::window_pinning::WindowPinning>().inner().clone();
+pub async fn reassert_window_topmost(window: tauri::WebviewWindow) -> Result<(), String> {
+    let pinning = window
+        .state::<crate::window_pinning::WindowPinning>()
+        .inner()
+        .clone();
+    pinning.configure(window, None, None)
+}
+
+#[tauri::command]
+pub async fn set_window_pin_mode(
+    window: tauri::WebviewWindow,
+    compact: bool,
+) -> Result<(), String> {
+    let pinning = window
+        .state::<crate::window_pinning::WindowPinning>()
+        .inner()
+        .clone();
     pinning.configure(window, None, Some(compact))
 }
 
@@ -289,17 +121,11 @@ pub async fn get_task_stats(storage: StorageState<'_>) -> Result<ApiResponse<Tas
 }
 
 #[tauri::command]
-pub async fn get_settings(
-    storage: StorageState<'_>,
-    topmost_state: State<'_, TopmostState>,
-) -> Result<ApiResponse<Settings>, String> {
+pub async fn get_settings(storage: StorageState<'_>) -> Result<ApiResponse<Settings>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
     match storage.load_settings() {
-        Ok(settings) => {
-            topmost_state.set(settings.is_pinned);
-            Ok(ApiResponse::success(settings))
-        }
+        Ok(settings) => Ok(ApiResponse::success(settings)),
         Err(e) => Ok(ApiResponse::error(format!("加载设置失败: {}", e))),
     }
 }
@@ -308,13 +134,13 @@ pub async fn get_settings(
 pub async fn update_settings(
     settings: Settings,
     storage: StorageState<'_>,
-    topmost_state: State<'_, TopmostState>,
+    lifecycle: State<'_, crate::window_lifecycle::WindowLifecycle>,
 ) -> Result<ApiResponse<Settings>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
     match storage.save_settings(&settings) {
         Ok(_) => {
-            topmost_state.set(settings.is_pinned);
+            lifecycle.set_close_to_tray(settings.close_to_tray);
             Ok(ApiResponse::success(settings))
         }
         Err(e) => Ok(ApiResponse::error(format!("保存设置失败: {}", e))),
@@ -383,7 +209,10 @@ pub async fn import_data(
 }
 
 #[tauri::command]
-pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<bool>, String> {
+pub async fn clear_all_data(
+    storage: StorageState<'_>,
+    lifecycle: State<'_, crate::window_lifecycle::WindowLifecycle>,
+) -> Result<ApiResponse<bool>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
     // 1. 清空 tasks.json
@@ -397,6 +226,7 @@ pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<boo
     if let Err(e) = storage.save_settings(&default_settings) {
         return Ok(ApiResponse::error(format!("重置设置失败: {}", e)));
     }
+    lifecycle.set_close_to_tray(default_settings.close_to_tray);
     println!("[Clear] settings.json 已重置");
 
     if let Err(e) = storage.clear_usage_data() {
@@ -419,6 +249,24 @@ pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<boo
     println!("[Clear] 所有数据已清除");
 
     Ok(ApiResponse::success(true))
+}
+
+#[tauri::command]
+pub async fn close_main_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    if window
+        .state::<crate::window_lifecycle::WindowLifecycle>()
+        .close_to_tray()
+    {
+        let pinning = window.state::<crate::window_pinning::WindowPinning>();
+        pinning.set_hidden(true);
+        if let Err(error) = window.hide() {
+            pinning.set_hidden(false);
+            return Err(error.to_string());
+        }
+        Ok(())
+    } else {
+        window.close().map_err(|error| error.to_string())
+    }
 }
 
 #[tauri::command]
@@ -751,17 +599,9 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
 
 #[tauri::command]
 pub async fn get_autostart_enabled(app: tauri::AppHandle) -> Result<ApiResponse<bool>, String> {
-    println!("[Autostart] get_autostart_enabled called");
-    let autostart_manager = app.autolaunch();
-    match autostart_manager.is_enabled() {
-        Ok(enabled) => {
-            println!("[Autostart] is_enabled = {}", enabled);
-            Ok(ApiResponse::success(enabled))
-        }
-        Err(e) => {
-            println!("[Autostart] is_enabled error: {}", e);
-            Ok(ApiResponse::error(format!("获取自启动状态失败: {}", e)))
-        }
+    match crate::autostart::is_enabled(&app) {
+        Ok(enabled) => Ok(ApiResponse::success(enabled)),
+        Err(error) => Ok(ApiResponse::error(format!("获取自启动状态失败: {error}"))),
     }
 }
 
@@ -770,27 +610,9 @@ pub async fn set_autostart_enabled(
     app: tauri::AppHandle,
     enabled: bool,
 ) -> Result<ApiResponse<bool>, String> {
-    println!(
-        "[Autostart] set_autostart_enabled called with enabled = {}",
-        enabled
-    );
-    let autostart_manager = app.autolaunch();
-    let result = if enabled {
-        println!("[Autostart] calling enable()");
-        autostart_manager.enable()
-    } else {
-        println!("[Autostart] calling disable()");
-        autostart_manager.disable()
-    };
-    match result {
-        Ok(_) => {
-            println!("[Autostart] success!");
-            Ok(ApiResponse::success(enabled))
-        }
-        Err(e) => {
-            println!("[Autostart] error: {}", e);
-            Ok(ApiResponse::error(format!("设置自启动状态失败: {}", e)))
-        }
+    match crate::autostart::set_enabled(&app, enabled) {
+        Ok(actual) => Ok(ApiResponse::success(actual)),
+        Err(error) => Ok(ApiResponse::error(format!("设置自启动状态失败: {error}"))),
     }
 }
 
@@ -879,7 +701,7 @@ pub async fn set_data_dir(
 
 #[cfg(test)]
 mod tests {
-    use super::{migrate_core_data_files, TopmostState};
+    use super::migrate_core_data_files;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -915,37 +737,16 @@ mod tests {
 
         fs::remove_dir_all(root).expect("test directory should be cleaned up");
     }
+}
 
-    #[test]
-    fn topmost_state_tracks_runtime_pin_changes() {
-        let state = TopmostState::new(false);
-
-        assert!(!state.is_enabled());
-        state.set(true);
-        assert!(state.is_enabled());
-        state.set(false);
-        assert!(!state.is_enabled());
+#[tauri::command]
+pub fn is_primary_mouse_down() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        tauri_nspanel::objc2_app_kit::NSEvent::pressedMouseButtons() & 1 != 0
     }
-
-    #[test]
-    fn watchdog_rechecks_pin_state_after_waiting_for_a_transition() {
-        use std::sync::Arc;
-
-        let state = Arc::new(TopmostState::new(true));
-        let transition = state
-            .lock_transition()
-            .expect("transition lock should be available");
-        let watchdog_state = Arc::clone(&state);
-        let watchdog = std::thread::spawn(move || {
-            let _transition = watchdog_state
-                .lock_transition()
-                .expect("watchdog should acquire transition lock");
-            watchdog_state.is_enabled()
-        });
-
-        state.set_unlocked(false);
-        drop(transition);
-
-        assert!(!watchdog.join().expect("watchdog thread should finish"));
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
     }
 }

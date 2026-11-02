@@ -1,7 +1,9 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X } from '../ui/icons';
 import type { Task } from '../types';
+import { useDialogMotion } from '../ui/useDialogMotion';
+import { Surface } from '../ui/Surface';
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean;
@@ -11,12 +13,13 @@ interface DeleteConfirmDialogProps {
 }
 
 export default function DeleteConfirmDialog({ isOpen, task, onConfirm, onCancel }: DeleteConfirmDialogProps) {
-  if (!isOpen || !task) return null;
+  const { root, present } = useDialogMotion(isOpen && Boolean(task));
+  if (!present || !task) return null;
 
   const dialogContent = (
-    <div className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-[99999]">
-      <div
-        role="alertdialog"
+    <div ref={root} className="liquid-glass-modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center z-[99999]">
+      <Surface role="dialog"
+        htmlRole="alertdialog"
         aria-modal="true"
         aria-labelledby="delete-task-title"
         className="liquid-glass-modal-surface bg-background border border-border rounded-lg shadow-xl w-80 p-4 mx-4"
@@ -29,7 +32,7 @@ export default function DeleteConfirmDialog({ isOpen, task, onConfirm, onCancel 
           </div>
           <button
             onClick={onCancel}
-            className="p-1 hover:bg-accent rounded-md transition-colors"
+            className="dialog-close-button p-1 hover:bg-accent rounded-md transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -65,7 +68,7 @@ export default function DeleteConfirmDialog({ isOpen, task, onConfirm, onCancel 
             删除
           </button>
         </div>
-      </div>
+      </Surface>
     </div>
   );
 

@@ -1,23 +1,46 @@
 import { useEffect } from 'react';
 
-/**
- * Prevent browser-only desktop interactions that are not part of SemiDone's UI.
- *
- * External files can still be dropped into attachment upload areas because a
- * drag that starts outside the WebView does not emit `dragstart` on document.
- */
-export function useGlobalInteractionGuards() {
+/** Covers WebView content and portals; the native tray menu remains independent. */
+export function useContextMenuGuard(): void {
   useEffect(() => {
-    const preventDefault = (event: Event) => {
+    const preventContextMenu = (event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); };
+    const preventSecondaryButton = (event: MouseEvent) => {
+      if (event.button === 2) { event.preventDefault(); event.stopPropagation(); }
+    };
+    const secondaryEvents = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'auxclick'] as const;
+    document.addEventListener('contextmenu', preventContextMenu, true);
+    secondaryEvents.forEach(type => document.addEventListener(type, preventSecondaryButton, true));
+    return () => {
+      document.removeEventListener('contextmenu', preventContextMenu, true);
+      secondaryEvents.forEach(type => document.removeEventListener(type, preventSecondaryButton, true));
+    };
+  }, []);
+}
+
+export function useGlobalInteractionGuards(): void {
+  useContextMenuGuard();
+  useEffect(() => {
+    const preventDragStart = (event: DragEvent) => {
       event.preventDefault();
     };
 
-    document.addEventListener('contextmenu', preventDefault, true);
-    document.addEventListener('dragstart', preventDefault, true);
+    const preventBrowserZoomKeys = (event: KeyboardEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      if (['+', '=', '-', '0'].includes(event.key)) event.preventDefault();
+    };
+
+    const preventBrowserZoomWheel = (event: WheelEvent) => {
+      if (event.ctrlKey) event.preventDefault();
+    };
+
+    document.addEventListener('dragstart', preventDragStart);
+    window.addEventListener('keydown', preventBrowserZoomKeys);
+    window.addEventListener('wheel', preventBrowserZoomWheel, { passive: false });
 
     return () => {
-      document.removeEventListener('contextmenu', preventDefault, true);
-      document.removeEventListener('dragstart', preventDefault, true);
+      document.removeEventListener('dragstart', preventDragStart);
+      window.removeEventListener('keydown', preventBrowserZoomKeys);
+      window.removeEventListener('wheel', preventBrowserZoomWheel);
     };
   }, []);
 }

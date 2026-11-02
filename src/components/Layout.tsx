@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
-import { Outlet, Link } from 'react-router-dom';
-import { Settings, User, Pin, PinOff, ChevronUp, ChevronDown, X, CalendarDays } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
+import React, { useState, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Settings, User, Pin, PinOff, ChevronsUp, ChevronsDown, CircleArrowCollapse, X, CalendarDays, ListTodo, ChartNoAxesCombined } from '../ui/icons';
+import { invoke, isTauri } from '@tauri-apps/api/core';
+import { toast } from 'sonner';
 import { useSettingsStore } from '../store/settingsStore';
 import { useUsageStore } from '../store/usageStore';
 import UserProfileModal from './UserProfileModal';
@@ -12,39 +12,57 @@ import FloatingBall from './FloatingBall';
 import ZenMode from './ZenMode';
 import ZenIcon from './icons/ZenIcon';
 import { startWindowDragging } from '../utils/windowDragging';
-import { getQuotesByTheme } from '../data/quotes';
+import { useRotatingQuote } from '../hooks/useRotatingQuote';
+import { useShallow } from 'zustand/react/shallow';
+import { Surface } from '../ui/Surface';
+import { useSelectionIndicator } from '../ui/SelectionIndicator';
+import { PageTransition } from '../ui/PageTransition';
+
+const INACTIVE_CLOCK = { isActive: false, currentMode: 'work', timeLeft: 0, cycle: 0 };
 
 export default function Layout() {
+  const nav = useRef<HTMLElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-  const [quoteIndex, setQuoteIndex] = useState(() => {
-    // 从localStorage获取上次的索引，如果不存在则从0开始
-    const saved = localStorage.getItem('quoteIndex');
-    const parsed = saved ? Number.parseInt(saved, 10) : 0;
-    return Number.isFinite(parsed) ? parsed : 0;
+
+
+  const settings = useSettingsStore(useShallow(state => ({
+    theme: state.settings.theme, avatar: state.settings.avatar, username: state.settings.username,
+    collapseMode: state.settings.collapseMode, isPinned: state.settings.isPinned,
+    useCapsuleMode: state.settings.useCapsuleMode, zenMode: state.settings.zenMode,
+    closeToTray: state.settings.closeToTray,
+  })));
+  const toggleIsPinned = useSettingsStore(state => state.toggleIsPinned);
+  const toggleIsCollapsed = useSettingsStore(state => state.toggleIsCollapsed);
+  const setZenMode = useSettingsStore(state => state.setZenMode);
+  useSelectionIndicator(nav, `${location.pathname}:${settings.collapseMode}:${settings.zenMode?.active}`, item => {
+    const destination = item.dataset.navTo;
+    if (destination) navigate(destination);
   });
-
-  const { settings, toggleIsPinned, toggleIsCollapsed, setZenMode } = useSettingsStore();
-  const { pomodoro, formatTime } = useUsageStore();
-  const quotes = getQuotesByTheme(settings.theme);
-  const currentQuote = quotes[quoteIndex % quotes.length] ?? '';
-
-  // 轮播励志名言
-  useEffect(() => {
-    if (settings.collapseMode === 'bar') {
-      const timer = setInterval(() => {
-        setQuoteIndex((previousIndex) => {
-          const nextIndex = (previousIndex + 1) % quotes.length;
-          localStorage.setItem('quoteIndex', String(nextIndex));
-          return nextIndex;
-        });
-      }, 5000); // 5秒切换一次
-
-      return () => clearInterval(timer);
-    }
-  }, [quotes.length, settings.collapseMode, settings.theme]);
+  const pomodoro = useUsageStore(state => settings.collapseMode === 'bar' ? state.pomodoro : INACTIVE_CLOCK);
+  const formatTime = useUsageStore(state => state.formatTime);
+  const currentQuote = useRotatingQuote(settings.theme, settings.collapseMode === 'bar');
 
   const handleCloseApp = () => {
+    if (settings.closeToTray !== false) {
+      if (!isTauri()) {
+        toast.info('关闭到托盘仅在桌面应用中可用');
+        return;
+      }
+      // Route every window shape through Rust's native close policy.
+      // exit_app bypasses CloseRequested and destroys the tray as well.
+      void invoke('close_main_window').catch((error) => {
+        console.error('Failed to close window to tray:', error);
+        toast.error('关闭到托盘失败，请重试');
+      });
+      return;
+    }
+    if (settings.collapseMode !== 'expanded') {
+      void Promise.resolve(toggleIsCollapsed()).then(() => setShowCloseConfirm(true)).catch(() => toast.error('请先展开窗口再退出应用'));
+      return;
+    }
     setShowCloseConfirm(true);
   };
 
@@ -53,7 +71,7 @@ export default function Layout() {
       await invoke('exit_app');
     } catch (error) {
       console.error('Failed to close app:', error);
-      window.close();
+      toast.error('退出应用失败，请重试或从托盘退出');
     }
   };
 
@@ -104,6 +122,7 @@ export default function Layout() {
       <>
         <FloatingBall
           onExpand={handleExpandFromFloating}
+          onClose={handleCloseApp}
         />
 
         {/* User Profile Modal */}
@@ -114,7 +133,7 @@ export default function Layout() {
 
         {/* Close Confirmation Dialog */}
         <CloseConfirmDialog
-          isOpen={showCloseConfirm}
+          isOpen={false}
           onConfirm={confirmClose}
           onCancel={cancelClose}
         />
@@ -132,7 +151,8 @@ export default function Layout() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className={`h-screen flex flex-col overflow-hidden ${settings.collapseMode === 'expanded' ? 'workspace-shell' : 'workspace-bar'}`}
+      onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}>
       {/* Header - 自定义标题栏 */}
       <div
         className="flex-shrink-0 h-[65px] bg-background border-b border-border flex items-center justify-between px-4 select-none titlebar"
@@ -142,6 +162,7 @@ export default function Layout() {
         {settings.collapseMode === 'bar' ? (
           <div
             className="flex items-center gap-3 flex-1 min-w-0 cursor-move"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <img
               src="/Logo3D.png"
@@ -184,18 +205,14 @@ export default function Layout() {
             )}
           </div>
         ) : (
-          <Link 
-            to="/" 
-            className="flex min-w-0 items-center gap-2 hover:opacity-80 transition-opacity"
+          <div
+            aria-label="拖动 SemiDone 窗口"
+            className="workspace-brand flex items-center gap-2 cursor-grab active:cursor-grabbing"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
-            <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10 shrink-0" />
-            <h1
-              className="font-bold text-xl text-foreground max-[430px]:hidden"
-              style={{fontFamily:'Poppins'}}
-            >
-              SemiDone
-            </h1>
-          </Link>
+            <img src="/Logo3D.png" alt="Logo3D" className="w-10 h-10" />
+            <span className="workspace-wordmark font-semibold text-foreground">SemiDone</span>
+          </div>
         )}
         
         <div 
@@ -207,11 +224,11 @@ export default function Layout() {
             onClick={() => {
               setIsUserProfileOpen(true);
             }}
-            className="flex shrink-0 items-center gap-2 mr-2 p-1 rounded-lg hover:bg-accent transition-colors"
-            title="用户资料"
+            className="workspace-profile flex items-center gap-2 p-1 rounded-lg hover:bg-accent transition-colors"
+            title="我的信息"
           >
             {getUserAvatarDisplay()}
-            <span className="text-sm text-muted-foreground hidden sm:block">
+            <span className="max-w-[120px] truncate text-sm text-muted-foreground hidden sm:block">
               {settings.username || '用户'}
             </span>
           </button>
@@ -219,28 +236,32 @@ export default function Layout() {
 
           {/* 折叠按钮 */}
           <button
+            data-window-action="collapse"
             onClick={toggleIsCollapsed}
             className={`p-2 rounded-full transition-all duration-200 ${
               settings.collapseMode === 'bar'
-                ? 'bg-purple-500/10 text-purple-600 hover:bg-purple-500/20'
+                ? 'text-primary hover:bg-accent'
                 : 'hover:bg-accent text-muted-foreground hover:text-foreground'
             }`}
             title={settings.collapseMode === 'bar' ? '展开窗口' :
                   settings.useCapsuleMode ? '折叠为悬浮球' : '折叠为条状'}
           >
             {settings.collapseMode === 'bar' ? (
-              <ChevronDown className="w-5 h-5" />
+              <ChevronsDown className="w-5 h-5" />
+            ) : settings.useCapsuleMode ? (
+              <CircleArrowCollapse className="w-5 h-5" strokeWidth={2} />
             ) : (
-              <ChevronUp className="w-5 h-5" />
+              <ChevronsUp className="w-5 h-5" />
             )}
           </button>
 
           {/* 置顶按钮 */}
           <button
+            data-window-action="pin"
             onClick={toggleIsPinned}
             className={`p-2 rounded-full transition-all duration-200 ${
               settings.isPinned
-                ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
+                ? 'text-primary hover:bg-accent'
                 : 'hover:bg-accent text-muted-foreground hover:text-foreground'
             }`}
             title={settings.isPinned ? '取消置顶' : '置顶窗口'}
@@ -260,50 +281,47 @@ export default function Layout() {
                 title="进入 Zen 模式" aria-label="进入 Zen 模式" aria-pressed={false}>
                 <ZenIcon className="w-5 h-5" />
               </button>}
-              <Link
-                to="/task-calendar"
-                className="p-2 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                title="任务视图"
-              >
-                <CalendarDays className="w-5 h-5" />
-              </Link>
-              <Link
-                to="/settings"
-                className="p-2 rounded-full hover:bg-accent transition-colors"
-                title="设置"
-              >
-                <Settings className="w-5 h-5" />
-              </Link>
             </>
           )}
 
           {/* 关闭按钮 */}
           <button
-            onClick={() => {
-              if (settings.collapseMode === 'bar') {
-                // 条状模式下点击：先展开窗口，再弹出关闭确认
-                toggleIsCollapsed();
-                // 延迟弹出确认对话框，等待窗口展开动画完成
-                setTimeout(() => {
-                  handleCloseApp();
-                }, 300);
-              } else {
-                // 展开状态下点击关闭应用
-                handleCloseApp();
-              }
-            }}
+            onClick={handleCloseApp}
             className="p-2 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
-            title={settings.collapseMode === 'bar' ? '展开并关闭应用' : '关闭应用'}
+            title={settings.closeToTray !== false ? '关闭到托盘' : settings.collapseMode === 'bar' ? '展开并关闭应用' : '关闭应用'}
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
       {/* Content Area */}
       {settings.collapseMode === 'expanded' && (
-        <div className="flex-grow bg-background overflow-y-auto">
-          <Outlet />
+        <div className="workspace-body">
+          <aside className="workspace-navigation">
+            <Surface role="navigation">
+            <nav ref={nav} className="workspace-nav ui-selection-host" aria-label="主导航">
+              <span className="ui-selection-indicator ui-selection-indicator--fill" aria-hidden="true" />
+              <span className="ui-selection-indicator ui-selection-indicator--optics" aria-hidden="true"><Surface role="selection" /></span>
+              {[
+                { to: '/', label: '待办', icon: ListTodo },
+                { to: '/task-calendar', label: '日历', icon: CalendarDays },
+                { to: '/usage-stats', label: '统计', icon: ChartNoAxesCombined },
+                { to: '/settings', label: '设置', icon: Settings },
+              ].map(({ to, label, icon: Icon }) => (
+                <NavLink key={to} to={to} end={to === '/'} data-nav-to={to} draggable={false}
+                  className={({ isActive }) => `workspace-nav-link ${isActive ? 'is-active' : ''}`}>
+                  <Icon size={19} strokeWidth={1.8} />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </nav>
+            </Surface>
+            <div className="workspace-nav-footer"><span className="workspace-status-dot" />本地保存，安心专注</div>
+          </aside>
+          <main className={`workspace-content ${location.pathname === '/' ? 'workspace-content--home' : ''}`}>
+            <PageTransition />
+          </main>
         </div>
       )}
 
@@ -315,7 +333,7 @@ export default function Layout() {
 
       {/* Close Confirmation Dialog */}
       <CloseConfirmDialog
-        isOpen={showCloseConfirm}
+        isOpen={showCloseConfirm && settings.collapseMode === 'expanded'}
         onConfirm={confirmClose}
         onCancel={cancelClose}
       />

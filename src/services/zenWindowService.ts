@@ -1,3 +1,4 @@
+import { FULL_WINDOW_SIZE, FULL_WINDOW_MINIMUM } from '../platform/runtime';
 import { isDesktopRuntime } from '../api/tauri';
 
 type Mode = 'full' | 'zen';
@@ -10,8 +11,8 @@ interface WindowAdapter {
 }
 
 const KEYS = { full: 'expandedWindowSize', zen: 'zenWindowSize' };
-const MINIMUM = { full: { width: 400, height: 700 }, zen: { width: 280, height: 180 } };
-const DEFAULT_SIZE = { full: { width: 550, height: 1000 }, zen: { width: 380, height: 360 } };
+const MINIMUM = { full: FULL_WINDOW_MINIMUM, zen: { width: 280, height: 180 } };
+const DEFAULT_SIZE = { full: FULL_WINDOW_SIZE, zen: { width: 380, height: 360 } };
 
 // Keep Zen geometry separate from the full window and its bar/floating states.
 export class ZenWindowController {

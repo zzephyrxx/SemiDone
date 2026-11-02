@@ -1,0 +1,10 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>SemiDone 玻璃渲染检查</title>
+<style>body{font:13px 'Segoe UI',sans-serif;color:#30313e;background:#f3f3f5;margin:20px}iframe{width:550px;height:720px;border:1px solid #ddd;border-radius:20px}pre{white-space:pre-wrap;overflow-wrap:anywhere}main{display:flex;gap:20px}section{min-width:0;flex:1}</style>
+<h1>SemiDone 玻璃渲染检查</h1><p>独立测试场景显式开启玻璃，仅修改本页内存，不读取或写入个人任务/设置。下方报告真实浏览器的计算样式。</p>
+<main><iframe id="app" src="/docs/v7-glass-scene.html" title="独立玻璃测试场景"></iframe><section><button id="read">重新检查</button><pre id="report" aria-label="玻璃计算样式">等待应用载入</pre></section></main>
+<script>
+const frame=document.getElementById('app'),report=document.getElementById('report');
+function read(){try{const w=frame.contentWindow,d=w.document,r=d.documentElement;const sample=(selector,pseudo)=>{const el=d.querySelector(selector);if(!el)return null;const s=w.getComputedStyle(el,pseudo);return {filter:s.getPropertyValue('backdrop-filter'),background:s.background,opacity:s.opacity,isolation:s.isolation,rect:[el.offsetWidth,el.offsetHeight]}};
+report.textContent=JSON.stringify({glass:r.dataset.liquidGlassDialogs,dispersion:r.dataset.liquidGlassDispersion,media:{reducedTransparency:w.matchMedia('(prefers-reduced-transparency: reduce)').matches,contrast:w.matchMedia('(prefers-contrast: more)').matches},support:w.CSS.supports('backdrop-filter','blur(1px)'),navigation:sample('.ui-surface--navigation'),navigationPaint:sample('.ui-surface--navigation','::before'),selection:sample('.ui-surface--selection'),selectionPaint:sample('.ui-surface--selection','::before'),legacy:sample('.liquid-glass-modal-surface'),taskCard:sample('.task-card'),settingsCard:sample('.settings-section'),settingTile:sample('.settings-tile'),titlebar:sample('.titlebar')},null,2);}catch(e){report.textContent=String(e)}}
+frame.addEventListener('load',()=>{setTimeout(read,1200)});setInterval(read,2000);document.getElementById('read').onclick=read;
+</script></html>

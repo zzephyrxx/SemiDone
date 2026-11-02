@@ -184,15 +184,27 @@ pub struct LiquidGlassSettings {
     pub blur: u8,
     pub refraction: u8,
     pub dispersion: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strength: Option<f64>,
+    #[serde(rename = "rimWidth", default, skip_serializing_if = "Option::is_none")]
+    pub rim_width: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub magnify: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preset: Option<String>,
 }
 
 impl Default for LiquidGlassSettings {
     fn default() -> Self {
         Self {
             enabled: true,
-            blur: 6,
-            refraction: 42,
-            dispersion: true,
+            blur: 9,
+            refraction: 0,
+            dispersion: false,
+            strength: Some(0.0),
+            rim_width: Some(0.1),
+            magnify: Some(0.0),
+            preset: Some("standard".to_string()),
         }
     }
 }
@@ -228,6 +240,12 @@ impl Default for ZenModeSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub theme: String,
+    #[serde(rename = "accentColor", default, skip_serializing_if = "Option::is_none")]
+    pub accent_color: Option<String>,
+    #[serde(rename = "fontScale", default = "default_font_scale")]
+    pub font_scale: u16,
+    #[serde(rename = "animationsEnabled", default = "default_animations_enabled")]
+    pub animations_enabled: bool,
     #[serde(rename = "liquidGlass", default)]
     pub liquid_glass: LiquidGlassSettings,
     #[serde(rename = "zenMode", alias = "minimalMode", default)]
@@ -257,12 +275,25 @@ pub struct Settings {
     pub edge_position: String,
     #[serde(rename = "autoStart", default)]
     pub auto_start: bool,
+    #[serde(rename = "closeToTray", default = "default_close_to_tray")]
+    pub close_to_tray: bool,
     #[serde(rename = "dataDir", skip_serializing_if = "Option::is_none")]
     pub data_dir: Option<String>,
 }
 
 fn default_collapse_mode() -> String {
     "expanded".to_string()
+}
+
+fn default_font_scale() -> u16 {
+    100
+}
+fn default_animations_enabled() -> bool {
+    true
+}
+
+fn default_close_to_tray() -> bool {
+    true
 }
 
 fn default_transparent_level() -> u8 {
@@ -277,6 +308,9 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: "light".to_string(),
+            accent_color: None,
+            font_scale: default_font_scale(),
+            animations_enabled: true,
             liquid_glass: LiquidGlassSettings::default(),
             zen_mode: ZenModeSettings::default(),
             notifications: true,
@@ -292,6 +326,7 @@ impl Default for Settings {
             is_edge_snapped: false,
             edge_position: default_edge_position(),
             auto_start: false,
+            close_to_tray: true,
             data_dir: None,
         }
     }
@@ -319,6 +354,8 @@ pub struct UpdateTaskRequest {
     pub priority: Option<String>,
     #[serde(rename = "dueDate")]
     pub due_date: Option<String>,
+    #[serde(rename = "clearDueDate", default)]
+    pub clear_due_date: bool,
     pub attachments: Option<Vec<Attachment>>,
     #[serde(default, rename = "recurrence")]
     pub recurrence: Option<Option<RecurrenceRule>>,
@@ -373,6 +410,64 @@ impl<T> ApiResponse<T> {
 }
 
 #[cfg(test)]
+mod interface_settings_tests {
+    use super::*;
+
+    #[test]
+    fn glass_preset_identity_survives_native_settings_round_trip() {
+        assert_eq!(LiquidGlassSettings::default().preset.as_deref(), Some("standard"));
+        let value = serde_json::json!({
+            "enabled": true, "preset": "extreme", "blur": 4, "refraction": 0,
+            "dispersion": true, "strength": 0.0, "rimWidth": 0.5, "magnify": 0.07
+        });
+        let loaded: LiquidGlassSettings = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(serde_json::to_value(loaded).unwrap(), value);
+    }
+
+    #[test]
+    fn glass_optical_parameters_survive_native_round_trip_and_legacy_values_remain_migratable() {
+        let old: LiquidGlassSettings = serde_json::from_value(serde_json::json!({
+            "enabled": true, "blur": 6, "refraction": 84, "dispersion": true
+        })).unwrap();
+        assert!(old.strength.is_none());
+        let legacy = serde_json::to_value(old).unwrap();
+        assert!(legacy.get("strength").is_none());
+        assert_eq!(legacy["refraction"], 84);
+        let value = serde_json::json!({
+            "enabled": true, "blur": 6, "refraction": 42, "dispersion": true,
+            "strength": 32.5, "rimWidth": 0.73, "magnify": 0.62
+        });
+        let loaded: LiquidGlassSettings = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(serde_json::to_value(loaded).unwrap(), value);
+    }
+
+    #[test]
+    fn old_settings_default_to_normal_text_and_enabled_motion() {
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value.as_object_mut().unwrap().remove("fontScale");
+        value.as_object_mut().unwrap().remove("animationsEnabled");
+        let settings: Settings = serde_json::from_value(value).unwrap();
+        assert_eq!(settings.font_scale, 100);
+        assert!(settings.animations_enabled);
+    }
+
+    #[test]
+    fn interface_preferences_survive_the_native_settings_round_trip() {
+        let settings = Settings {
+            font_scale: 130,
+            animations_enabled: false,
+            ..Settings::default()
+        };
+        let saved = serde_json::to_value(settings).unwrap();
+        assert_eq!(saved["fontScale"], 130);
+        assert_eq!(saved["animationsEnabled"], false);
+        let loaded: Settings = serde_json::from_value(saved).unwrap();
+        assert_eq!(loaded.font_scale, 130);
+        assert!(!loaded.animations_enabled);
+    }
+}
+
+#[cfg(test)]
 mod zen_mode_tests {
     use super::*;
 
@@ -409,5 +504,22 @@ mod zen_mode_tests {
         let saved = serde_json::to_value(settings).unwrap();
         assert!(saved.get("minimalMode").is_none());
         assert!(saved["zenMode"]["enabled"].as_bool().unwrap());
+    }
+}
+
+#[cfg(test)]
+mod accent_settings_tests {
+    use super::Settings;
+    #[test]
+    fn optional_accent_round_trips_and_old_settings_keep_the_default() {
+        let old = serde_json::to_value(Settings::default()).unwrap();
+        assert!(old.get("accentColor").is_none());
+        let restored: Settings = serde_json::from_value(old).unwrap();
+        assert_eq!(restored.accent_color, None);
+        let settings = Settings { accent_color: Some("#8b5cf6".into()), ..Settings::default() };
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["accentColor"], "#8b5cf6");
+        let restored: Settings = serde_json::from_value(json).unwrap();
+        assert_eq!(restored.accent_color.as_deref(), Some("#8b5cf6"));
     }
 }
