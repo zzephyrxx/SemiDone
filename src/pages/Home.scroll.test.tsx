@@ -8,6 +8,7 @@ import Home from './Home';
 const mocks = vi.hoisted(() => ({
   storeState: {
     filteredTasks: [] as Task[],
+    stats: { total: 0, completed: 0, pending: 0, overdue: 0, today: 0 },
     loading: false,
     filter: 'pending',
     searchQuery: '',
@@ -30,7 +31,7 @@ vi.mock('../store/taskStore', () => {
 });
 
 vi.mock('../store/settingsStore', () => ({
-  useSettingsStore: () => ({ settings: { theme: 'light' } }),
+  useSettingsStore: (selector: (state: { settings: { theme: string } }) => unknown) => selector({ settings: { theme: 'light' } }),
 }));
 
 vi.mock('zustand/react/shallow', () => ({
@@ -77,6 +78,7 @@ function scrollTo(scroller: HTMLDivElement, top: number) {
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverMock);
   mocks.storeState.filteredTasks = tasks;
+  mocks.storeState.stats = { total: tasks.length, completed: 0, pending: tasks.length, overdue: 0, today: 0 };
   mocks.storeState.filter = 'pending';
   mocks.storeState.editingTaskId = null;
 });

@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  getCurrentWindow,
+} from '@tauri-apps/api/window';
 import { useSettingsStore } from '../store/settingsStore';
+import { isDesktopRuntime } from '../api/tauri';
+import { dragFloatingWindow } from '../services/floatingWindowDrag';
 
 interface FloatingBallProps {
   onExpand: () => void;
-  onClose: () => void;
-  isTransparent?: boolean; // 添加透明模式支持
+  onClose?: () => void;
 }
 
-export default function FloatingBall({ onExpand, onClose, isTransparent }: FloatingBallProps) {
+export default function FloatingBall({ onExpand }: FloatingBallProps) {
   const { settings, setEdgeSnap } = useSettingsStore();
 
   // 应用透明效果
@@ -36,8 +40,11 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
 
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const ballRef = useRef<HTMLDivElement>(null);
+  const ballRef = useRef<HTMLButtonElement>(null);
   const [isNearEdge, setIsNearEdge] = useState(false);
+  const pressPoint = useRef({ x: 0, y: 0 });
+  const nativeDragging = useRef(false);
+  const suppressClick = useRef(false);
 
   // 检测是否接近屏幕边缘
   const checkEdgeProximity = (x: number, screenWidth: number) => {
@@ -45,10 +52,11 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
     return x < threshold || x > screenWidth - threshold;
   };
 
-  // 鼠标按下开始拖拽（仅左键）
+  // 左键按下时只记录起点，避免原生拖窗吞掉普通点击事件。
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
-
+    pressPoint.current = { x: e.clientX, y: e.clientY };
+    suppressClick.current = false;
     setIsDragging(true);
     const rect = ballRef.current?.getBoundingClientRect();
     if (rect) {
@@ -67,6 +75,22 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
     const handleMouseMove = (e: MouseEvent) => {
       if (!ballRef.current) return;
 
+      const moved = Math.hypot(e.clientX - pressPoint.current.x, e.clientY - pressPoint.current.y) >= 4;
+      if (isDesktopRuntime) {
+        if (!moved || nativeDragging.current) return;
+        nativeDragging.current = true;
+        suppressClick.current = true;
+        void dragFloatingWindow().then(async edge => {
+          if (edge && useSettingsStore.getState().settings.collapseMode === 'floating') await setEdgeSnap(true, edge);
+        }).catch(error => console.warn('悬浮球拖动失败:', error)).finally(() => {
+          nativeDragging.current = false;
+          setIsDragging(false);
+          setIsNearEdge(false);
+        });
+        return;
+      }
+      if (moved) suppressClick.current = true;
+
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
 
@@ -81,6 +105,10 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
     };
 
     const handleMouseUp = async () => {
+      if (isDesktopRuntime) {
+        if (!nativeDragging.current) setIsDragging(false);
+        return;
+      }
       setIsDragging(false);
 
       if (!ballRef.current || !isNearEdge) {
@@ -113,7 +141,9 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
   }, [isDragging, dragOffset, isNearEdge, setEdgeSnap]);
 
   // 点击展开
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent) => {
+    if (event.button !== 0) return;
+    if (suppressClick.current) { suppressClick.current = false; return; }
     if (settings.isEdgeSnapped) {
       setEdgeSnap(false);
     } else {
@@ -124,11 +154,13 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
   const isSnapped = settings.isEdgeSnapped;
 
   return (
-    <div
+    <button
+      type="button"
+      aria-label="展开 SemiDone"
       ref={ballRef}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
       className={`
-        fixed top-0 left-0 z-50 select-none cursor-pointer overflow-hidden
+        floating-ball-shell fixed top-0 left-0 z-50 select-none cursor-pointer overflow-hidden
         flex items-center justify-center p-0 m-0
         ${isDragging ? 'cursor-grabbing' : 'cursor-pointer'}
       `}
@@ -137,7 +169,7 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
       style={{
         width: isSnapped ? '30px' : '55px', 
         height: isSnapped ? '30px' : '55px',
-        WebkitAppRegion: 'drag',
+        WebkitAppRegion: 'no-drag',
       } as React.CSSProperties}
     >
       <img
@@ -147,6 +179,6 @@ export default function FloatingBall({ onExpand, onClose, isTransparent }: Float
         className="w-full h-full object-cover block p-0 m-0"
         draggable={false}
       />
-    </div>
+    </button>
   );
 }

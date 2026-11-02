@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
-import { X } from 'lucide-react';
+import { X } from '../../ui/icons';
 
 interface HSV { h: number; s: number; v: number }
 interface Props { label: string; value: string; onChange: (color: string) => void; onClose: () => void }

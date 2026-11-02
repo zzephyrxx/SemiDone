@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Upload, X, ImageIcon, FileIcon, Clipboard } from 'lucide-react';
+import { Upload, X, ImageIcon, FileIcon, Clipboard } from '../ui/icons';
 import type { Attachment } from '../types';
 import { api } from '../api/tauri';
 import { toast } from 'sonner';

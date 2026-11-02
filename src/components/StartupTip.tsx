@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles, X } from '../ui/icons';
 import { APP_VERSION, RELEASE_HIGHLIGHTS, RELEASE_MONTH } from '../data/release';
+import { useDialogMotion } from '../ui/useDialogMotion';
+import { Surface } from '../ui/Surface';
+import { useDraggableDialog } from '../ui/useDraggableDialog';
+import { useSettingsStore } from '../store/settingsStore';
 
 const WELCOME_STORAGE_KEY = `welcome_shown_${APP_VERSION}`;
+
+const HIGHLIGHTS: { text: string; icon?: string }[] = RELEASE_HIGHLIGHTS.map(text => ({ text }));
 
 export default function StartupTip() {
   const [show, setShow] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const primaryActionRef = useRef<HTMLButtonElement>(null);
+  const zenWindow = useSettingsStore(state => state.settings.zenMode?.enabled === true
+    && state.settings.zenMode.active && state.settings.collapseMode === 'expanded');
+  const { root, present } = useDialogMotion(show, !zenWindow);
+  const drag = useDraggableDialog(present);
 
   useEffect(() => {
     if (localStorage.getItem(WELCOME_STORAGE_KEY)) return;
@@ -16,7 +26,7 @@ export default function StartupTip() {
   }, []);
 
   useEffect(() => {
-    if (!show) return;
+    if (!show || !present) return;
 
     primaryActionRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -25,27 +35,28 @@ export default function StartupTip() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [show]);
+  }, [show, present]);
 
   const handleClose = () => {
     if (dontShowAgain) localStorage.setItem(WELCOME_STORAGE_KEY, 'true');
     setShow(false);
   };
 
-  if (!show) return null;
+  if (!present) return null;
 
   return (
     <div
+      ref={root}
       data-no-overlay
-      className="welcome-dialog-overlay liquid-glass-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-2.5"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5"
     >
-      <div
-        role="dialog"
+      <Surface role="dialog" elementRef={drag.surface}
+        htmlRole="dialog"
         aria-modal="true"
         aria-labelledby="welcome-dialog-title"
         data-glass-layout="unified"
-        className="welcome-dialog liquid-glass-modal-surface relative flex max-h-[92vh] w-[min(440px,calc(100vw-20px))] flex-col overflow-hidden rounded-[26px] border border-border/70 bg-card p-5 text-foreground shadow-[0_18px_48px_rgba(15,23,42,0.16)] animate-scale-in motion-reduce:animate-none"
-        style={{ fontFamily: '"Segoe UI Variable", "Microsoft YaHei UI", sans-serif' }}
+        className="welcome-dialog liquid-glass-modal-surface relative flex max-h-[92vh] w-[min(440px,calc(100vw-20px))] flex-col overflow-hidden rounded-[26px] border border-border/70 bg-card p-5 text-foreground shadow-[0_18px_48px_rgba(15,23,42,0.16)]"
+
       >
         <div
           aria-hidden="true"
@@ -61,7 +72,7 @@ export default function StartupTip() {
           <X className="h-[17px] w-[17px]" />
         </button>
 
-        <header className="welcome-dialog-header flex shrink-0 items-start gap-3.5 pr-10">
+        <header {...drag.handle} aria-label="拖动公告弹窗" className="dialog-drag-handle welcome-dialog-header flex shrink-0 items-start gap-3.5 pr-10">
           <div className="welcome-dialog-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 shadow-[inset_0_1px_0_rgba(255,255,255,.55)]">
             <Sparkles className="h-6 w-6 text-primary" strokeWidth={1.8} />
           </div>
@@ -69,7 +80,7 @@ export default function StartupTip() {
             <h2
               id="welcome-dialog-title"
               className="text-[22px] font-bold leading-tight tracking-tight text-foreground max-[430px]:text-[20px]"
-              style={{ fontFamily: '"Segoe UI Variable Display", "Microsoft YaHei UI", sans-serif' }}
+
             >
               欢迎使用 SemiDone
             </h2>
@@ -77,42 +88,51 @@ export default function StartupTip() {
               V{APP_VERSION} · {RELEASE_MONTH}
             </p>
           </div>
+
         </header>
 
-        <main className="welcome-dialog-body mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
-          <section aria-labelledby="welcome-release-highlights">
-            <div className="welcome-dialog-release-heading flex items-center justify-between gap-3">
-              <h3 id="welcome-release-highlights" className="text-[15px] font-semibold text-foreground">
-                V{APP_VERSION} 更新内容
-              </h3>
-              <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
-                10 月更新
-              </span>
-            </div>
+        <main className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,rgba(202,240,248,.72),transparent_44%),#FFFFFF] px-4 pb-4 pt-2.5">
+          <section
+            aria-labelledby="welcome-release-highlights"
+            className="overflow-hidden rounded-[14px] border border-[#90E0EF] bg-[linear-gradient(135deg,rgba(255,255,255,.98),rgba(202,240,248,.5))] px-4 py-3.5 shadow-[0_7px_20px_rgba(0,180,216,.1)]"
+          >
+            <h3 id="welcome-release-highlights" className="text-[15px] font-bold text-[#0077B6]">
+              V{APP_VERSION} 更新内容
+            </h3>
 
-            <ul className="welcome-dialog-highlights mt-4 divide-y divide-border/50 border-y border-border/50">
-              {RELEASE_HIGHLIGHTS.map((text) => (
-                <li key={text} className="flex items-start gap-3 py-3 text-xs leading-5 text-foreground/80">
-                  <span
-                    aria-hidden="true"
-                    className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-500"
-                  />
-                  <span>{text}</span>
+            <ul className="mt-2.5 divide-y divide-[#CAF0F8] border-t border-[#CAF0F8]">
+              {HIGHLIGHTS.map((item) => (
+                <li key={item.text} className="flex items-start gap-2.5 py-2.5 text-[12px] leading-[18px] text-slate-700">
+                  {item.icon ? (
+                    <img
+                      data-testid="welcome-easter-egg-icon"
+                      src={item.icon}
+                      alt=""
+                      aria-hidden="true"
+                      className="-mt-0.5 h-[20px] w-[20px] shrink-0 object-contain"
+                    />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="mt-[6px] h-[7px] w-[7px] shrink-0 rounded-full bg-[#00B4D8]"
+                    />
+                  )}
+                  <span>{item.text}</span>
                 </li>
               ))}
             </ul>
           </section>
         </main>
 
-        <footer className="welcome-dialog-footer mt-4 flex shrink-0 items-center justify-between gap-3">
+        <footer className="flex shrink-0 items-center justify-between gap-2.5 border-t border-[#CAF0F8] bg-white/95 px-5 py-3.5 max-[430px]:px-3.5">
           <label className="group flex min-w-0 cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               checked={dontShowAgain}
               onChange={(event) => setDontShowAgain(event.target.checked)}
-              className="h-4 w-4 shrink-0 rounded border-border accent-cyan-500 focus:ring-cyan-500"
+              className="h-[15px] w-[15px] shrink-0 rounded border-[#90E0EF] accent-[#0077B6] focus:ring-[#00B4D8]"
             />
-            <span className="truncate text-[11.5px] text-muted-foreground transition-colors group-hover:text-foreground">
+            <span className="truncate text-[11.5px] text-slate-500 transition-colors group-hover:text-[#0077B6]">
               本版本不再显示
             </span>
           </label>
@@ -120,12 +140,12 @@ export default function StartupTip() {
             ref={primaryActionRef}
             type="button"
             onClick={handleClose}
-            className="inline-flex min-w-[120px] shrink-0 items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.2)] transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_24px_hsl(var(--primary)/.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent motion-reduce:transform-none"
+            className="inline-flex min-w-[119px] shrink-0 items-center justify-center rounded-[10px] border border-[#90E0EF] bg-[linear-gradient(110deg,#0077B6_0%,#00B4D8_100%)] px-4 py-2 text-[11.5px] font-semibold text-white shadow-[0_7px_17px_rgba(0,119,182,.25)] ring-2 ring-[#CAF0F8] transition-all hover:-translate-y-0.5 hover:shadow-[0_9px_22px_rgba(0,119,182,.34)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00B4D8] motion-reduce:transform-none"
           >
             开始体验
           </button>
         </footer>
-      </div>
+      </Surface>
     </div>
   );
 }

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { Surface } from '../ui/Surface';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, Calendar, Flag, Type, AlignLeft, Clock, CheckCircle, Circle, Repeat, Clock12 } from 'lucide-react';
+import { ArrowLeft, Edit3, Save, Trash2, Calendar, Flag, Type, AlignLeft, Clock, CheckCircle, Circle, Repeat, Clock12, Info } from '../ui/icons';
 import { useTaskStore } from '../store/taskStore';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import RecurrenceEditor from '../components/RecurrenceEditor';
+import DueDateDialog from '../components/DueDateDialog';
 import TaskAttachmentsSection from '../components/TaskAttachmentsSection';
 import type { Priority, UpdateTaskRequest, Attachment, RecurrenceRule } from '../types';
 import { api } from '../api/tauri';
@@ -24,7 +26,8 @@ export default function TaskDetail() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tempDueDate, setTempDueDate] = useState('');
+  const datePickerId = useId();
+  const dateButtonRef = useRef<HTMLButtonElement>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [originalAttachments, setOriginalAttachments] = useState<Attachment[]>([]); // 编辑前的附件列表
   const [newlyAddedAttachments, setNewlyAddedAttachments] = useState<Attachment[]>([]); // 编辑时新上传的附件
@@ -75,7 +78,6 @@ export default function TaskDetail() {
       setDescription(foundTask.description || '');
       setPriority(foundTask.priority);
       setDueDate(foundTask.dueDate || '');
-      setTempDueDate(foundTask.dueDate || '');
       setAttachments(foundTask.attachments || []);
       setRecurrence(foundTask.recurrence);
     } else if (id) {
@@ -141,6 +143,7 @@ export default function TaskDetail() {
       description: description.trim() || undefined,
       priority,
       dueDate: dueDate || undefined,
+      clearDueDate: !dueDate && Boolean(task.dueDate),
       attachments: attachments, // 始终传递，即使是空数组也会清空附件
       recurrence,
     };
@@ -150,6 +153,7 @@ export default function TaskDetail() {
     try {
       await updateTask(task.id, request);
       setIsEditing(false);
+      setShowDatePicker(false);
       // 清空原始附件列表和新上传列表
       setOriginalAttachments([]);
       setNewlyAddedAttachments([]);
@@ -179,16 +183,6 @@ export default function TaskDetail() {
     } catch (error) {
       console.error('Toggle task complete error:', error);
     }
-  };
-
-  const handleDateConfirm = () => {
-    setDueDate(tempDueDate);
-    setShowDatePicker(false);
-  };
-
-  const handleDateCancel = () => {
-    setTempDueDate(dueDate);
-    setShowDatePicker(false);
   };
 
   const getPriorityColor = (p: Priority) => {
@@ -250,9 +244,9 @@ export default function TaskDetail() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <div className="task-detail-page container mx-auto px-4 py-4 max-w-4xl">
       {/* 头部导航 */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => navigate('/')}
           className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -261,7 +255,7 @@ export default function TaskDetail() {
           <span>返回</span>
         </button>
         
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2">
           {isEditing ? (
             <>
               <button
@@ -284,7 +278,6 @@ export default function TaskDetail() {
                   setDescription(task.description || '');
                   setPriority(task.priority);
                   setDueDate(task.dueDate || '');
-                  setTempDueDate(task.dueDate || '');
                   setShowDatePicker(false);
                   setAttachments(task.attachments || []);
                   setOriginalAttachments([]); // 清空原始附件列表
@@ -322,26 +315,25 @@ export default function TaskDetail() {
                   setOriginalAttachments(task.attachments || []);
                   setIsEditing(true);
                 }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                aria-label="编辑待办"
+                title="编辑待办"
+                className="task-detail-icon-button text-primary"
               >
-                编辑
+                <Edit3 className="w-4 h-4" aria-hidden="true" />
               </button>
               
               <button
                 onClick={() => setShowDeleteDialog(true)}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                aria-label={isDeleting ? '正在删除待办' : '删除待办'}
+                aria-busy={isDeleting}
+                title="删除待办"
+                className="task-detail-icon-button task-detail-icon-button--danger disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeleting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>删除中...</span>
-                  </>
+                  <span aria-hidden="true" className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <Trash2 className="w-4 h-4" />
-                    <span>删除</span>
-                  </>
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
                 )}
               </button>
             </>
@@ -350,26 +342,28 @@ export default function TaskDetail() {
       </div>
 
       {/* 待办详情：两栏布局 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* 左侧主内容区域 */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-lg p-6 space-y-6">
+        <Surface className="task-detail-content lg:col-span-2 bg-card border border-border rounded-lg p-4 space-y-4">
           {/* 待办标题 */}
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2 flex items-center">
+            <label htmlFor="task-detail-title" className="block text-sm font-medium text-muted-foreground mb-2 flex items-center">
               <Type className="w-4 h-4 mr-2" />
               待办标题
             </label>
             {isEditing ? (
-              <input
-                type="text"
+              <textarea
+                id="task-detail-title"
+                rows={2}
+                wrap="soft"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-xl font-semibold"
+                className="task-detail-text w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-xl font-semibold resize-y"
                 placeholder="输入待办标题..."
                 maxLength={100}
               />
             ) : (
-              <h1 className={`text-xl font-semibold ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+              <h1 className={`task-detail-text text-xl font-semibold ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                 {task.title}
               </h1>
             )}
@@ -377,22 +371,24 @@ export default function TaskDetail() {
 
           {/* 待办描述 */}
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2 flex items-center">
+            <label htmlFor="task-detail-description" className="block text-sm font-medium text-muted-foreground mb-2 flex items-center">
               <AlignLeft className="w-4 h-4 mr-2" />
               待办描述
             </label>
             {isEditing ? (
               <textarea
+                id="task-detail-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground resize-none"
+                wrap="soft"
+                className="task-detail-text w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground resize-none"
                 placeholder="添加待办描述..."
-                rows={3}
+                rows={task.description?.trim() ? 3 : 2}
                 maxLength={500}
               />
             ) : (
-              <div className="text-foreground whitespace-pre-wrap min-h-[6rem]">
-                {task.description || (
+              <div className="task-detail-text task-detail-description text-foreground whitespace-pre-wrap" data-empty={!task.description?.trim()}>
+                {task.description?.trim() ? task.description : (
                   <span className="text-muted-foreground italic">暂无描述</span>
                 )}
               </div>
@@ -411,13 +407,13 @@ export default function TaskDetail() {
               setNewlyAddedAttachments(previous => [...previous, ...newFiles]);
             }}
           />
-        </div>
+        </Surface>
 
         {/* 右侧侧边栏 */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="lg:col-span-1 space-y-3">
           {/* 详情模块 */}
-          <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground">详情</h3>
+          <Surface className="bg-card border border-border rounded-lg p-3 space-y-3">
+            <h3 className="task-detail-section-heading flex items-center gap-2 font-semibold text-foreground"><Info className="h-4 w-4 text-muted-foreground" />详情</h3>
             
             {/* 优先级 */}
             <div className="flex items-center justify-between">
@@ -433,7 +429,7 @@ export default function TaskDetail() {
                       type="button"
                       onClick={() => setPriority(p)}
                       className={`flex-1 px-2 py-1 rounded-md border text-xs font-medium transition-colors ${priority === p ? getPriorityColor(p) : 'border-border bg-background text-muted-foreground hover:bg-muted'}`}>
-                      {getPriorityLabel(p)}
+                      {getPriorityLabel(p).charAt(0)}
                     </button>
                   ))}
                 </div>
@@ -445,96 +441,44 @@ export default function TaskDetail() {
             </div>
 
             {/* 截止日期 */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center text-sm text-foreground">
+            <div className="task-detail-due-row flex items-center justify-between gap-3">
+              <div className="flex shrink-0 items-center text-sm text-foreground">
                 <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
                 <span>截止日期</span>
               </div>
               {isEditing ? (
-                <div className="relative w-3/5">
+                <div className="min-w-0 flex-1">
                   <button
                     type="button"
+                    ref={dateButtonRef}
+                    aria-label="设置截止日期"
+                    aria-haspopup="dialog"
+                    aria-expanded={showDatePicker}
+                    aria-controls={showDatePicker ? datePickerId : undefined}
                     onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="w-full px-2 py-1 text-xs bg-background border border-border rounded-md hover:bg-muted transition-colors text-left"
+                    className="task-detail-date-trigger w-full px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted text-right"
                   >
                     {dueDate ? (() => {
                       const date = new Date(dueDate);
-                      return isNaN(date.getTime()) ? '设置日期' : date.toLocaleString();
+                      return isNaN(date.getTime()) ? '设置日期' : date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                     })() : '设置日期'}
                   </button>
                   
-                  {showDatePicker && (
-                    <>
-                      <div className="fixed inset-0 z-[9998]" onClick={handleDateCancel} />
-                      <div className="absolute bottom-full right-0 mb-1 p-4 bg-background border border-border rounded-lg shadow-xl z-[9999] min-w-[320px]">
-                        <div className="space-y-4">
-                          <div className="text-sm font-medium text-foreground">选择截止日期</div>                          
-                          {/* 日期选择 */}
-                          <div>
-                            <label className="block text-xs text-muted-foreground mb-1">日期</label>
-                            <input
-                              type="date"
-                              value={tempDueDate ? tempDueDate.split('T')[0] : ''}
-                              onChange={(e) => {
-                                const dateValue = e.target.value;
-                                const timeValue = tempDueDate ? tempDueDate.split('T')[1] || '09:00' : '09:00';
-                                setTempDueDate(dateValue ? `${dateValue}T${timeValue}` : '');
-                              }}
-                              className="w-full px-3 py-2 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                              min={new Date().toISOString().split('T')[0]}
-                            />
-                          </div>
-                          
-                          {/* 时间选择 */}
-                          <div>
-                            <label className="block text-xs text-muted-foreground mb-1">时间</label>
-                            <input
-                              type="time"
-                              value={tempDueDate ? tempDueDate.split('T')[1] || '09:00' : '09:00'}
-                              onChange={(e) => {
-                                const timeValue = e.target.value;
-                                const dateValue = tempDueDate ? tempDueDate.split('T')[0] : new Date().toISOString().split('T')[0];
-                                setTempDueDate(`${dateValue}T${timeValue}`);
-                              }}
-                              className="w-full px-3 py-2 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            />
-                          </div>
-                          
-                          {/* 确认按钮 */}
-                          <div className="flex justify-end space-x-2 pt-2 border-t border-border">
-                            <button 
-                              type="button" 
-                              onClick={handleDateCancel} 
-                              className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                            >
-                              取消
-                            </button>
-                            <button 
-                              type="button" 
-                              onClick={() => { setTempDueDate(''); setDueDate(''); setShowDatePicker(false); }} 
-                              className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                            >
-                              清除
-                            </button>
-                            <button 
-                              type="button" 
-                              onClick={handleDateConfirm} 
-                              className="px-3 py-1.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded transition-colors font-medium"
-                            >
-                              确定
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  <DueDateDialog open={showDatePicker} id={datePickerId} value={dueDate} returnFocus={dateButtonRef}
+                    onCancel={() => setShowDatePicker(false)}
+                    onClear={() => { setDueDate(''); setShowDatePicker(false); }}
+                    onConfirm={value => { setDueDate(value); setShowDatePicker(false); }} />
                 </div>
               ) : (
                 <div className="text-right">
                   {task.dueDate ? (
                     <div className="space-y-0.5">
                       <div className="text-sm font-medium text-foreground">{new Date(task.dueDate).toLocaleDateString()}</div>
-                      <div className={`text-sm ${getDateColor(task.dueDate)}`}>{formatDate(task.dueDate)}</div>
+                      {!task.completed && (
+                        <div className={`text-sm ${getDateColor(task.dueDate)}`}>
+                          {formatDate(task.dueDate)}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <span className="text-sm text-muted-foreground italic">未设置</span>
@@ -554,8 +498,7 @@ export default function TaskDetail() {
                   <RecurrenceEditor
                     value={recurrence}
                     onChange={setRecurrence}
-                    buttonClassName="w-full px-2 py-1 text-xs bg-background border border-border rounded-md hover:bg-muted transition-colors text-left"
-                    popoverClassName="bg-background"
+                    buttonClassName="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted text-right"
                   />
                 </div>
               ) : (
@@ -600,10 +543,10 @@ export default function TaskDetail() {
                 </div>
               </div>
             )}
-          </div>
+          </Surface>
 
           {/* 状态模块 - 移到下面 */}
-          <div className="bg-card border border-border rounded-lg p-4">
+          <Surface className="bg-card border border-border rounded-lg p-3">
             <label className="block text-sm font-medium text-muted-foreground mb-3">状态</label>
             <button
               onClick={handleToggleComplete}
@@ -616,7 +559,7 @@ export default function TaskDetail() {
               {task.completed ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
               <span>{task.completed ? '已完成' : '标记为完成'}</span>
             </button>
-          </div>
+          </Surface>
         </div>
       </div>
 

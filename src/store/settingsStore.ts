@@ -1,11 +1,14 @@
+import { FULL_WINDOW_SIZE, FULL_WINDOW_MINIMUM, isMacOS } from '../platform/runtime';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { LiquidGlassSettings, ZenModeSettings, Settings, Theme } from '../types';
-import { api } from '../api/tauri';
+import { api, isDesktopRuntime } from '../api/tauri';
 import { toast } from 'sonner';
-import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeLiquidGlassSettings } from '../utils/liquidGlassSettings';
+import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeGlassPresetSettings } from '../utils/liquidGlassSettings';
 import { DEFAULT_ZEN_MODE_SETTINGS, normalizeZenModeSettings } from '../utils/zenModeSettings';
 import { setZenWindowMode } from '../services/zenWindowService';
+import { normalizeAccentColor } from '../utils/accentColor';
+import { normalizeFontScale } from '../utils/interfaceSettings';
 
 interface SettingsState {
   // 状态
@@ -31,6 +34,9 @@ interface SettingsState {
 
 const defaultSettings: Settings = {
   theme: 'light',
+  accentColor: undefined,
+  fontScale: 100,
+  animationsEnabled: true,
   liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
   zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS },
   notifications: true,
@@ -44,15 +50,19 @@ const defaultSettings: Settings = {
   isEdgeSnapped: false,
   edgePosition: 'right',
   autoStart: false,
+  closeToTray: true,
 };
 
 let appearancePersistenceQueue: Promise<void> = Promise.resolve();
 let zenModeTransitionQueue: Promise<void> = Promise.resolve();
+let autoStartUpdating = false;
+let collapseTransitionPending = false;
 
 const EXPANDED_WINDOW_SIZE_CONSTRAINTS = {
-  minWidth: 400,
-  minHeight: 700,
-} as const;
+  minWidth: FULL_WINDOW_MINIMUM.width,
+  minHeight: FULL_WINDOW_MINIMUM.height,
+};
+const BAR_WINDOW_HEIGHT = 65 * 0.9;
 
 const fixedWindowSizeConstraints = (width: number, height: number) => ({
   minWidth: width,
@@ -126,19 +136,44 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           if (response.success) {
             const stored: Partial<Settings> = response.data ?? {};
             const { minimalMode: legacyZenMode, ...storedSettings } = stored;
-            const loadedSettings = {
+            const loadedSettings: Settings = {
               ...defaultSettings,
               ...storedSettings,
-              liquidGlass: normalizeLiquidGlassSettings(response.data?.liquidGlass),
+              theme: storedSettings.theme === 'dark' ? 'dark' : 'light',
+              accentColor: normalizeAccentColor(storedSettings.accentColor),
+              liquidGlass: normalizeGlassPresetSettings(response.data?.liquidGlass),
               zenMode: normalizeZenModeSettings(storedSettings.zenMode ?? legacyZenMode),
+              closeToTray: storedSettings.closeToTray !== false,
+              fontScale: normalizeFontScale(storedSettings.fontScale),
+              animationsEnabled: storedSettings.animationsEnabled !== false,
             };
+            if (isDesktopRuntime) {
+              try {
+                const autostart = await api.autostart.getAutostartEnabled();
+                if (autostart.success && typeof autostart.data === 'boolean') {
+                  loadedSettings.autoStart = autostart.data;
+                }
+              } catch (error) {
+                console.warn('Failed to read system autostart state:', error);
+              }
+            }
             set({ settings: loadedSettings });
             
             // 应用主题
             if (loadedSettings.theme) {
               document.documentElement.setAttribute('data-theme', loadedSettings.theme);
             }
-
+            
+            // 恢复置顶状态
+            if (loadedSettings.isPinned) {
+              try {
+                await setNativeWindowTopmost(true);
+                console.log('Window pinned state restored');
+              } catch (error) {
+                console.warn('Failed to restore pin state:', error);
+              }
+            }
+            
             // 恢复透明度状态
             if (loadedSettings.transparentEnabled) {
               try {
@@ -180,7 +215,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               
               // 保存默认尺寸（如果还没有保存）
               if (!localStorage.getItem('expandedWindowSize')) {
-                const defaultSize = { width: 550, height: 1000 };
+                const defaultSize = { ...FULL_WINDOW_SIZE };
                 localStorage.setItem('expandedWindowSize', JSON.stringify(defaultSize));
                 console.log('📏 初始窗口尺寸已保存 (默认):', defaultSize.width, 'x', defaultSize.height);
               }
@@ -216,7 +251,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         const newSettings = {
           ...currentSettings,
           ...updates,
-          ...(updates.liquidGlass ? { liquidGlass: normalizeLiquidGlassSettings(updates.liquidGlass) } : {}),
+          ...('accentColor' in updates ? { accentColor: normalizeAccentColor(updates.accentColor) } : {}),
+          ...(updates.fontScale !== undefined ? { fontScale: normalizeFontScale(updates.fontScale) } : {}),
+          ...(updates.liquidGlass ? { liquidGlass: normalizeGlassPresetSettings(updates.liquidGlass) } : {}),
           ...(updates.zenMode ? { zenMode: normalizeZenModeSettings(updates.zenMode) } : {}),
         };
         
@@ -258,7 +295,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
 
       setLiquidGlass: async (updates: Partial<LiquidGlassSettings>) => {
         const previousSettings = get().settings;
-        const liquidGlass = normalizeLiquidGlassSettings({
+        const liquidGlass = normalizeGlassPresetSettings({
           ...previousSettings.liquidGlass,
           ...updates,
         });
@@ -334,6 +371,8 @@ export const useSettingsStore = create<SettingsState>()(devtools(
       },
       
       toggleIsCollapsed: async () => {
+        if (collapseTransitionPending) return;
+        collapseTransitionPending = true;
         const currentSettings = get().settings;
         const newCollapsedState = !currentSettings.isCollapsed;
         
@@ -341,6 +380,13 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window');
           const appWindow = getCurrentWindow();
           
+          const animated = isMacOS && currentSettings.animationsEnabled !== false;
+          const resize = (width: number, height: number) => appWindow.setSize(new LogicalSize(width, height));
+          // A short content fade on collapse only; expansion resizes immediately.
+          if (animated && newCollapsedState) {
+            document.documentElement.dataset.windowTransition = 'collapsing';
+            await new Promise(resolve => setTimeout(resolve, 45));
+          }
           let newCollapseMode: import('../types').CollapseMode;
           
           if (newCollapsedState) {
@@ -380,16 +426,16 @@ export const useSettingsStore = create<SettingsState>()(devtools(
                 const { width } = JSON.parse(savedSize);
                 targetWidth = width;
               }
-              console.log('📏 切换到条状模式:', targetWidth, 'x 65');
+              console.log('📏 切换到条状模式:', targetWidth, 'x', BAR_WINDOW_HEIGHT);
               collapsedWidth = targetWidth;
-              collapsedHeight = 65;
+              collapsedHeight = BAR_WINDOW_HEIGHT;
             }
 
             // 不再切换 resizable。Tao 在 Windows 上切到 false 会移除
             // WS_THICKFRAME 并重建原生 frame，导致任务栏恢复动画先闪到左上角。
             // 保持创建时的原生样式，仅用相同的 min/max 约束锁定折叠尺寸。
             await appWindow.setSizeConstraints(null);
-            await appWindow.setSize(new LogicalSize(collapsedWidth, collapsedHeight));
+            await resize(collapsedWidth, collapsedHeight);
             await appWindow.setSizeConstraints(
               fixedWindowSizeConstraints(collapsedWidth, collapsedHeight),
             );
@@ -404,10 +450,10 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             if (savedSize) {
               const { width, height } = JSON.parse(savedSize);
               console.log('🔼 恢复到保存的尺寸:', width, 'x', height);
-              await appWindow.setSize(new LogicalSize(width, height));
+              await resize(width, height);
             } else {
-              console.log('🔼 使用默认尺寸: 550 x 1000');
-              await appWindow.setSize(new LogicalSize(550, 1000));
+              console.log('🔼 使用默认尺寸:', FULL_WINDOW_SIZE);
+              await resize(FULL_WINDOW_SIZE.width, FULL_WINDOW_SIZE.height);
             }
 
             // 重新启用展开态最小尺寸；省略 max 会同时保持最大尺寸为空。
@@ -432,6 +478,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
         } catch (error) {
           console.error('Failed to toggle collapsed state:', error);
           toast.error('切换折叠状态失败');
+        } finally {
+          collapseTransitionPending = false;
+          delete document.documentElement.dataset.windowTransition;
         }
       },
       
@@ -582,31 +631,29 @@ export const useSettingsStore = create<SettingsState>()(devtools(
       },
 
       toggleAutoStart: async () => {
-        const currentSettings = get().settings;
-        const newAutoStartState = !currentSettings.autoStart;
-        console.log('[Autostart] toggleAutoStart called, new state:', newAutoStartState);
-
-        // 先更新本地状态
-        const newSettings = {
-          ...currentSettings,
-          autoStart: newAutoStartState,
-        };
-        set({ settings: newSettings });
-
+        if (autoStartUpdating) return;
+        autoStartUpdating = true;
         try {
-          // 调用 Rust 端设置自启动
-          console.log('[Autostart] calling Rust setAutostartEnabled...');
-          const response = await api.autostart.setAutostartEnabled(newAutoStartState);
-          console.log('[Autostart] response:', response);
-          if (response.success) {
-            // 保存到后端
-            await api.settings.updateSettings(newSettings);
-          } else {
+          const response = await api.autostart.setAutostartEnabled(!get().settings.autoStart);
+          if (!response.success || typeof response.data !== 'boolean') {
             toast.error(response.error || '设置自启动失败');
+            return;
+          }
+          // The OS is authoritative; a rejected operation must not flip the switch.
+          const newSettings = { ...get().settings, autoStart: response.data };
+          set({ settings: newSettings });
+          try {
+            const saved = await api.settings.updateSettings(newSettings);
+            if (!saved.success) toast.error('自启动已更改，但保存设置失败，请稍后重试');
+          } catch (error) {
+            console.error('Save autostart preference failed:', error);
+            toast.error('自启动已更改，但保存设置失败，请稍后重试');
           }
         } catch (error) {
           console.error('[Autostart] Failed to toggle autostart:', error);
           toast.error('设置自启动失败');
+        } finally {
+          autoStartUpdating = false;
         }
       },
     }),

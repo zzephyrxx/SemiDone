@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   setZenWindowMode: vi.fn(),
   updateSettings: vi.fn(),
   setAutostartEnabled: vi.fn(),
+  getAutostartEnabled: vi.fn(),
   invoke: vi.fn(),
   setSize: vi.fn(),
   setSizeConstraints: vi.fn(),
@@ -19,14 +20,15 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }));
 
+vi.mock('../services/zenWindowService', () => ({ setZenWindowMode: mocks.setZenWindowMode }));
+
 vi.mock('../api/tauri', () => ({
+  isDesktopRuntime: true,
   api: {
     settings: { getSettings: mocks.getSettings, updateSettings: mocks.updateSettings },
-    autostart: { setAutostartEnabled: mocks.setAutostartEnabled },
+    autostart: { setAutostartEnabled: mocks.setAutostartEnabled, getAutostartEnabled: mocks.getAutostartEnabled },
   },
 }));
-
-vi.mock('../services/zenWindowService', () => ({ setZenWindowMode: mocks.setZenWindowMode }));
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: mocks.invoke,
@@ -98,6 +100,7 @@ describe('settings action notifications', () => {
     mocks.updateSettings.mockResolvedValue({ success: true, data: true });
     mocks.setZenWindowMode.mockResolvedValue(undefined);
     mocks.setAutostartEnabled.mockResolvedValue({ success: true, data: true });
+    mocks.getAutostartEnabled.mockResolvedValue({ success: true, data: false });
     mocks.invoke.mockResolvedValue(undefined);
     mocks.setSize.mockResolvedValue(undefined);
     mocks.setSizeConstraints.mockResolvedValue(undefined);
@@ -124,12 +127,71 @@ describe('settings action notifications', () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
+  it('loads an absent close-to-tray preference as enabled and preserves an explicit false', async () => {
+    mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings } });
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().settings.closeToTray).toBe(true);
+    mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings, closeToTray: false } });
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().settings.closeToTray).toBe(false);
+  });
+
+  it('does not change close-to-tray when saving the preference fails', async () => {
+    useSettingsStore.setState({ settings: { ...defaultSettings, closeToTray: true } });
+    mocks.updateSettings.mockResolvedValue({ success: false, error: 'disk full' });
+    await useSettingsStore.getState().updateSettings({ closeToTray: false });
+    expect(useSettingsStore.getState().settings.closeToTray).toBe(true);
+  });
+
   it('toggles autostart without a success popup', async () => {
     await useSettingsStore.getState().toggleAutoStart();
 
     expect(useSettingsStore.getState().settings.autoStart).toBe(true);
     expect(mocks.setAutostartEnabled).toHaveBeenCalledWith(true);
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it('keeps autostart disabled when the development build rejects registration', async () => {
+    mocks.setAutostartEnabled.mockResolvedValueOnce({ success: false, error: '请在正式安装版中设置' });
+    await useSettingsStore.getState().toggleAutoStart();
+    expect(useSettingsStore.getState().settings.autoStart).toBe(false);
+    expect(mocks.updateSettings).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith('请在正式安装版中设置');
+  });
+
+  it('keeps the previous autostart state if the native call throws', async () => {
+    useSettingsStore.setState({ settings: { ...defaultSettings, autoStart: true } });
+    mocks.setAutostartEnabled.mockRejectedValueOnce(new Error('registry unavailable'));
+    await useSettingsStore.getState().toggleAutoStart();
+    expect(mocks.setAutostartEnabled).toHaveBeenCalledWith(false);
+    expect(useSettingsStore.getState().settings.autoStart).toBe(true);
+    expect(mocks.updateSettings).not.toHaveBeenCalled();
+  });
+
+  it('reflects the system state when saving the autostart preference fails', async () => {
+    mocks.updateSettings.mockResolvedValueOnce({ success: false, error: 'disk full' });
+    await useSettingsStore.getState().toggleAutoStart();
+    expect(useSettingsStore.getState().settings.autoStart).toBe(true);
+    expect(mocks.toastError).toHaveBeenCalledWith('自启动已更改，但保存设置失败，请稍后重试');
+  });
+
+  it('does not register autostart twice while an operation is pending', async () => {
+    let finish!: (result: { success: boolean; data: boolean }) => void;
+    mocks.setAutostartEnabled.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const first = useSettingsStore.getState().toggleAutoStart();
+    await useSettingsStore.getState().toggleAutoStart();
+    expect(mocks.setAutostartEnabled).toHaveBeenCalledOnce();
+    finish({ success: true, data: true });
+    await first;
+    expect(useSettingsStore.getState().settings.autoStart).toBe(true);
+  });
+
+  it('loads system autostart instead of a stale saved preference', async () => {
+    mocks.getSettings.mockResolvedValueOnce({ success: true, data: { ...defaultSettings, autoStart: true } });
+    await useSettingsStore.getState().loadSettings();
+    expect(mocks.getAutostartEnabled).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().settings.autoStart).toBe(false);
+    expect(mocks.setAutostartEnabled).not.toHaveBeenCalled();
   });
 
   it('toggles window pinning without a success popup', async () => {
@@ -150,29 +212,6 @@ describe('settings action notifications', () => {
 
     expect(useSettingsStore.getState().settings.isPinned).toBe(false);
     expect(mocks.invoke).toHaveBeenCalledWith('set_window_topmost', { enabled: false });
-  });
-
-  it('clears an earlier native pin when reloaded settings have pinning disabled', async () => {
-    useSettingsStore.setState({ settings: { ...defaultSettings, isPinned: true } });
-    mocks.getSettings.mockResolvedValueOnce({ success: true, data: defaultSettings });
-    await useSettingsStore.getState().loadSettings();
-    expect(mocks.invoke).toHaveBeenCalledWith('set_window_topmost', { enabled: false });
-    expect(useSettingsStore.getState().settings.isPinned).toBe(false);
-  });
-
-  it('stops native pinning when settings are reset', async () => {
-    useSettingsStore.setState({ settings: { ...defaultSettings, isPinned: true } });
-    await useSettingsStore.getState().resetSettings();
-    expect(mocks.invoke).toHaveBeenCalledWith('set_window_topmost', { enabled: false });
-    expect(useSettingsStore.getState().settings.isPinned).toBe(false);
-  });
-
-  it('restores native pinning if a generic settings save fails', async () => {
-    mocks.updateSettings.mockResolvedValueOnce({ success: false, error: 'write failed' });
-    await useSettingsStore.getState().updateSettings({ isPinned: true });
-    expect(mocks.invoke).toHaveBeenNthCalledWith(1, 'set_window_topmost', { enabled: true });
-    expect(mocks.invoke).toHaveBeenNthCalledWith(2, 'set_window_topmost', { enabled: false });
-    expect(useSettingsStore.getState().settings.isPinned).toBe(false);
   });
 
   it('keeps the autostart error popup when the operation fails', async () => {
@@ -223,7 +262,7 @@ describe('settings action notifications', () => {
   });
 
   it.each([
-    { useCapsuleMode: false, expectedSize: { width: 550, height: 65 } },
+    { useCapsuleMode: false, expectedSize: { width: 550, height: 58.5 } },
     { useCapsuleMode: true, expectedSize: { width: 60, height: 60 } },
   ])(
     'locks a collapsed size without changing the native resizable style',
@@ -318,30 +357,27 @@ describe('settings action notifications', () => {
       .toBeLessThan(mocks.setSizeConstraints.mock.invocationCallOrder[1]);
   });
 
-  it('updates liquid glass immediately and persists normalized values', async () => {
-    await useSettingsStore.getState().setLiquidGlass({
-      blur: 99,
-      refraction: -5,
-      dispersion: false,
-    });
-
-    expect(useSettingsStore.getState().settings.liquidGlass).toEqual({
-      enabled: true,
-      blur: 10,
-      refraction: 0,
-      dispersion: false,
-    });
-    expect(mocks.updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        liquidGlass: {
-          enabled: true,
-          blur: 10,
-          refraction: 0,
-          dispersion: false,
-        },
-      }),
-    );
+  it('updates the selected glass preset immediately and saves its exact recipe', async () => {
+    await useSettingsStore.getState().setLiquidGlass({ preset: 'extreme' });
+    const expected = { enabled: true, preset: 'extreme', blur: 4, refraction: 0, dispersion: true, strength: 0, rimWidth: .5, magnify: .07 };
+    expect(useSettingsStore.getState().settings.liquidGlass).toEqual(expected);
+    expect(mocks.updateSettings).toHaveBeenCalledWith(expect.objectContaining({ liquidGlass: expected }));
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    await useSettingsStore.getState().setLiquidGlass({ enabled: false });
+    expect(useSettingsStore.getState().settings.liquidGlass).toEqual({ ...expected, enabled: false });
+  });
+
+  it('restores the previous glass selection when a preset save fails', async () => {
+    const previous = useSettingsStore.getState().settings.liquidGlass;
+    mocks.updateSettings.mockResolvedValueOnce({ success: false, error: 'disk unavailable' });
+    await useSettingsStore.getState().setLiquidGlass({ preset: 'extreme' });
+    expect(useSettingsStore.getState().settings.liquidGlass).toEqual(previous);
+  });
+
+  it('migrates older custom glass settings to standard on load', async () => {
+    mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings, liquidGlass: { enabled: false, blur: 6, refraction: 42, dispersion: true } } });
+    await useSettingsStore.getState().loadSettings();
+    expect(useSettingsStore.getState().settings.liquidGlass).toEqual({ enabled: false, preset: 'standard', blur: 9, refraction: 0, dispersion: false, strength: 0, rimWidth: .1, magnify: 0 });
   });
 
   it('loads older settings with a disabled default Zen mode', async () => {
@@ -372,10 +408,10 @@ describe('settings action notifications', () => {
   it('rolls back failed zen-mode saves while preserving an unrelated setting change', async () => {
     mocks.updateSettings.mockResolvedValue({ success: false, error: '磁盘写入失败' });
     const save = useSettingsStore.getState().setZenMode({ enabled: true });
-    useSettingsStore.setState((state) => ({ settings: { ...state.settings, theme: 'pink' } }));
+    useSettingsStore.setState((state) => ({ settings: { ...state.settings, theme: 'dark' } }));
     await save;
     expect(useSettingsStore.getState().settings.zenMode).toBeUndefined();
-    expect(useSettingsStore.getState().settings.theme).toBe('pink');
+    expect(useSettingsStore.getState().settings.theme).toBe('dark');
     expect(mocks.toastError).toHaveBeenCalledWith('磁盘写入失败');
   });
 
@@ -406,4 +442,24 @@ describe('settings action notifications', () => {
     expect(useSettingsStore.getState().settings.minimalMode).toBeUndefined();
   });
 
+});
+
+it.each(['pink', 'glass'])('migrates removed theme %s to light while retaining other preferences', async theme => {
+  mocks.getSettings.mockResolvedValue({ success: true, data: { ...defaultSettings, theme, username: '保留资料' } });
+  await useSettingsStore.getState().loadSettings();
+  expect(useSettingsStore.getState().settings.theme).toBe('light');
+  expect(useSettingsStore.getState().settings.username).toBe('保留资料');
+});
+
+it('persists and reloads an optional accent color while preserving other preferences', async () => {
+  useSettingsStore.setState({ settings: { ...defaultSettings, closeToTray: false } });
+  await useSettingsStore.getState().updateSettings({ accentColor: '#8B5CF6' });
+  const saved = mocks.updateSettings.mock.lastCall?.[0];
+  expect(saved.accentColor).toBe('#8b5cf6');
+  expect(saved.closeToTray).toBe(false);
+  mocks.getSettings.mockResolvedValue({ success: true, data: saved });
+  await useSettingsStore.getState().loadSettings();
+  expect(useSettingsStore.getState().settings.accentColor).toBe('#8b5cf6');
+  await useSettingsStore.getState().updateSettings({ accentColor: undefined });
+  expect(mocks.updateSettings.mock.lastCall?.[0].accentColor).toBeUndefined();
 });

@@ -1,3 +1,4 @@
+import { Surface } from '../../ui/Surface';
 import {
   Circle,
   Eye,
@@ -7,34 +8,42 @@ import {
   Rocket,
   SlidersHorizontal,
   Sun,
-  Waves,
-} from 'lucide-react';
-import type { ReactElement } from 'react';
+  Droplet,
+  Sparkles,
+  Minimize2,
+} from '../../ui/icons';
+import { type ReactElement } from 'react';
 import type { LiquidGlassSettings, Settings, Theme } from '../../types';
-import LiquidGlassPreview from './LiquidGlassPreview';
-import ParameterSlider from './ParameterSlider';
+import AccentColorControls from './AccentColorControls';
+import GlassControls from './GlassControls';
+import { AnimatedCollapse } from '../../ui/Disclosure';
+import { FontSizeControls, TransparencyControls } from './InterfaceControls';
 
 interface AppearanceSettingsSectionProps {
   settings: Settings;
   onThemeChange: (theme: Theme) => void;
+  onAccentColorChange?: (color?: string) => void;
   onLiquidGlassChange: (updates: Partial<LiquidGlassSettings>) => void;
   onToggleAutoStart: () => void;
+  autoStartAvailable?: boolean;
   onTransparencyToggle: (enabled: boolean) => void;
   onTransparencyLevelChange: (level: number) => void;
   onToggleCapsuleMode: () => void;
+  onCloseToTrayChange?: (enabled: boolean) => void;
+  onFontScaleChange?: (value: number) => void;
+  onAnimationsChange?: (enabled: boolean) => void;
 }
 
-const THEMES: Theme[] = ['light', 'dark', 'pink'];
+const THEMES: Theme[] = ['light', 'dark'];
 
 function themeName(theme: Theme): string {
   if (theme === 'light') return '明亮';
   if (theme === 'dark') return '深色';
-  return '梦粉';
+  return '明亮';
 }
 
 function themeIcon(theme: Theme): ReactElement {
   if (theme === 'dark') return <Moon className="h-3.5 w-3.5 text-blue-400" />;
-  if (theme === 'pink') return <Heart className="h-3.5 w-3.5 text-rose-500" />;
   return <Sun className="h-3.5 w-3.5 text-amber-500" />;
 }
 
@@ -84,8 +93,8 @@ interface SettingTileProps {
 
 function SettingTile({ icon, iconClass, title, description, control }: SettingTileProps) {
   return (
-    <div className="flex min-h-[88px] items-center gap-3 rounded-xl border border-border/80 bg-background/35 p-3 transition-colors hover:border-primary/25">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
+    <div className="settings-tile flex min-h-[76px] items-center gap-3 rounded-xl border border-border/80 bg-background/35 p-3 transition-colors hover:border-primary/25">
+      <div className={`settings-row-icon flex h-5 w-5 shrink-0 items-center justify-center ${iconClass}`}>
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -100,18 +109,23 @@ function SettingTile({ icon, iconClass, title, description, control }: SettingTi
 export default function AppearanceSettingsSection({
   settings,
   onThemeChange,
+  onAccentColorChange,
   onLiquidGlassChange,
   onToggleAutoStart,
+  autoStartAvailable = true,
   onTransparencyToggle,
   onTransparencyLevelChange,
   onToggleCapsuleMode,
+  onCloseToTrayChange,
+  onFontScaleChange,
+  onAnimationsChange,
 }: AppearanceSettingsSectionProps) {
   const transparencyDisabled = settings.theme !== 'dark' && !settings.transparentEnabled;
 
   return (
-    <section
+    <Surface as="section" htmlRole="region"
       aria-labelledby="appearance-settings-title"
-      className="card card-shadow slide-up rounded-2xl p-3"
+      className="settings-section card card-shadow rounded-2xl p-3"
     >
       <div className="mb-3 flex items-center gap-2 px-1">
         <SlidersHorizontal className="h-4 w-4 text-blue-500" />
@@ -120,8 +134,8 @@ export default function AppearanceSettingsSection({
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 min-[480px]:grid-cols-2">
-        <div className="min-h-[88px] rounded-xl border border-border/80 bg-background/35 p-3 transition-colors hover:border-primary/25">
+      <div className="appearance-grid appearance-rows">
+        <div className="theme-picker appearance-setting-row">
           <div className="mb-2 flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
               <Palette className="h-4 w-4 text-blue-500" />
@@ -130,7 +144,7 @@ export default function AppearanceSettingsSection({
               <p className="text-sm font-semibold text-foreground">主题</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted/70 p-1">
+          <div className="theme-options">
             {THEMES.map((theme) => (
               <button
                 type="button"
@@ -138,34 +152,37 @@ export default function AppearanceSettingsSection({
                 onClick={() => onThemeChange(theme)}
                 aria-label={`${themeName(theme)}主题`}
                 aria-pressed={settings.theme === theme}
-                className={`flex items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-                  settings.theme === theme
-                    ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`theme-option ${settings.theme === theme ? 'is-selected' : ''}`}
               >
-                {themeIcon(theme)}
-                <span>{themeName(theme)}</span>
+                <span className={`theme-miniature theme-miniature--${theme}`} aria-hidden="true">
+                  <span className="theme-miniature-nav"><i /><i /><i /></span>
+                  <span className="theme-miniature-content"><i /><span><i /><i /><i /></span><i /><i /></span>
+                </span>
+                <span className="theme-option-label">{themeIcon(theme)}<span>{themeName(theme)}</span><span className="theme-selection-dot" /></span>
               </button>
             ))}
           </div>
         </div>
 
+        <AccentColorControls value={settings.accentColor} onChange={color => onAccentColorChange?.(color)} />
+
         <SettingTile
           icon={<Rocket className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
           iconClass="bg-emerald-500/10"
           title="开机自启"
-          description="开机自动运行"
+          description={autoStartAvailable ? '开机自动运行' : '请在正式安装版中设置'}
           control={(
             <SettingSwitch
               label="开机自启动"
               checked={settings.autoStart}
               onChange={onToggleAutoStart}
+              disabled={!autoStartAvailable}
               accentClass="bg-emerald-500"
             />
           )}
         />
 
+        <div className="setting-control-group" data-testid="transparency-setting">
         <SettingTile
           icon={<Eye className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
           iconClass="bg-cyan-500/10"
@@ -181,6 +198,10 @@ export default function AppearanceSettingsSection({
             />
           )}
         />
+          <AnimatedCollapse open={settings.transparentEnabled === true}>
+            <TransparencyControls value={settings.transparentLevel ?? 100} onCommit={onTransparencyLevelChange} />
+          </AnimatedCollapse>
+        </div>
 
         <SettingTile
           icon={<Circle className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
@@ -197,74 +218,48 @@ export default function AppearanceSettingsSection({
           )}
         />
 
-        <div className="min-[480px]:col-span-2 rounded-xl border border-border/80 bg-background/35 p-3 transition-colors hover:border-primary/25">
+        <SettingTile
+          icon={<Minimize2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+          iconClass="bg-primary/10"
+          title="关闭到托盘"
+          description="关闭时隐藏到托盘"
+          control={(
+            <SettingSwitch label="关闭到托盘" checked={settings.closeToTray !== false}
+              onChange={() => onCloseToTrayChange?.(settings.closeToTray === false)} accentClass="bg-primary" />
+          )}
+        />
+
+        <div className="appearance-setting-row glass-settings-row">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-              <Waves className="h-5 w-5 text-primary" />
+            <div className="settings-row-icon flex h-5 w-5 shrink-0 items-center justify-center">
+              <Droplet className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">液态玻璃</p>
-              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">应用于常用弹窗，并跟随当前主题</p>
+              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">用于导航、弹窗与统计图表</p>
             </div>
             <SettingSwitch
               label="液态玻璃"
               checked={settings.liquidGlass.enabled}
-              onChange={() => onLiquidGlassChange({ enabled: !settings.liquidGlass.enabled })}
+              onChange={() => {
+                onLiquidGlassChange({ enabled: !settings.liquidGlass.enabled });
+              }}
               accentClass="bg-cyan-600 dark:bg-cyan-500"
             />
           </div>
 
-          {settings.liquidGlass.enabled && (<>
-            <div
-              data-testid="liquid-glass-controls"
-              className="mt-3 grid gap-2 border-t border-border/70 pt-3"
-            >
-              <ParameterSlider label="模糊程度" min={1} max={10} value={settings.liquidGlass.blur} suffix=" / 10"
-                onChange={(blur) => onLiquidGlassChange({ blur })} />
-              <ParameterSlider label="折射强度" min={0} max={100} value={settings.liquidGlass.refraction} suffix="%"
-                onChange={(refraction) => onLiquidGlassChange({ refraction })} />
-
-              <div className="flex min-w-0 items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <p className="text-xs font-medium text-foreground">色散效果</p>
-                  <p className="text-[11px] text-muted-foreground">边缘轻微分色</p>
-                </div>
-                <SettingSwitch
-                  label="色散效果"
-                  checked={settings.liquidGlass.dispersion}
-                  onChange={() => onLiquidGlassChange({ dispersion: !settings.liquidGlass.dispersion })}
-                  accentClass="bg-cyan-600 dark:bg-cyan-500"
-                />
-              </div>
-            </div>
-            <LiquidGlassPreview settings={settings.liquidGlass} />
-          </>)}
+          {settings.liquidGlass.enabled && (
+            <GlassControls settings={settings.liquidGlass} onCommit={onLiquidGlassChange} />
+          )}
         </div>
 
-        {settings.transparentEnabled && (
-          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-2.5 min-[480px]:col-span-2">
-            <div className="mb-2 flex items-center justify-between text-xs">
-              <label htmlFor="transparency-level" className="font-medium text-foreground">
-                窗口透明度
-              </label>
-              <span className="tabular-nums text-muted-foreground">
-                {settings.transparentLevel ?? 100}%
-              </span>
-            </div>
-            <input
-              id="transparency-level"
-              type="range"
-              aria-label="透明度"
-              min="1"
-              max="100"
-              step="1"
-              value={settings.transparentLevel ?? 100}
-              onChange={(event) => onTransparencyLevelChange(Number(event.target.value))}
-              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-cyan-500/15 accent-cyan-500"
-            />
-          </div>
-        )}
+        <SettingTile icon={<Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400" />} iconClass="bg-primary/10"
+          title="界面动效" description="任务完成、导航与图标动效"
+          control={<SettingSwitch label="界面动效" checked={settings.animationsEnabled !== false}
+            onChange={() => onAnimationsChange?.(settings.animationsEnabled === false)} accentClass="bg-primary" />} />
+        <FontSizeControls value={settings.fontScale ?? 100} onCommit={value => onFontScaleChange?.(value)} />
+
       </div>
-    </section>
+    </Surface>
   );
 }

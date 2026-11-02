@@ -2,19 +2,36 @@ use crate::models::*;
 use crate::storage::Storage;
 use std::sync::Mutex;
 use tauri::{Manager, State};
-use tauri_plugin_autostart::ManagerExt;
 
 type StorageState<'a> = State<'a, Mutex<Storage>>;
 
 #[tauri::command]
 pub async fn set_window_topmost(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
-    let pinning = window.state::<crate::window_pinning::WindowPinning>().inner().clone();
+    let pinning = window
+        .state::<crate::window_pinning::WindowPinning>()
+        .inner()
+        .clone();
     pinning.configure(window, Some(enabled), None)
 }
 
 #[tauri::command]
-pub async fn set_window_pin_mode(window: tauri::WebviewWindow, compact: bool) -> Result<(), String> {
-    let pinning = window.state::<crate::window_pinning::WindowPinning>().inner().clone();
+pub async fn reassert_window_topmost(window: tauri::WebviewWindow) -> Result<(), String> {
+    let pinning = window
+        .state::<crate::window_pinning::WindowPinning>()
+        .inner()
+        .clone();
+    pinning.configure(window, None, None)
+}
+
+#[tauri::command]
+pub async fn set_window_pin_mode(
+    window: tauri::WebviewWindow,
+    compact: bool,
+) -> Result<(), String> {
+    let pinning = window
+        .state::<crate::window_pinning::WindowPinning>()
+        .inner()
+        .clone();
     pinning.configure(window, None, Some(compact))
 }
 
@@ -117,11 +134,15 @@ pub async fn get_settings(storage: StorageState<'_>) -> Result<ApiResponse<Setti
 pub async fn update_settings(
     settings: Settings,
     storage: StorageState<'_>,
+    lifecycle: State<'_, crate::window_lifecycle::WindowLifecycle>,
 ) -> Result<ApiResponse<Settings>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
     match storage.save_settings(&settings) {
-        Ok(_) => Ok(ApiResponse::success(settings)),
+        Ok(_) => {
+            lifecycle.set_close_to_tray(settings.close_to_tray);
+            Ok(ApiResponse::success(settings))
+        }
         Err(e) => Ok(ApiResponse::error(format!("保存设置失败: {}", e))),
     }
 }
@@ -188,7 +209,10 @@ pub async fn import_data(
 }
 
 #[tauri::command]
-pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<bool>, String> {
+pub async fn clear_all_data(
+    storage: StorageState<'_>,
+    lifecycle: State<'_, crate::window_lifecycle::WindowLifecycle>,
+) -> Result<ApiResponse<bool>, String> {
     let storage = storage.lock().map_err(|e| e.to_string())?;
 
     // 1. 清空 tasks.json
@@ -202,6 +226,7 @@ pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<boo
     if let Err(e) = storage.save_settings(&default_settings) {
         return Ok(ApiResponse::error(format!("重置设置失败: {}", e)));
     }
+    lifecycle.set_close_to_tray(default_settings.close_to_tray);
     println!("[Clear] settings.json 已重置");
 
     if let Err(e) = storage.clear_usage_data() {
@@ -224,6 +249,24 @@ pub async fn clear_all_data(storage: StorageState<'_>) -> Result<ApiResponse<boo
     println!("[Clear] 所有数据已清除");
 
     Ok(ApiResponse::success(true))
+}
+
+#[tauri::command]
+pub async fn close_main_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    if window
+        .state::<crate::window_lifecycle::WindowLifecycle>()
+        .close_to_tray()
+    {
+        let pinning = window.state::<crate::window_pinning::WindowPinning>();
+        pinning.set_hidden(true);
+        if let Err(error) = window.hide() {
+            pinning.set_hidden(false);
+            return Err(error.to_string());
+        }
+        Ok(())
+    } else {
+        window.close().map_err(|error| error.to_string())
+    }
 }
 
 #[tauri::command]
@@ -556,17 +599,9 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
 
 #[tauri::command]
 pub async fn get_autostart_enabled(app: tauri::AppHandle) -> Result<ApiResponse<bool>, String> {
-    println!("[Autostart] get_autostart_enabled called");
-    let autostart_manager = app.autolaunch();
-    match autostart_manager.is_enabled() {
-        Ok(enabled) => {
-            println!("[Autostart] is_enabled = {}", enabled);
-            Ok(ApiResponse::success(enabled))
-        }
-        Err(e) => {
-            println!("[Autostart] is_enabled error: {}", e);
-            Ok(ApiResponse::error(format!("获取自启动状态失败: {}", e)))
-        }
+    match crate::autostart::is_enabled(&app) {
+        Ok(enabled) => Ok(ApiResponse::success(enabled)),
+        Err(error) => Ok(ApiResponse::error(format!("获取自启动状态失败: {error}"))),
     }
 }
 
@@ -575,27 +610,9 @@ pub async fn set_autostart_enabled(
     app: tauri::AppHandle,
     enabled: bool,
 ) -> Result<ApiResponse<bool>, String> {
-    println!(
-        "[Autostart] set_autostart_enabled called with enabled = {}",
-        enabled
-    );
-    let autostart_manager = app.autolaunch();
-    let result = if enabled {
-        println!("[Autostart] calling enable()");
-        autostart_manager.enable()
-    } else {
-        println!("[Autostart] calling disable()");
-        autostart_manager.disable()
-    };
-    match result {
-        Ok(_) => {
-            println!("[Autostart] success!");
-            Ok(ApiResponse::success(enabled))
-        }
-        Err(e) => {
-            println!("[Autostart] error: {}", e);
-            Ok(ApiResponse::error(format!("设置自启动状态失败: {}", e)))
-        }
+    match crate::autostart::set_enabled(&app, enabled) {
+        Ok(actual) => Ok(ApiResponse::success(actual)),
+        Err(error) => Ok(ApiResponse::error(format!("设置自启动状态失败: {error}"))),
     }
 }
 
@@ -719,5 +736,17 @@ mod tests {
         }
 
         fs::remove_dir_all(root).expect("test directory should be cleaned up");
+    }
+}
+
+#[tauri::command]
+pub fn is_primary_mouse_down() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        tauri_nspanel::objc2_app_kit::NSEvent::pressedMouseButtons() & 1 != 0
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
     }
 }

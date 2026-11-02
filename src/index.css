@@ -1,7 +1,5 @@
 /* 导入主题样式 */
 @import './styles/themes/light.css';
-@import './styles/themes/pink.css';
-@import './styles/themes/glass.css';
 
 @tailwind base;
 @tailwind components;
@@ -226,14 +224,14 @@ body.transparent-mode * {
 }
 
 /* 透明模式下弹窗蒙版 - 增强可读性；公告弹窗可显式选择不使用蒙版 */
-body.transparent-mode .fixed.inset-0:not([data-no-overlay]):not([data-liquid-glass-overlay]):not(.liquid-glass-modal-overlay) {
+body.transparent-mode .fixed.inset-0:not([data-no-overlay]):not([data-liquid-glass-overlay]) {
   background-color: rgba(0, 0, 0, 0.7) !important;
   backdrop-filter: blur(4px);
 }
 
 /* 透明模式下弹窗内容 - 不透明背景 */
-body.transparent-mode .fixed.inset-0:not([data-liquid-glass-overlay]) > div:not(.liquid-glass-modal-surface):not(.liquid-glass-modal-shell),
-body.transparent-mode [role="dialog"]:not([data-liquid-glass-dialog]):not(.liquid-glass-modal-surface),
+body.transparent-mode .fixed.inset-0:not([data-liquid-glass-overlay]) > div,
+body.transparent-mode [role="dialog"]:not([data-liquid-glass-dialog]),
 body.transparent-mode [role="alertdialog"] {
   background-color: hsl(var(--card)) !important;
   backdrop-filter: none;
@@ -1175,7 +1173,7 @@ body.transparent-mode [role="alertdialog"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-glass-control {
+  html:not([data-ui-motion='true']) .liquid-glass-control {
     transform: none !important;
     transition: none;
   }

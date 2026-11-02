@@ -18,14 +18,14 @@ const currentResult: UpdateCheckResult = {
 };
 
 describe('VersionUpdateBadge', () => {
-  it('stays quiet when the installed version is current', async () => {
+  it('shows that the installed version is current', async () => {
     const checkForUpdate = vi.fn().mockResolvedValue(currentResult);
-    const { container } = render(
+    render(
       <VersionUpdateBadge appVersion="5.0.0" checkForUpdate={checkForUpdate} />,
     );
 
     await waitFor(() => expect(checkForUpdate).toHaveBeenCalledWith('5.0.0'));
-    await waitFor(() => expect(container).toBeEmptyDOMElement());
+    expect(await screen.findByText('已是最新')).toBeVisible();
   });
 
   it('opens GitHub from the available-update capsule', async () => {

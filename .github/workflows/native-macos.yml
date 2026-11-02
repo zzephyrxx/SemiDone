@@ -1,0 +1,48 @@
+name: Native macOS preview
+on:
+  push:
+    branches: ['master', 'codex/**']
+    tags: ['native-v*']
+    paths: ['native/**', '.github/workflows/native-macos.yml', 'src-tauri/icons/icon.icns']
+  pull_request:
+    paths: ['native/**', '.github/workflows/native-macos.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test native data layer
+        run: native/macos/scripts/swift.sh test
+      - name: Package Apple Silicon preview
+        run: native/macos/scripts/package.sh
+      - name: Validate native release tag
+        if: startsWith(github.ref, 'refs/tags/native-v')
+        run: |
+          version=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' 'release/macos-native/SemiDone Native.app/Contents/Info.plist')
+          test "${GITHUB_REF_NAME#native-v}" = "$version"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SemiDone-Native-Apple-Silicon
+          path: |
+            release/macos-native/*.dmg
+            release/macos-native/*.sha256
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/native-v')
+    needs: native
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SemiDone-Native-Apple-Silicon
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: true
+          name: SemiDone Native ${{ github.ref_name }}
+          files: release/*

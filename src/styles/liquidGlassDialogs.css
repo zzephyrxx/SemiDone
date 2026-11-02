@@ -12,16 +12,15 @@
 }
 
 .liquid-glass-modal-overlay {
-  transition: background-color 180ms ease;
+  transition: background-color 120ms ease;
 }
 
 .liquid-glass-modal-surface {
   background-clip: padding-box;
   transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    backdrop-filter 180ms ease;
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
 html[data-liquid-glass-dialogs='true'] .liquid-glass-modal-overlay {
@@ -39,34 +38,9 @@ html[data-liquid-glass-dialogs='true'] .liquid-glass-modal-surface {
       hsl(var(--card) / 0.58),
       hsl(var(--card) / 0.22)
     ) !important;
-  -webkit-backdrop-filter:
-    url(#semidone-dialog-refraction)
-    blur(var(--liquid-glass-dialog-blur))
-    saturate(1.22)
-    brightness(1.04);
-  backdrop-filter:
-    url(#semidone-dialog-refraction)
-    blur(var(--liquid-glass-dialog-blur))
-    saturate(1.22)
-    brightness(1.04);
-  box-shadow:
-    0 22px 54px rgba(0, 0, 0, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
-}
-
-html[data-liquid-glass-dialogs='true'][data-liquid-glass-dispersion='true']
-  .liquid-glass-modal-surface {
-  -webkit-backdrop-filter:
-    url(#semidone-dialog-chromatic-refraction)
-    blur(var(--liquid-glass-dialog-blur))
-    saturate(1.38)
-    contrast(1.04);
-  backdrop-filter:
-    url(#semidone-dialog-chromatic-refraction)
-    blur(var(--liquid-glass-dialog-blur))
-    saturate(1.38)
-    contrast(1.04);
+  -webkit-backdrop-filter: var(--surface-filter, var(--liquid-glass-surface-filter));
+  backdrop-filter: var(--surface-filter, var(--liquid-glass-surface-filter));
+  box-shadow: none !important;
 }
 
 /* 明亮主题的玻璃弹窗使用更深的正文和说明文字，避免灰字被透出的背景吞没。 */
@@ -117,10 +91,6 @@ html[data-theme='dark'][data-liquid-glass-dialogs='true'] .liquid-glass-modal-su
   background:
     radial-gradient(circle at 14% 5%, rgba(255, 255, 255, 0.18), transparent 35%),
     linear-gradient(145deg, hsl(var(--card) / 0.64), hsl(var(--card) / 0.3)) !important;
-  box-shadow:
-    0 24px 58px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {

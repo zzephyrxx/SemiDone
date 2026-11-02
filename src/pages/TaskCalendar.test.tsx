@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { Task } from '../types';
 import { TaskCalendarContent } from './TaskCalendar';
 
-afterEach(cleanup);
+beforeEach(() => localStorage.removeItem('semidone-calendar-view'));
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const tasks: Task[] = [
   {
@@ -45,7 +46,11 @@ describe('TaskCalendarContent', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: '任务视图' })).toBeVisible();
+    const views = screen.getByRole('group', { name: '日历视图' });
+    expect(views).toBeVisible();
+    expect(views.closest('section')).not.toBeNull();
+    expect(screen.queryByText('任务视图')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '月视图' }));
     expect(screen.getByText('2026年7月')).toBeVisible();
     expect(screen.getByText('本月完成')).toBeVisible();
     expect(screen.getByText('写完日历视图')).toBeVisible();
@@ -62,8 +67,29 @@ describe('TaskCalendarContent', () => {
     expect(screen.getByRole('button', { name: '月视图' })).toBeVisible();
     expect(screen.queryByRole('button', { name: '日视图' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '周视图' }));
+    expect(screen.getByRole('button', { name: '周视图' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('7月13日 - 7月19日')).toBeVisible();
     expect(screen.getByText('本周完成')).toBeVisible();
   });
+});
+
+it('remembers both view choices across page remounts', () => {
+  const calendar = () => <MemoryRouter><TaskCalendarContent tasks={tasks} initialAnchor={new Date(2026, 6, 15)} /></MemoryRouter>;
+  let view = render(calendar());
+  fireEvent.click(screen.getByRole('button', { name: '月视图' }));
+  view.unmount();
+  view = render(calendar());
+  expect(screen.getByRole('button', { name: '月视图' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: '周视图' }));
+  view.unmount();
+  render(calendar());
+  expect(screen.getByRole('button', { name: '周视图' })).toHaveAttribute('aria-pressed', 'true');
+});
+it('falls back to week for invalid preferences and still switches if storage is unavailable', () => {
+  localStorage.setItem('semidone-calendar-view', 'invalid');
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage unavailable'); });
+  render(<MemoryRouter><TaskCalendarContent tasks={tasks} /></MemoryRouter>);
+  expect(screen.getByRole('button', { name: '周视图' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: '月视图' }));
+  expect(screen.getByRole('button', { name: '月视图' })).toHaveAttribute('aria-pressed', 'true');
 });
