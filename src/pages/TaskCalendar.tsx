@@ -80,7 +80,14 @@ interface TaskCalendarContentProps {
 }
 
 export function TaskCalendarContent({ tasks, initialAnchor = new Date() }: TaskCalendarContentProps) {
-  const [view, setView] = useState<TaskCalendarView>('week');
+  const [view, setView] = useState<TaskCalendarView>(() => {
+    try { return localStorage.getItem('semidone-calendar-view') === 'month' ? 'month' : 'week'; }
+    catch { return 'week'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('semidone-calendar-view', view); }
+    catch { /* A disabled/full WebView store must not prevent changing views. */ }
+  }, [view]);
   const [anchor, setAnchor] = useState(() => initialAnchor);
   const completedTasks = useMemo(
     () => getCompletedTasksInPeriod(tasks, view, anchor),

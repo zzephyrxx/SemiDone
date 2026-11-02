@@ -60,6 +60,7 @@ vi.mock('../utils/windowDragging', () => ({ startWindowDragging: vi.fn() }));
 beforeEach(() => {
   localStorage.clear();
   mocks.settings.collapseMode = 'bar';
+  mocks.settings.useCapsuleMode = false;
   mocks.settings.zenMode = undefined;
   mocks.settings.closeToTray = undefined;
   vi.clearAllMocks();
@@ -74,6 +75,21 @@ afterEach(() => {
 });
 
 describe('Layout header', () => {
+  it.each([
+    ['expanded', false, '折叠为条状', 'chevrons-up'],
+    ['expanded', true, '折叠为悬浮球', 'circle-arrow-collapse'],
+    ['bar', false, '展开窗口', 'chevrons-down'],
+    ['bar', true, '展开窗口', 'chevrons-down'],
+  ] as const)('shows the matching control for %s, floating preference %s', (mode, floating, title, icon) => {
+    mocks.settings.collapseMode = mode;
+    mocks.settings.useCapsuleMode = floating;
+    render(<MemoryRouter><Layout /></MemoryRouter>);
+    const button = screen.getByTitle(title);
+    expect(button.querySelector('[data-animated-icon]')).toHaveAttribute('data-animated-icon', icon);
+    fireEvent.click(button);
+    expect(mocks.toggleIsCollapsed).toHaveBeenCalledOnce();
+  });
+
   it.each(['bar', 'expanded'])('blocks context menus in the %s window', mode => {
     mocks.settings.collapseMode = mode;
     render(<MemoryRouter><Layout /></MemoryRouter>);

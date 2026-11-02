@@ -50,10 +50,9 @@ export default function UserProfileModal({ isOpen, onClose }: UserProfileModalPr
           {avatar ? <img src={avatar} alt="我的头像" className="h-20 w-20 rounded-full object-cover" />
             : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10"><User size={40} className="text-primary" /></div>}
           <label className="profile-avatar-change absolute -bottom-1 -right-1 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/80">
-            <Camera size={20} /><input type="file" aria-label="更换头像" accept="image/*" onChange={changeAvatar} className="sr-only" disabled={isLoading} />
+            <Camera size={17} /><input type="file" aria-label="更换头像" accept="image/*" onChange={changeAvatar} className="sr-only" disabled={isLoading} />
           </label>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">点击相机图标更换头像</p>
       </div>
       <div className="mb-5">
         <label htmlFor="profile-username" className="mb-2 block text-center text-sm font-medium text-foreground">用户名</label>

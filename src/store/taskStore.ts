@@ -5,6 +5,12 @@ import { api } from '../api/tauri';
 import { toast } from 'sonner';
 
 const completingTaskIds = new Set<string>();
+const OVERVIEW_COLLAPSED_KEY = 'semidone-overview-collapsed';
+
+function readOverviewCollapsed(): boolean {
+  try { return localStorage.getItem(OVERVIEW_COLLAPSED_KEY) === 'true'; }
+  catch { return false; }
+}
 
 // 本地计算任务统计（避免每次调用 Rust API）
 const computeLocalStats = (tasks: Task[]): TaskStats => {
@@ -284,7 +290,7 @@ export const useTaskStore = create<TaskState>()(devtools(
     },
     editingTaskId: null,
     sortConfig: { field: 'createdAt', order: 'desc' },
-    statsBarCollapsed: false,
+    statsBarCollapsed: readOverviewCollapsed(),
 
     // 操作
     loadTasks: async () => {
@@ -457,6 +463,8 @@ export const useTaskStore = create<TaskState>()(devtools(
 
     setStatsBarCollapsed: (collapsed: boolean) => {
       set({ statsBarCollapsed: collapsed });
+      try { localStorage.setItem(OVERVIEW_COLLAPSED_KEY, String(collapsed)); }
+      catch { /* The toggle remains usable when local storage is unavailable. */ }
     },
 
     setSelectedTask: (selectedTask: Task | null) => {

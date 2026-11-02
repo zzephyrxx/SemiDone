@@ -52,6 +52,19 @@ html[data-ui-motion='false'] .rdev-glass-layer * { transition: none !important; 
 .workspace-shell { --content-radius: 18px; }
 .workspace-page :is(.card, .settings-section, .task-detail-content > .rounded-lg) { border-radius: var(--content-radius); }
 .workspace-shell .settings-sections .card { border: 1px solid hsl(var(--foreground) / .055); box-shadow: 0 2px 12px hsl(var(--foreground) / .025); }
+/* Settings cards share one continuous rim. The library's two masked highlight
+   spans and inner border otherwise overlap and clip differently at the bottom. */
+.settings-sections section.card.ui-surface[data-material='glass']::after { inset: -1px; border: 1px solid hsl(var(--foreground) / .28); }
+html[data-theme='light'] .settings-sections section.card.ui-surface[data-material='glass']::after { border-color: hsl(var(--foreground) / .18); }
+.settings-sections section.card.ui-surface > .rdev-glass-layer > span { display: none; }
+.settings-sections section.card.ui-surface > .rdev-glass-layer .glass { border: 0; }
+.community-accounts { display: grid; width: 100%; max-width: 440px; margin-inline: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-top: 16px; }
+.community-account { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 10px; margin: 0; }
+.community-qr { display: block; width: min(100%, 136px); aspect-ratio: 1; padding: 6px; border-radius: 12px; object-fit: contain; background: #fff; }
+.community-account-label { display: flex; min-height: 28px; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; text-align: center; line-height: 1.5; }
+.community-platform-logo { display: block; flex-shrink: 0; object-fit: contain; }
+.community-platform-logo--wechat { width: 24px; height: 24px; }
+.community-platform-logo--xiaohongshu { width: 44px; height: 22px; }
 .home-search { border-radius: 14px; background: hsl(var(--card) / .85); }
 .home-task-row .task-card { border-radius: 16px; box-shadow: 0 1px 3px hsl(var(--foreground) / .025); }
 .workspace-shell :is(input, textarea):focus-visible { outline: 2px solid hsl(var(--primary) / .5); outline-offset: 2px; }
@@ -285,7 +298,7 @@ html[data-liquid-glass-dialogs='false'] .ui-surface { -webkit-backdrop-filter: n
   display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
   width: 30px; height: 30px; padding: 0; border-radius: 50%; aspect-ratio: 1;
 }
-.profile-avatar-change { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+.profile-avatar-change { width: 29px; height: 29px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 .profile-avatar-change:focus-within { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .profile-username-row { display: flex; align-items: center; gap: 8px; }
 .profile-username-input, .profile-actions button { border-radius: 20px; }
@@ -328,7 +341,8 @@ html[data-liquid-glass-dialogs='false'] .ui-surface { -webkit-backdrop-filter: n
 .task-card-action .animated-icon > span,
 .task-card-action .animated-icon svg { display: block; width: 100%; height: 100%; }
 .workspace-bar .titlebar > div:last-child > button[data-window-action='pin'] .animated-icon { width: 18px !important; height: 18px !important; }
-/* Info cards share one closed rim, without the library's extra bottom shadows. */
-.settings-info-card { overflow: hidden; }
-.settings-info-card > .rdev-glass-layer > span { display: none; }
-.settings-info-card > .rdev-glass-layer .glass { border: 0; }
+
+/* The SVG includes optical padding; its visible pin fits the 32px hit area. */
+.task-pin-icon { display: block; width: 40px; height: 40px; max-width: none; overflow: visible; flex-shrink: 0; }
+.task-corner-pin { position: absolute; left: 8px; bottom: 6px; z-index: 2; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.task-corner-pin:hover { background: hsl(var(--accent) / .4); }

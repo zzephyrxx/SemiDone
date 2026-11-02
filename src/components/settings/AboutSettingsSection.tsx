@@ -25,7 +25,7 @@ export default function AboutSettingsSection({ appVersion, checkForUpdate, openR
   const donationButton = useRef<HTMLButtonElement>(null);
   const drag = useDraggableDialog(showDonation);
   return <>
-    <Surface as="section" htmlRole="region" aria-labelledby="about-settings-title" className="settings-info-card card card-shadow rounded-2xl p-3">
+    <Surface as="section" htmlRole="region" aria-labelledby="about-settings-title" className="card card-shadow rounded-2xl p-3">
       <div className="mb-2 flex items-center gap-2 px-1"><Info className="h-4 w-4 text-amber-600 dark:text-amber-400" /><h2 id="about-settings-title" className="text-base font-semibold text-foreground">关于</h2></div>
       <div className="divide-y divide-border/50">
         <AboutRow label="当前版本"><span className="tabular-nums">{appVersion || '读取中…'}</span><VersionUpdateBadge appVersion={appVersion} checkForUpdate={checkForUpdate} openRelease={openRelease} /></AboutRow>
@@ -34,16 +34,25 @@ export default function AboutSettingsSection({ appVersion, checkForUpdate, openR
         <AboutRow label="更新日期"><time dateTime={RELEASE_MONTH.replace('.', '-')}>{RELEASE_MONTH}</time></AboutRow>
       </div>
     </Surface>
-    <Surface as="section" htmlRole="region" aria-labelledby="public-account-title" className="settings-info-card card card-shadow rounded-2xl p-3">
-      <div className="flex items-center gap-2"><QrCode className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /><h2 id="public-account-title" className="text-sm font-semibold text-foreground">公众号</h2></div>
-      <div id="public-account-content" className="pt-3 text-center"><img src="/gzh.jpg" alt="公众号二维码" className="mx-auto h-32 w-32 rounded-lg object-contain" /><p className="mt-2 text-xs text-muted-foreground">扫码关注「事半」公众号</p></div>
+    <Surface as="section" htmlRole="region" aria-labelledby="more-content-title" className="card card-shadow rounded-2xl p-3">
+      <div className="flex items-center gap-2"><QrCode className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /><h2 id="more-content-title" className="text-sm font-semibold text-foreground">更多精彩</h2></div>
+      <div className="community-accounts">
+        <figure className="community-account">
+          <img src="/gzh.jpg" alt="公众号二维码" className="community-qr" />
+          <figcaption className="community-account-label text-xs text-foreground"><img src="/gzhLogo.png" alt="公众号" className="community-platform-logo community-platform-logo--wechat" /><span>多魚的知识</span></figcaption>
+        </figure>
+        <figure className="community-account">
+          <img src="/xhs.jpg" alt="小红书二维码" className="community-qr" />
+          <figcaption className="community-account-label text-xs text-foreground"><img src="/xhs.png" alt="小红书" className="community-platform-logo community-platform-logo--xiaohongshu" /><span>Zephyrxx</span></figcaption>
+        </figure>
+      </div>
     </Surface>
     <Overlay label="微信扫码打赏" open={showDonation} onClose={() => setShowDonation(false)} returnFocus={donationButton} dialogRef={drag.surface} dialogClassName="donation-dialog">
       <div className="relative px-6 pb-6 pt-5 text-center">
         <button type="button" aria-label="关闭打赏弹窗" onClick={() => setShowDonation(false)} className="dialog-close-button absolute right-3 top-3 text-muted-foreground hover:bg-accent"><X size={18} /></button>
         <div {...drag.handle} data-testid="donation-dialog-drag-handle" aria-label="拖动打赏弹窗" className="cursor-grab touch-none px-5 py-1 active:cursor-grabbing"><h2 className="text-sm font-semibold text-foreground">微信扫码打赏</h2></div>
         <img src="/wxzs.png" alt="微信打赏码" className="mx-auto mt-5 h-[166px] w-[166px] rounded-full object-cover" />
-        <p className="mt-5 text-xs leading-6 text-muted-foreground">您的每一份认可，都是对我的肯定。</p>
+        <p className="mt-5 text-xs leading-6 text-muted-foreground">您的每一份认可都是我持续打磨与更新的动力</p>
       </div>
     </Overlay>
   </>;

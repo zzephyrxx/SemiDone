@@ -23,6 +23,7 @@ import type { Task, Priority, UpdateTaskRequest } from '../types';
 import { useTaskStore } from '../store/taskStore';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 import DueDateDialog from './DueDateDialog';
+import { IsoPushPin } from './icons/IsoPushPin';
 import { useShallow } from 'zustand/react/shallow';
 
 interface TaskItemProps {
@@ -344,17 +345,6 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
               {/* 上半部分: 标题和右侧信息 */}
               <div className="task-card-top min-h-7 flex items-center justify-between">
                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                  {task.isPinned && (
-                    <button
-                      type="button"
-                      onClick={handleTogglePin}
-                      className="task-title-pin inline-flex h-6 w-5 flex-shrink-0 items-center justify-center rounded-full text-primary hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition-colors"
-                      title="取消置顶"
-                      aria-label="取消置顶"
-                    >
-                      <Pin className="w-3.5 h-3.5" strokeWidth={2.2} />
-                    </button>
-                  )}
                   <h3
                     className={`
                       flex-1 min-w-0 text-base font-medium leading-6 transition-colors duration-200
@@ -479,7 +469,13 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         </div>
       </div>
 
-
+      {task.isPinned && !isEditing && (
+        <button type="button" onClick={handleTogglePin}
+          className="task-corner-pin focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+          title="取消置顶" aria-label="取消置顶">
+          <IsoPushPin className="task-pin-icon" size={40} color={task.priority === 'high' ? 'red' : task.priority === 'medium' ? 'yellow' : 'green'} />
+        </button>
+      )}
     </Surface>
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog

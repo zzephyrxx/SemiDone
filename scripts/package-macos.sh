@@ -5,6 +5,7 @@ if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
   echo '请在 Apple 芯片 Mac 上打包。' >&2
   exit 1
 fi
+npm run icons:tray
 npm run build:tauri -- --target aarch64-apple-darwin --bundles app
 app_dir='src-tauri/target/aarch64-apple-darwin/release/bundle/macos'
 version=$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")

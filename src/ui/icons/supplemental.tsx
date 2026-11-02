@@ -27,3 +27,7 @@ export const EyeDashedGlyph = glyph(["M13.054 18.946a11 11 0 0 1-2.11 0", "M13.0
 export const PanelBottomCloseGlyph = glyph(["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z", "M3 15h18", "m15 8-3 3-3-3"]);
 export const DropletsGlyph = glyph(["M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z", "M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"]);
 export const DatabaseGlyph = glyph(["M21 5a9 3 0 1 1-18 0 9 3 0 0 1 18 0Z", "M3 5V19A9 3 0 0 0 21 19V5", "M3 12A9 3 0 0 0 21 12"]);
+export const ChevronsUpGlyph = glyph(['m7 11 5-5 5 5', 'm7 18 5-5 5 5']);
+export const ChevronsDownGlyph = glyph(['m7 6 5 5 5-5', 'm7 13 5 5 5-5']);
+// User-supplied inward diagonal arrow for collapsing into the floating ball.
+export const CircleArrowCollapseGlyph = glyph(['M12 22a10 10 0 1 1 10-10', 'M18 12h-6v6', 'M22 22 12 12']);

@@ -186,7 +186,7 @@ describe('settings page sections', () => {
     expect(await screen.findByText('已是最新')).toBeVisible();
   });
 
-  it('always shows the public-account QR code without a disclosure', () => {
+  it('shows both platform QR codes and account labels in More Highlights without a disclosure', () => {
     render(
       <AboutSettingsSection
         appVersion="5.0.0"
@@ -196,6 +196,12 @@ describe('settings page sections', () => {
 
     expect(screen.queryByRole('button', { name: '公众号' })).not.toBeInTheDocument();
     expect(screen.getByAltText('公众号二维码')).toBeVisible();
+    expect(screen.getByRole('region', { name: '更多精彩' })).toBeVisible();
+    expect(screen.getByAltText('小红书二维码')).toHaveAttribute('src', '/xhs.jpg');
+    expect(screen.getByAltText('公众号')).toHaveAttribute('src', '/gzhLogo.png');
+    expect(screen.getByAltText('小红书')).toHaveAttribute('src', '/xhs.png');
+    expect(screen.getByText('多魚的知识')).toBeVisible();
+    expect(screen.getByText('Zephyrxx')).toBeVisible();
   });
 
   it('opens the donation QR code from the author row and closes it accessibly', () => {
@@ -225,7 +231,7 @@ describe('settings page sections', () => {
     expect(donationQr.closest('.donation-qr-shell')).toBeNull();
     expect(donationQr).not.toHaveAttribute('style');
     expect(
-      screen.getByText('您的每一份认可，都是对我的肯定。'),
+      screen.getByText('您的每一份认可都是我持续打磨与更新的动力'),
     ).toBeVisible();
     expect(dialog.querySelector('.ui-surface--dialog')).toHaveAttribute('data-glass-renderer', 'rdev');
     fireEvent.keyDown(document, { key: 'Escape' });

@@ -1,7 +1,7 @@
 import React, { useState, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, User, Pin, PinOff, ChevronsDownUp, ChevronsUpDown, X, CalendarDays, ListTodo, ChartNoAxesCombined } from '../ui/icons';
+import { Settings, User, Pin, PinOff, ChevronsUp, ChevronsDown, CircleArrowCollapse, X, CalendarDays, ListTodo, ChartNoAxesCombined } from '../ui/icons';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { useSettingsStore } from '../store/settingsStore';
@@ -247,9 +247,11 @@ export default function Layout() {
                   settings.useCapsuleMode ? '折叠为悬浮球' : '折叠为条状'}
           >
             {settings.collapseMode === 'bar' ? (
-              <ChevronsUpDown className="w-5 h-5" />
+              <ChevronsDown className="w-5 h-5" />
+            ) : settings.useCapsuleMode ? (
+              <CircleArrowCollapse className="w-5 h-5" strokeWidth={2} />
             ) : (
-              <ChevronsDownUp className="w-5 h-5" />
+              <ChevronsUp className="w-5 h-5" />
             )}
           </button>
 

@@ -1,6 +1,6 @@
 import { ChevronsDownUpIcon } from './vendor/chevrons-down-up';
 import { FolderLockIcon } from './vendor/folder-lock';
-import { PinGlyph, PinOffGlyph, TrashGlyph, ImageGlyph, FlagGlyph, TrophyGlyph, TypeGlyph, QrGlyph, CircleGlyph, InfoGlyph, PowerGlyph, EyeDashedGlyph, PanelBottomCloseGlyph, DropletsGlyph, DatabaseGlyph } from './supplemental';
+import { PinGlyph, PinOffGlyph, TrashGlyph, ImageGlyph, FlagGlyph, TrophyGlyph, TypeGlyph, QrGlyph, CircleGlyph, InfoGlyph, PowerGlyph, EyeDashedGlyph, PanelBottomCloseGlyph, DropletsGlyph, DatabaseGlyph, ChevronsUpGlyph, ChevronsDownGlyph, CircleArrowCollapseGlyph } from './supplemental';
 import { useEffect, useRef, type CSSProperties, type ComponentType, type SVGProps } from 'react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { BadgeAlertIcon } from './vendor/badge-alert';
@@ -161,4 +161,7 @@ export const X = animated(XIcon, 'x');
 
 export const ChevronsDownUp = animated(ChevronsDownUpIcon, 'chevrons-down-up');
 export const ChevronsUpDown = animated(ChevronsUpDownIcon, 'chevrons-up-down');
+export const ChevronsUp = animated(ChevronsUpGlyph, 'chevrons-up');
+export const ChevronsDown = animated(ChevronsDownGlyph, 'chevrons-down');
+export const CircleArrowCollapse = animated(CircleArrowCollapseGlyph, 'circle-arrow-collapse');
 export const FolderLock = animated(FolderLockIcon, 'folder-lock');

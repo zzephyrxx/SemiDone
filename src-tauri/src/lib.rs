@@ -121,10 +121,14 @@ pub fn run() {
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            #[cfg(target_os = "macos")]
+            let tray_icon = include_bytes!("../icons/tray-macos.png").as_slice();
+            #[cfg(not(target_os = "macos"))]
+            let tray_icon = include_bytes!("../icons/tray-logo.png").as_slice();
             let tray = TrayIconBuilder::with_id("main")
                 .tooltip("事半·SemiDone")
-                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray-logo.png"))?)
-                .icon_as_template(false)
+                .icon(tauri::image::Image::from_bytes(tray_icon)?)
+                .icon_as_template(cfg!(target_os = "macos"))
                 .menu(&menu)
                 // Left press restores immediately on macOS; only right-click opens the menu.
                 .show_menu_on_left_click(false)
