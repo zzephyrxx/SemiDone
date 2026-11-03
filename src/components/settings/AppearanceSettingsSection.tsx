@@ -1,3 +1,4 @@
+import { isAppStore } from '../../platform/distribution';
 import { Surface } from '../../ui/Surface';
 import {
   Circle,
@@ -182,7 +183,7 @@ export default function AppearanceSettingsSection({
           )}
         />
 
-        <div className="setting-control-group" data-testid="transparency-setting">
+        {!isAppStore && <div className="setting-control-group" data-testid="transparency-setting">
         <SettingTile
           icon={<Eye className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
           iconClass="bg-cyan-500/10"
@@ -201,7 +202,7 @@ export default function AppearanceSettingsSection({
           <AnimatedCollapse open={settings.transparentEnabled === true}>
             <TransparencyControls value={settings.transparentLevel ?? 100} onCommit={onTransparencyLevelChange} />
           </AnimatedCollapse>
-        </div>
+        </div>}
 
         <SettingTile
           icon={<Circle className="h-5 w-5 text-violet-600 dark:text-violet-400" />}

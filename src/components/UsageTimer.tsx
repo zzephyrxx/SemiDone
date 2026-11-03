@@ -1,3 +1,4 @@
+import NumberInput from './NumberInput';
 import { Surface } from '../ui/Surface';
 import React, { useEffect, useRef, useState } from 'react';
 import { Play, Pause, RotateCcw, Settings, BarChart3, Timer, X } from '../ui/icons';
@@ -198,15 +199,9 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
               专注时长
             </label>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                aria-label="专注时长"
-                min="1"
-                max="60"
-                value={settings.workDuration}
-                onChange={(e) => setSettings({...settings, workDuration: Number(e.target.value)})}
-                className="flex-1 px-2 py-1 text-sm border border-border rounded bg-background"
-              />
+              <NumberInput label="专注时长" min={1} max={60}
+                value={settings.workDuration} onValueChange={value => setSettings({...settings, workDuration: Number(value)})}
+                className="flex-1" />
               <span className="text-sm text-muted-foreground">分钟</span>
             </div>
           </div>
@@ -216,15 +211,9 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
               短休息
             </label>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                aria-label="短休息"
-                min="1"
-                max="30"
-                value={settings.breakDuration}
-                onChange={(e) => setSettings({...settings, breakDuration: Number(e.target.value)})}
-                className="flex-1 px-2 py-1 text-sm border border-border rounded bg-background"
-              />
+              <NumberInput label="短休息" min={1} max={30}
+                value={settings.breakDuration} onValueChange={value => setSettings({...settings, breakDuration: Number(value)})}
+                className="flex-1" />
               <span className="text-sm text-muted-foreground">分钟</span>
             </div>
           </div>
@@ -234,15 +223,9 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
               长休息
             </label>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                aria-label="长休息"
-                min="1"
-                max="60"
-                value={settings.longBreakDuration}
-                onChange={(e) => setSettings({...settings, longBreakDuration: Number(e.target.value)})}
-                className="flex-1 px-2 py-1 text-sm border border-border rounded bg-background"
-              />
+              <NumberInput label="长休息" min={1} max={60}
+                value={settings.longBreakDuration} onValueChange={value => setSettings({...settings, longBreakDuration: Number(value)})}
+                className="flex-1" />
               <span className="text-sm text-muted-foreground">分钟</span>
             </div>
           </div>
@@ -252,15 +235,9 @@ function PomodoroSettings({ onClose }: { onClose: () => void }) {
               长休息间隔
             </label>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                aria-label="长休息间隔"
-                min="2"
-                max="10"
-                value={settings.cyclesBeforeLongBreak}
-                onChange={(e) => setSettings({...settings, cyclesBeforeLongBreak: Number(e.target.value)})}
-                className="flex-1 px-2 py-1 text-sm border border-border rounded bg-background"
-              />
+              <NumberInput label="长休息间隔" min={2} max={10}
+                value={settings.cyclesBeforeLongBreak} onValueChange={value => setSettings({...settings, cyclesBeforeLongBreak: Number(value)})}
+                className="flex-1" />
               <span className="text-sm text-muted-foreground">循环</span>
             </div>
           </div>

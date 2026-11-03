@@ -5,6 +5,7 @@ import {
 import { useSettingsStore } from '../store/settingsStore';
 import { isDesktopRuntime } from '../api/tauri';
 import { dragFloatingWindow } from '../services/floatingWindowDrag';
+import { isAppStore } from '../platform/distribution';
 
 interface FloatingBallProps {
   onExpand: () => void;
@@ -167,8 +168,10 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       style={{
-        width: isSnapped ? '30px' : '55px', 
-        height: isSnapped ? '30px' : '55px',
+        // Store windows are clipped natively: fill that circle so the opaque
+        // WebView backing cannot appear as a pale ring around the icon.
+        width: isAppStore ? '100%' : (isSnapped ? '30px' : '55px'),
+        height: isAppStore ? '100%' : (isSnapped ? '30px' : '55px'),
         WebkitAppRegion: 'no-drag',
       } as React.CSSProperties}
     >

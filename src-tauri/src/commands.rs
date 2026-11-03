@@ -6,6 +6,58 @@ use tauri::{Manager, State};
 type StorageState<'a> = State<'a, Mutex<Storage>>;
 
 #[tauri::command]
+pub async fn set_window_expansion_phase(
+    window: tauri::WebviewWindow,
+    phase: String,
+    duration_ms: u32,
+) -> Result<(), String> {
+    let action = match phase.as_str() {
+        "prepare" => 0,
+        "reveal" => 1,
+        "reset" => 2,
+        "collapse" => 3,
+        _ => return Err("无效的窗口展开阶段".into()),
+    };
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    {
+        unsafe extern "C" {
+            fn semidone_window_expansion(
+                window: *mut std::ffi::c_void,
+                phase: u32,
+                duration_ms: f64,
+            );
+        }
+        let (send, receive) = std::sync::mpsc::channel();
+        let target = window.clone();
+        window
+            .run_on_main_thread(move || {
+                let result = target
+                    .ns_window()
+                    .map_err(|error| error.to_string())
+                    .map(|pointer| {
+                        unsafe {
+                            semidone_window_expansion(
+                                pointer.cast(),
+                                action,
+                                duration_ms.min(400) as f64,
+                            )
+                        };
+                    });
+                let _ = send.send(result);
+            })
+            .map_err(|error| error.to_string())?;
+        receive
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .map_err(|error| error.to_string())?
+    }
+    #[cfg(not(all(target_os = "macos", feature = "app-store")))]
+    {
+        let _ = (window, action, duration_ms);
+        Ok(())
+    }
+}
+
+#[tauri::command]
 pub async fn set_window_topmost(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
     let pinning = window
         .state::<crate::window_pinning::WindowPinning>()
@@ -285,14 +337,20 @@ pub async fn get_data_dir_path(storage: StorageState<'_>) -> Result<ApiResponse<
 pub async fn open_file_with_system(
     file_name: String,
     file_data: String,
-    _file_type: String,
+    file_type: String,
 ) -> Result<ApiResponse<bool>, String> {
+    let _ = file_type;
     use base64::{engine::general_purpose, Engine as _};
     use std::fs;
 
     // 创建临时文件
     let temp_dir = std::env::temp_dir();
-    let file_path = temp_dir.join(&file_name);
+    let safe_name = std::path::Path::new(&file_name)
+        .file_name()
+        .ok_or("无效文件名")?;
+    let temp_dir = temp_dir.join(format!("semidone-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+    let file_path = temp_dir.join(safe_name);
 
     // 解码 base64 数据
     match general_purpose::STANDARD.decode(&file_data) {
@@ -314,7 +372,7 @@ pub async fn open_file_with_system(
 
                     #[cfg(target_os = "macos")]
                     {
-                        match std::process::Command::new("open").arg(&file_path).spawn() {
+                        match crate::macos_files::open_path(file_path.as_ref()) {
                             Ok(_) => Ok(ApiResponse::success(true)),
                             Err(e) => Ok(ApiResponse::error(format!("打开文件失败: {}", e))),
                         }
@@ -361,7 +419,7 @@ pub async fn open_file_by_path(file_path: String) -> Result<ApiResponse<bool>, S
 
     #[cfg(target_os = "macos")]
     {
-        match std::process::Command::new("open").arg(&file_path).spawn() {
+        match crate::macos_files::open_path(file_path.as_ref()) {
             Ok(_) => Ok(ApiResponse::success(true)),
             Err(e) => Ok(ApiResponse::error(format!("打开文件失败: {}", e))),
         }
@@ -447,7 +505,7 @@ pub async fn open_folder_in_explorer(folder_path: String) -> Result<ApiResponse<
 
     #[cfg(target_os = "macos")]
     {
-        match std::process::Command::new("open").arg(&folder_path).spawn() {
+        match crate::macos_files::open_path(std::path::Path::new(&folder_path)) {
             Ok(_) => Ok(ApiResponse::success(true)),
             Err(e) => Ok(ApiResponse::error(format!("打开文件夹失败: {}", e))),
         }
@@ -508,6 +566,11 @@ pub async fn migrate_data_dir(
     new_path: String,
     storage: StorageState<'_>,
 ) -> Result<ApiResponse<bool>, String> {
+    if cfg!(feature = "app-store") {
+        return Ok(ApiResponse::error(
+            "商店版的数据保存在应用容器内，不能更改目录".into(),
+        ));
+    }
     println!("[Storage] migrate_data_dir called, new_path: {}", new_path);
 
     let mut storage = storage.lock().map_err(|e| e.to_string())?;
@@ -691,6 +754,9 @@ pub async fn set_data_dir(
     path: String,
     storage: StorageState<'_>,
 ) -> Result<ApiResponse<bool>, String> {
+    if cfg!(feature = "app-store") {
+        return Ok(ApiResponse::error("商店版不能更改数据目录".into()));
+    }
     let mut storage = storage.lock().map_err(|e| e.to_string())?;
 
     match storage.set_data_dir(std::path::PathBuf::from(path)) {
@@ -743,7 +809,7 @@ mod tests {
 pub fn is_primary_mouse_down() -> bool {
     #[cfg(target_os = "macos")]
     {
-        tauri_nspanel::objc2_app_kit::NSEvent::pressedMouseButtons() & 1 != 0
+        objc2_app_kit::NSEvent::pressedMouseButtons() & 1 != 0
     }
     #[cfg(not(target_os = "macos"))]
     {

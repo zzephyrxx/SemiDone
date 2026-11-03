@@ -218,7 +218,8 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
         if (isEditing || (e.target as HTMLElement).closest('button')) {
           return;
         }
-        // Navigate to task detail page
+        // Opening a detail ends the previous inline edit without saving its draft.
+        setEditingTaskId(null);
         navigate(`/task/${task.id}`);
       }}
       title="点击查看详情"
@@ -273,7 +274,7 @@ const TaskItem = React.memo(function TaskItem({ task }: TaskItemProps) {
                     aria-label="待办描述"
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    className="task-description-input w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                    className="task-description-input w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-y min-h-16 max-h-[40vh]"
                     placeholder="待办描述"
                     rows={2}
                     maxLength={500}

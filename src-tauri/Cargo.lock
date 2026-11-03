@@ -7,10 +7,13 @@ name = "SemiDone"
 version = "7.0.0"
 dependencies = [
  "base64 0.21.7",
+ "cc",
  "chrono",
  "dirs 5.0.1",
  "log",
+ "objc2 0.6.2",
  "objc2-app-kit",
+ "objc2-foundation 0.3.2",
  "serde",
  "serde_json",
  "tauri",

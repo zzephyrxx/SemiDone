@@ -1,3 +1,4 @@
+import { isAppStore } from '../platform/distribution';
 import { isTauri } from '@tauri-apps/api/core';
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/zzephyrxx/SemiDone/releases/latest';
@@ -124,6 +125,7 @@ export async function checkForGithubUpdate(
   fetcher?: UpdateFetcher,
   releasePageFetcher: UpdateFetcher = nativeReleasePageFetch,
 ): Promise<UpdateCheckResult> {
+  if (isAppStore) throw new Error('请通过 App Store 更新');
   if (!fetcher && isTauri()) {
     return checkReleasePageRedirect(currentVersion, releasePageFetcher);
   }

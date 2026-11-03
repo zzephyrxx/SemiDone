@@ -16,7 +16,11 @@
     "build:mac": "sh scripts/package-macos.sh",
     "icons:tray": "node scripts/render-tray.mjs",
     "build:mac:native": "sh native/macos/scripts/package.sh",
-    "test:mac:native": "sh native/macos/scripts/swift.sh test"
+    "test:mac:native": "sh native/macos/scripts/swift.sh test",
+    "build:appstore": "vite build --mode appstore",
+    "build:mac:store:preview": "node scripts/package-appstore.mjs --preview",
+    "package:mac:store:preview:dmg": "node scripts/package-appstore-preview-dmg.mjs",
+    "build:mac:store": "node scripts/package-appstore.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.10.1",

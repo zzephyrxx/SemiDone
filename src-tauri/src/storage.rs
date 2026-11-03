@@ -9,6 +9,7 @@ pub struct Storage {
 }
 
 impl Storage {
+    #[cfg(not(feature = "app-store"))]
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         // 首先尝试从 settings.json 读取 data_dir
         let default_dir = Self::get_default_data_dir()?;
@@ -43,6 +44,13 @@ impl Storage {
         Ok(Self { data_dir })
     }
 
+    #[cfg(any(feature = "app-store", test))]
+    pub fn new_in_container(root: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
+        let data_dir = root.join("SemiDoneData");
+        fs::create_dir_all(&data_dir)?;
+        Ok(Self { data_dir })
+    }
+
     fn get_default_data_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
         // 使用 APPDATA 路径（用户配置目录）
         let app_data = dirs::data_dir().ok_or("无法获取 APPDATA 目录")?;
@@ -59,6 +67,9 @@ impl Storage {
     }
 
     pub fn set_data_dir(&mut self, path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        if cfg!(feature = "app-store") {
+            return Err("商店版不能更改数据目录".into());
+        }
         if !path.exists() {
             fs::create_dir_all(&path)?;
         }
@@ -101,6 +112,8 @@ impl Storage {
         file_name: &str,
         file_data: &str, // Base64 encoded
     ) -> Result<String, Box<dyn std::error::Error>> {
+        validate_component(task_id)?;
+        validate_component(attachment_id)?;
         self.ensure_attachments_dir()?;
 
         // 创建任务附件目录: {attachments}/{task_id}/
@@ -108,6 +121,7 @@ impl Storage {
         if !task_attachments_dir.exists() {
             fs::create_dir_all(&task_attachments_dir)?;
         }
+        self.check_attachment_scope(&task_attachments_dir)?;
 
         // 解码 Base64 数据
         use base64::{engine::general_purpose, Engine as _};
@@ -121,6 +135,7 @@ impl Storage {
         let safe_file_name = format!("{}.{}", attachment_id, ext);
         let file_path = task_attachments_dir.join(&safe_file_name);
 
+        self.check_attachment_scope(&file_path)?;
         // 写入文件
         fs::write(&file_path, decoded_data)?;
 
@@ -132,9 +147,7 @@ impl Storage {
         &self,
         relative_path: &str,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        // 规范化路径分隔符：统一使用正斜杠
-        let normalized_relative = relative_path.replace('\\', "/");
-        let full_path = self.get_attachments_dir().join(&normalized_relative);
+        let full_path = self.resolve_attachment(relative_path)?;
         if !full_path.exists() {
             return Err(format!("附件不存在: {}", relative_path).into());
         }
@@ -148,7 +161,7 @@ impl Storage {
         &self,
         relative_path: &str,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let full_path = self.get_attachments_dir().join(relative_path);
+        let full_path = self.resolve_attachment(relative_path)?;
         if !full_path.exists() {
             return Err(format!("附件不存在: {}", relative_path).into());
         }
@@ -158,7 +171,7 @@ impl Storage {
     }
 
     pub fn delete_attachment(&self, relative_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let full_path = self.get_attachments_dir().join(relative_path);
+        let full_path = self.resolve_attachment(relative_path)?;
         if full_path.exists() {
             fs::remove_file(&full_path)?;
         }
@@ -166,9 +179,39 @@ impl Storage {
     }
 
     pub fn delete_task_attachments(&self, task_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+        validate_component(task_id)?;
         let task_attachments_dir = self.get_attachments_dir().join(task_id);
+        self.check_attachment_scope(&task_attachments_dir)?;
         if task_attachments_dir.exists() {
             fs::remove_dir_all(&task_attachments_dir)?;
+        }
+        Ok(())
+    }
+
+    fn resolve_attachment(&self, relative: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let normalized = relative.replace('\\', "/");
+        let parts: Vec<_> = normalized.split('/').collect();
+        if parts.len() != 2 {
+            return Err("无效附件路径".into());
+        }
+        for part in &parts {
+            validate_component(part)?;
+        }
+        let path = self.get_attachments_dir().join(normalized);
+        self.check_attachment_scope(&path)?;
+        Ok(path)
+    }
+
+    fn check_attachment_scope(
+        &self,
+        path: &std::path::Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if path.exists()
+            && !path
+                .canonicalize()?
+                .starts_with(self.get_attachments_dir().canonicalize()?)
+        {
+            return Err("附件路径超出存储目录".into());
         }
         Ok(())
     }
@@ -183,7 +226,7 @@ impl Storage {
         }
 
         let content = fs::read_to_string(file_path)?;
-        let tasks: Vec<Task> = serde_json::from_str(&content).unwrap_or_else(|_| Vec::new());
+        let tasks: Vec<Task> = serde_json::from_str(&content)?;
 
         Ok(tasks)
     }
@@ -232,21 +275,32 @@ impl Storage {
         }
 
         let content = fs::read_to_string(file_path)?;
-        let settings: Settings =
-            serde_json::from_str(&content).unwrap_or_else(|_| Settings::default());
+        let mut settings: Settings = serde_json::from_str(&content)?;
+        if cfg!(feature = "app-store") {
+            settings.data_dir = None;
+            settings.transparent_enabled = false;
+        }
 
         Ok(settings)
     }
 
     pub fn save_settings(&self, settings: &Settings) -> Result<(), Box<dyn std::error::Error>> {
         let file_path = self.get_settings_file();
-        let content = serde_json::to_string_pretty(settings)?;
+        let mut settings = settings.clone();
+        if cfg!(feature = "app-store") {
+            settings.data_dir = None;
+            settings.transparent_enabled = false;
+        }
+        let content = serde_json::to_string_pretty(&settings)?;
         fs::write(file_path, content)?;
         self.sync_bootstrap_settings()?;
         Ok(())
     }
 
     pub fn sync_bootstrap_settings(&self) -> Result<(), Box<dyn std::error::Error>> {
+        if cfg!(feature = "app-store") {
+            return Ok(());
+        }
         let bootstrap_settings_file = Self::get_bootstrap_settings_file()?;
 
         if let Some(parent) = bootstrap_settings_file.parent() {
@@ -557,26 +611,131 @@ mod tests {
 
     #[test]
     fn task_due_date_edits_and_explicit_clear_survive_reload() {
-        let data_dir = std::env::temp_dir()
-            .join(format!("semidone-due-date-test-{}", uuid::Uuid::new_v4()));
+        let data_dir =
+            std::env::temp_dir().join(format!("semidone-due-date-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&data_dir).expect("create test data directory");
-        let storage = Storage { data_dir: data_dir.clone() };
-        let task = storage.add_task(Task::new(
-            "截止日期".into(), None, None, Some("2099-01-15T09:00".into()),
-            None, None, false, None,
-        )).expect("create task");
+        let storage = Storage {
+            data_dir: data_dir.clone(),
+        };
+        let task = storage
+            .add_task(Task::new(
+                "截止日期".into(),
+                None,
+                None,
+                Some("2099-01-15T09:00".into()),
+                None,
+                None,
+                false,
+                None,
+            ))
+            .expect("create task");
         let edit: UpdateTaskRequest = serde_json::from_value(json!({ "title": "仅修改标题" }))
             .expect("deserialize legacy update without clearDueDate");
         let unchanged = storage.update_task(&task.id, &edit).unwrap().unwrap();
         assert_eq!(unchanged.due_date.as_deref(), Some("2099-01-15T09:00"));
-        let date: UpdateTaskRequest = serde_json::from_value(json!({ "dueDate": "2099-01-16T17:25" })).unwrap();
+        let date: UpdateTaskRequest =
+            serde_json::from_value(json!({ "dueDate": "2099-01-16T17:25" })).unwrap();
         storage.update_task(&task.id, &date).unwrap();
-        assert_eq!(storage.load_tasks().unwrap()[0].due_date.as_deref(), Some("2099-01-16T17:25"));
-        let clear: UpdateTaskRequest = serde_json::from_value(json!({ "clearDueDate": true })).unwrap();
+        assert_eq!(
+            storage.load_tasks().unwrap()[0].due_date.as_deref(),
+            Some("2099-01-16T17:25")
+        );
+        let clear: UpdateTaskRequest =
+            serde_json::from_value(json!({ "clearDueDate": true })).unwrap();
         storage.update_task(&task.id, &clear).unwrap();
         let reloaded = storage.load_tasks().unwrap();
         assert!(reloaded[0].due_date.is_none());
         assert_eq!(reloaded[0].title, "仅修改标题");
         std::fs::remove_dir_all(data_dir).expect("remove test data directory");
+    }
+}
+
+fn validate_component(value: &str) -> Result<(), Box<dyn std::error::Error>> {
+    if value.is_empty() || value == "." || value == ".." || value.contains(['/', '\\', ':', '\0']) {
+        return Err("无效文件名称".into());
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod store_safety_tests {
+    use super::*;
+    fn container() -> (PathBuf, Storage) {
+        let root = std::env::temp_dir().join(format!("semidone-store-{}", uuid::Uuid::new_v4()));
+        let storage = Storage::new_in_container(root.clone()).unwrap();
+        (root, storage)
+    }
+    #[test]
+    fn corrupt_tasks_are_not_silently_replaced_by_new_tasks() {
+        let (root, storage) = container();
+        fs::write(storage.get_tasks_file(), "broken-json").unwrap();
+        assert!(storage.load_tasks().is_err());
+        assert_eq!(
+            fs::read_to_string(storage.get_tasks_file()).unwrap(),
+            "broken-json"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn attachments_reject_traversal_and_round_trip_valid_files() {
+        let (root, storage) = container();
+        assert!(storage
+            .save_attachment("../escape", "id", "test.txt", "aGVsbG8=")
+            .is_err());
+        assert!(storage
+            .save_attachment("task", "../escape", "test.txt", "aGVsbG8=")
+            .is_err());
+        let relative = storage
+            .save_attachment("task", "file", "test.txt", "aGVsbG8=")
+            .unwrap();
+        assert_eq!(
+            storage.get_attachment_as_base64(&relative).unwrap(),
+            "aGVsbG8="
+        );
+        for path in [
+            "../tasks.json",
+            "/etc/passwd",
+            "task/../../tasks.json",
+            "task/..",
+            "task\\..",
+        ] {
+            assert!(storage.get_attachment_as_base64(path).is_err(), "{path}");
+            assert!(storage.delete_attachment(path).is_err(), "{path}");
+        }
+        assert!(storage.delete_task_attachments("..").is_err());
+        storage.delete_attachment(&relative).unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[cfg(unix)]
+    #[test]
+    fn attachments_reject_symlinks_outside_the_container() {
+        let (root, storage) = container();
+        storage.ensure_attachments_dir().unwrap();
+        let outside = root.join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        std::os::unix::fs::symlink(&outside, storage.get_attachments_dir().join("task")).unwrap();
+        assert!(storage
+            .save_attachment("task", "file", "test.txt", "aGVsbG8=")
+            .is_err());
+        assert!(storage.delete_task_attachments("task").is_err());
+        assert!(outside.exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+    #[cfg(feature = "app-store")]
+    #[test]
+    fn store_settings_cannot_redirect_storage_or_restore_transparency() {
+        let (root, mut storage) = container();
+        let mut settings = Settings::default();
+        settings.data_dir = Some("/outside".into());
+        settings.transparent_enabled = true;
+        storage.save_settings(&settings).unwrap();
+        let loaded = storage.load_settings().unwrap();
+        assert!(loaded.data_dir.is_none());
+        assert!(!loaded.transparent_enabled);
+        assert!(storage.set_data_dir(root.join("other")).is_err());
+        let reopened = Storage::new_in_container(root.clone()).unwrap();
+        assert_eq!(storage.get_data_dir_path(), reopened.get_data_dir_path());
+        assert!(!root.join("other").exists());
+        fs::remove_dir_all(root).unwrap();
     }
 }

@@ -381,7 +381,7 @@ export default function TaskDetail() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 wrap="soft"
-                className="task-detail-text w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground resize-none"
+                className="task-detail-text w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground resize-y min-h-16 max-h-[40vh]"
                 placeholder="添加待办描述..."
                 rows={task.description?.trim() ? 3 : 2}
                 maxLength={500}
@@ -441,13 +441,13 @@ export default function TaskDetail() {
             </div>
 
             {/* 截止日期 */}
-            <div className="task-detail-due-row flex items-center justify-between gap-3">
+            <div className="task-detail-due-row task-detail-field-row flex items-center justify-between gap-3">
               <div className="flex shrink-0 items-center text-sm text-foreground">
                 <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
                 <span>截止日期</span>
               </div>
               {isEditing ? (
-                <div className="min-w-0 flex-1">
+                <div className="task-detail-field-control">
                   <button
                     type="button"
                     ref={dateButtonRef}
@@ -456,7 +456,7 @@ export default function TaskDetail() {
                     aria-expanded={showDatePicker}
                     aria-controls={showDatePicker ? datePickerId : undefined}
                     onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="task-detail-date-trigger w-full px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted text-right"
+                    className="task-detail-date-trigger task-detail-field-trigger px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted text-right"
                   >
                     {dueDate ? (() => {
                       const date = new Date(dueDate);
@@ -488,17 +488,17 @@ export default function TaskDetail() {
             </div>
 
             {/* 循环设置 */}
-            <div className="flex items-center justify-between">
+            <div className="task-detail-field-row flex items-center justify-between gap-3">
               <div className="flex items-center text-sm text-foreground">
                 <Repeat className="w-4 h-4 mr-2 text-muted-foreground" />
                 <span>重复</span>
               </div>
               {isEditing ? (
-                <div className="w-3/5">
+                <div className="task-detail-field-control">
                   <RecurrenceEditor
                     value={recurrence}
                     onChange={setRecurrence}
-                    buttonClassName="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted text-right"
+                    buttonClassName="task-detail-field-trigger px-3 py-2 text-sm bg-background border border-border rounded-lg hover:bg-muted text-right"
                   />
                 </div>
               ) : (

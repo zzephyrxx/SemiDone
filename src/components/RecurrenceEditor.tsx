@@ -1,3 +1,4 @@
+import NumberInput from './NumberInput';
 import { useId, useRef, useState } from 'react';
 import { Overlay } from '../ui/Overlay';
 import type { RecurrenceRule, RecurrenceType } from '../types';
@@ -79,14 +80,9 @@ export function RecurrenceEditor({
                   </label>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-muted-foreground">每</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="99"
-                      value={value.interval}
-                      onChange={(event) => onChange({ ...value, interval: Number.parseInt(event.target.value, 10) || 1 })}
-                      className="w-16 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                    <NumberInput label={value.type === 'day' ? '每隔' : value.type === 'week' ? '每几周' : '每几月'}
+                      min={1} max={99} value={value.interval} className="w-16"
+                      onValueChange={interval => onChange({ ...value, interval: Number.parseInt(interval, 10) || 1 })} />
                     <span className="text-sm text-muted-foreground">
                       {value.type === 'day' ? '天' : value.type === 'week' ? '周' : '月'}
                     </span>

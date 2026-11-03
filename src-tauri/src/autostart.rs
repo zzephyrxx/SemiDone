@@ -1,3 +1,4 @@
+#[cfg(not(feature = "app-store"))]
 use tauri_plugin_autostart::ManagerExt;
 
 const DEVELOPMENT_ERROR: &str =
@@ -22,6 +23,12 @@ pub fn is_enabled(app: &tauri::AppHandle) -> Result<bool, String> {
         // A development process must not expose or alter the installed copy's entry.
         return Ok(false);
     }
+    #[cfg(all(feature = "app-store", target_os = "macos"))]
+    {
+        let _ = app;
+        return Ok(crate::app_store::login_enabled());
+    }
+    #[cfg(not(feature = "app-store"))]
     app.autolaunch()
         .is_enabled()
         .map_err(|error| error.to_string())
@@ -29,18 +36,29 @@ pub fn is_enabled(app: &tauri::AppHandle) -> Result<bool, String> {
 
 pub fn set_enabled(app: &tauri::AppHandle, enabled: bool) -> Result<bool, String> {
     ensure_supported(is_supported())?;
-    let manager = app.autolaunch();
-    let previous = manager.is_enabled().map_err(|error| error.to_string())?;
-    if enabled {
-        // Always register again: an older copy may have left its executable path.
-        manager.enable().map_err(|error| error.to_string())?;
-    } else if previous {
-        manager.disable().map_err(|error| error.to_string())?;
+    #[cfg(all(feature = "app-store", target_os = "macos"))]
+    {
+        let _ = app;
+        return crate::app_store::set_login(enabled);
     }
-    manager.is_enabled().map_err(|error| error.to_string())
+    #[cfg(not(feature = "app-store"))]
+    {
+        let manager = app.autolaunch();
+        let previous = manager.is_enabled().map_err(|error| error.to_string())?;
+        if enabled {
+            // Always register again: an older copy may have left its executable path.
+            manager.enable().map_err(|error| error.to_string())?;
+        } else if previous {
+            manager.disable().map_err(|error| error.to_string())?;
+        }
+        manager.is_enabled().map_err(|error| error.to_string())
+    }
 }
 
 pub fn refresh_existing_registration(app: &tauri::AppHandle) -> Result<(), String> {
+    if cfg!(feature = "app-store") {
+        return Ok(());
+    }
     if is_enabled(app)? {
         // Repair an enabled entry to point at the installed executable now running.
         // Never re-enable an entry disabled in Windows Task Manager.

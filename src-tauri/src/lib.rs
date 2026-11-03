@@ -1,8 +1,10 @@
 mod autostart;
 mod commands;
-mod models;
+#[cfg(target_os = "macos")]
+mod macos_files;
 #[cfg(target_os = "macos")]
 mod macos_tray;
+mod models;
 mod storage;
 mod window_interaction;
 mod window_lifecycle;
@@ -15,30 +17,21 @@ use tauri::{
     tray::{TrayIconBuilder, TrayIconEvent},
     Manager, WindowEvent,
 };
+#[cfg(not(feature = "app-store"))]
 use tauri_plugin_autostart::MacosLauncher;
+#[cfg(all(feature = "app-store", target_os = "macos"))]
+mod app_store;
 use window_lifecycle::WindowLifecycle;
 use window_pinning::{show_main_window, WindowPinning};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 初始化存储
-    let storage = Storage::new().expect("Failed to initialize storage");
-    let close_to_tray = storage
-        .load_settings()
-        .map(|settings| settings.close_to_tray)
-        .unwrap_or(true);
-
-    // 创建系统托盘菜单将在setup中处理
-
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             show_main_window(app);
         }))
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_http::init())
-        .manage(Mutex::new(storage))
         .manage(WindowPinning::default())
-        .manage(WindowLifecycle::new(close_to_tray))
         .on_window_event(|window, event| {
             if window.label() != "main" {
                 return;
@@ -63,6 +56,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            commands::set_window_expansion_phase,
             commands::set_window_topmost,
             commands::set_window_pin_mode,
             commands::is_primary_mouse_down,
@@ -98,16 +92,24 @@ pub fn run() {
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec!["--hidden"]),
-        ))
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
+            #[cfg(feature = "app-store")]
+            let storage = Storage::new_in_container(app.path().app_data_dir()?)
+                .map_err(|error| std::io::Error::other(error.to_string()))?;
+            #[cfg(not(feature = "app-store"))]
+            let storage =
+                Storage::new().map_err(|error| std::io::Error::other(error.to_string()))?;
+            let close_to_tray = storage
+                .load_settings()
+                .map(|s| s.close_to_tray)
+                .unwrap_or(true);
+            app.manage(Mutex::new(storage));
+            app.manage(WindowLifecycle::new(close_to_tray));
             if let Err(error) = autostart::refresh_existing_registration(app.handle()) {
                 log::warn!("Failed to refresh autostart registration: {error}");
             }
-            #[cfg(target_os = "macos")]
+            #[cfg(all(target_os = "macos", not(feature = "app-store")))]
             app.handle().plugin(tauri_nspanel::init())?;
             if let Some(window) = app.get_webview_window("main") {
                 window_interaction::install(&window).map_err(std::io::Error::other)?;
@@ -144,14 +146,13 @@ pub fn run() {
                         tauri::tray::MouseButtonState::Up
                     };
                     if matches!(
-                            event,
-                            TrayIconEvent::Click {
-                                button: tauri::tray::MouseButton::Left,
-                                button_state,
-                                ..
-                            } if button_state == restore_on
-                        )
-                    {
+                        event,
+                        TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            button_state,
+                            ..
+                        } if button_state == restore_on
+                    ) {
                         show_main_window(tray.app_handle());
                     }
                 })
@@ -174,7 +175,15 @@ pub fn run() {
                 )?;
             }
             Ok(())
-        })
+        });
+    #[cfg(not(feature = "app-store"))]
+    let builder = builder
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--hidden"]),
+        ));
+    let app = builder
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 

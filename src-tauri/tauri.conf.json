@@ -89,6 +89,6 @@
         "maximizable": false
       }
     ],
-    "macOSPrivateApi": true
+    "macOSPrivateApi": false
   }
 }

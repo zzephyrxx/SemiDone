@@ -1,0 +1,73 @@
+{
+  "identifier": "com.semidone.desktop",
+  "bundle": {
+    "targets": [
+      "app"
+    ],
+    "category": "Productivity",
+    "macOS": {
+      "minimumSystemVersion": "26.0",
+      "signingIdentity": null,
+      "entitlements": "appstore/Entitlements.plist",
+      "infoPlist": "appstore/Info.plist"
+    }
+  },
+  "app": {
+    "macOSPrivateApi": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "事半·SemiDone",
+        "width": 550,
+        "height": 800,
+        "minWidth": 400,
+        "minHeight": 500,
+        "transparent": false,
+        "decorations": false,
+        "shadow": true,
+        "dragDropEnabled": false,
+        "acceptFirstMouse": true,
+        "maximizable": false
+      }
+    ],
+    "security": {
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "description": "Capability for the main window",
+          "windows": [
+            "main"
+          ],
+          "permissions": [
+            "core:path:default",
+            "core:event:default",
+            "core:window:default",
+            "core:window:allow-set-always-on-top",
+            "core:window:allow-set-size",
+            "core:window:allow-set-size-constraints",
+            "core:window:allow-set-position",
+            "core:window:allow-set-resizable",
+            "core:window:allow-start-dragging",
+            "core:app:default",
+            "core:resources:default",
+            "core:menu:default",
+            "core:tray:default",
+            "dialog:default",
+            {
+              "identifier": "opener:allow-open-url",
+              "allow": [
+                {
+                  "url": "https://zzephyrxx.github.io/"
+                }
+              ]
+            },
+            "fs:allow-write-text-file"
+          ]
+        }
+      ]
+    }
+  },
+  "build": {
+    "beforeBuildCommand": "npm run build:appstore"
+  }
+}

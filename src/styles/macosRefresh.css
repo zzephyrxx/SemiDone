@@ -149,7 +149,7 @@ html[data-ui-motion='true'] .workspace-nav .ui-selection-indicator {
   transition: transform 160ms cubic-bezier(.22,1.12,.36,1), width 160ms cubic-bezier(.22,1.12,.36,1), height 160ms cubic-bezier(.22,1.12,.36,1) !important;
 }
 html[data-ui-motion='true'] .workspace-nav[data-nav-dragging='true'] .ui-selection-indicator { transition: none !important; }
-html[data-window-transition='collapsing'] .workspace-shell { opacity: 0; transform: none; transition: opacity 45ms linear !important; }
+
 
 /* Shared card spacing and type scale follow the task/calendar pages. */
 .zen-icon { line-height: 0; vertical-align: middle; }

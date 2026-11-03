@@ -50,7 +50,7 @@ it('discards settings when cancelled and restores focus to the gear button', () 
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(save).not.toHaveBeenCalled(); expect(trigger).toHaveFocus();
   fireEvent.click(trigger);
-  expect(screen.getByRole('spinbutton', { name: '专注时长' })).toHaveValue(original.pomodoro.workDuration);
+  expect(screen.getByRole('spinbutton', { name: '专注时长' })).toHaveAttribute('aria-valuenow', String(original.pomodoro.workDuration));
   fireEvent.click(screen.getByRole('button', { name: '关闭番茄钟设置' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });

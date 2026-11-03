@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import Home from './Home';
 import LiquidGlassRuntime from '../components/LiquidGlassRuntime';
 import { useTaskStore } from '../store/taskStore';
@@ -35,6 +35,29 @@ async function openHome() {
 }
 
 describe('V7 home workflows with browser persistence', () => {
+  it('discards an unsaved card draft when opening another task and keeps it closed on return', async () => {
+    const other: Task = { ...fixture, id: 'other-task', title: '查看另一件事' };
+    localStorage.setItem('windows-todo-tasks', JSON.stringify([fixture, other]));
+    render(<MemoryRouter><Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/task/:id" element={<div>另一件事的详情<Link to="/">返回列表</Link></div>} />
+    </Routes></MemoryRouter>);
+    const original = await screen.findByRole('heading', { name: fixture.title });
+    fireEvent.click(within(original.closest('.task-card')!).getByRole('button', { name: '编辑待办' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '待办标题' }), { target: { value: '还未保存的标题' } });
+    fireEvent.change(screen.getByRole('textbox', { name: '待办描述' }), { target: { value: '还未保存的描述' } });
+    fireEvent.click(screen.getByRole('heading', { name: other.title }));
+    expect(screen.getByText('另一件事的详情')).toBeVisible();
+    expect(useTaskStore.getState().editingTaskId).toBeNull();
+    expect(JSON.parse(localStorage.getItem('windows-todo-tasks')!)).toEqual([fixture, other]);
+    fireEvent.click(screen.getByRole('link', { name: '返回列表' }));
+    const restored = await screen.findByRole('heading', { name: fixture.title });
+    expect(screen.queryByRole('textbox', { name: '待办标题' })).not.toBeInTheDocument();
+    fireEvent.click(within(restored.closest('.task-card')!).getByRole('button', { name: '编辑待办' }));
+    expect(screen.getByRole('textbox', { name: '待办标题' })).toHaveValue(fixture.title);
+    expect(screen.getByRole('textbox', { name: '待办描述' })).toHaveValue('');
+  });
+
   it.each([true, false])('saves deadline and recurrence in child dialogs without losing creation state, with glass=%s', async enabled => {
     useSettingsStore.setState(state => ({ settings: { ...state.settings, collapseMode: 'expanded', animationsEnabled: false, liquidGlass: { ...state.settings.liquidGlass, enabled } } }));
     await openHome();

@@ -1,3 +1,4 @@
+import { isAppStore } from '../../platform/distribution';
 import { ChevronDown, SlidersHorizontal } from '../../ui/icons';
 import { useState } from 'react';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -18,7 +19,7 @@ export default function ZenModeSettingsSection() {
           className="text-primary" />
         <div className="min-w-0 flex-1">
           <h2 id="zen-mode-settings-title" className="text-base font-semibold text-foreground">Zen 模式</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">只看未完成待办，背景透明、文字清晰</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{isAppStore ? '只看未完成待办，精简窗口内容' : '只看未完成待办，背景透明、文字清晰'}</p>
         </div>
         <button type="button" role="switch" aria-label="启用 Zen 模式"
           aria-checked={settings.enabled}
