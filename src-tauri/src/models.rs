@@ -246,6 +246,10 @@ pub struct Settings {
     pub font_scale: u16,
     #[serde(rename = "animationsEnabled", default = "default_animations_enabled")]
     pub animations_enabled: bool,
+    #[serde(rename = "floatingBallAnimationEnabled", default = "default_animations_enabled")]
+    pub floating_ball_animation_enabled: bool,
+    #[serde(rename = "windowShadowEnabled", default, skip_serializing_if = "Option::is_none")]
+    pub window_shadow_enabled: Option<bool>,
     #[serde(rename = "liquidGlass", default)]
     pub liquid_glass: LiquidGlassSettings,
     #[serde(rename = "zenMode", alias = "minimalMode", default)]
@@ -311,6 +315,8 @@ impl Default for Settings {
             accent_color: None,
             font_scale: default_font_scale(),
             animations_enabled: true,
+            floating_ball_animation_enabled: true,
+            window_shadow_enabled: None,
             liquid_glass: LiquidGlassSettings::default(),
             zen_mode: ZenModeSettings::default(),
             notifications: true,
@@ -446,9 +452,11 @@ mod interface_settings_tests {
         let mut value = serde_json::to_value(Settings::default()).unwrap();
         value.as_object_mut().unwrap().remove("fontScale");
         value.as_object_mut().unwrap().remove("animationsEnabled");
+        value.as_object_mut().unwrap().remove("floatingBallAnimationEnabled");
         let settings: Settings = serde_json::from_value(value).unwrap();
         assert_eq!(settings.font_scale, 100);
         assert!(settings.animations_enabled);
+        assert!(settings.floating_ball_animation_enabled);
     }
 
     #[test]
@@ -456,14 +464,20 @@ mod interface_settings_tests {
         let settings = Settings {
             font_scale: 130,
             animations_enabled: false,
+            floating_ball_animation_enabled: false,
+            window_shadow_enabled: Some(false),
             ..Settings::default()
         };
         let saved = serde_json::to_value(settings).unwrap();
         assert_eq!(saved["fontScale"], 130);
         assert_eq!(saved["animationsEnabled"], false);
+        assert_eq!(saved["floatingBallAnimationEnabled"], false);
+        assert_eq!(saved["windowShadowEnabled"], false);
         let loaded: Settings = serde_json::from_value(saved).unwrap();
         assert_eq!(loaded.font_scale, 130);
         assert!(!loaded.animations_enabled);
+        assert!(!loaded.floating_ball_animation_enabled);
+        assert_eq!(loaded.window_shadow_enabled, Some(false));
     }
 }
 

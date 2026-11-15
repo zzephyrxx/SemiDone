@@ -1,4 +1,5 @@
 import { isAppStore } from '../../platform/distribution';
+import { isMacOS } from '../../platform/runtime';
 import { Surface } from '../../ui/Surface';
 import {
   Circle,
@@ -12,6 +13,8 @@ import {
   Droplet,
   Sparkles,
   Minimize2,
+  Power,
+  SquareDashed,
 } from '../../ui/icons';
 import { type ReactElement } from 'react';
 import type { LiquidGlassSettings, Settings, Theme } from '../../types';
@@ -33,6 +36,8 @@ interface AppearanceSettingsSectionProps {
   onCloseToTrayChange?: (enabled: boolean) => void;
   onFontScaleChange?: (value: number) => void;
   onAnimationsChange?: (enabled: boolean) => void;
+  onFloatingBallAnimationChange?: (enabled: boolean) => void;
+  onWindowShadowChange?: (enabled: boolean) => void;
 }
 
 const THEMES: Theme[] = ['light', 'dark'];
@@ -120,6 +125,8 @@ export default function AppearanceSettingsSection({
   onCloseToTrayChange,
   onFontScaleChange,
   onAnimationsChange,
+  onFloatingBallAnimationChange,
+  onWindowShadowChange,
 }: AppearanceSettingsSectionProps) {
   const transparencyDisabled = settings.theme !== 'dark' && !settings.transparentEnabled;
 
@@ -208,14 +215,25 @@ export default function AppearanceSettingsSection({
           icon={<Circle className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
           iconClass="bg-violet-500/10"
           title="悬浮球"
-          description="折叠为悬浮球"
+          description={settings.useCapsuleMode && settings.animationsEnabled === false ? '折叠为悬浮球 · 动效需开启界面动效' : '折叠为悬浮球'}
           control={(
+            <div className="flex shrink-0 items-center gap-2">
+              {settings.useCapsuleMode && <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">动效</span>
+                <button type="button" aria-label="悬浮球动效" aria-pressed={settings.floatingBallAnimationEnabled !== false}
+                  disabled={settings.animationsEnabled === false}
+                  onClick={() => onFloatingBallAnimationChange?.(settings.floatingBallAnimationEnabled === false)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-45 ${settings.floatingBallAnimationEnabled !== false ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  <Power className="h-4 w-4" />
+                </button>
+              </div>}
             <SettingSwitch
               label="悬浮球模式"
               checked={settings.useCapsuleMode ?? false}
               onChange={onToggleCapsuleMode}
               accentClass="bg-violet-500"
             />
+            </div>
           )}
         />
 
@@ -254,6 +272,10 @@ export default function AppearanceSettingsSection({
           )}
         </div>
 
+        {isMacOS && <SettingTile icon={<SquareDashed className="h-5 w-5 text-slate-500" />} iconClass="bg-slate-500/10"
+          title="窗口阴影" description="使用 macOS 系统窗口阴影"
+          control={<SettingSwitch label="窗口阴影" checked={settings.windowShadowEnabled ?? isAppStore}
+            onChange={() => onWindowShadowChange?.(!(settings.windowShadowEnabled ?? isAppStore))} accentClass="bg-primary" />} />}
         <SettingTile icon={<Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400" />} iconClass="bg-primary/10"
           title="界面动效" description="任务完成、导航与图标动效"
           control={<SettingSwitch label="界面动效" checked={settings.animationsEnabled !== false}

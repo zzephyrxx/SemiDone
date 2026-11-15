@@ -5,6 +5,28 @@ use tauri::{Manager, State};
 
 type StorageState<'a> = State<'a, Mutex<Storage>>;
 
+/// App Store Zen is rendered by AppKit because macOS WKWebView paints an
+/// opaque backing. All task mutations continue through the existing stores.
+#[tauri::command]
+pub async fn set_native_zen_panel(window: tauri::WebviewWindow, payload: Option<String>) -> Result<(), String> {
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    {
+        if let Some(ref json) = payload {
+            let _: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        }
+        let encoded = payload.map(std::ffi::CString::new).transpose().map_err(|e| e.to_string())?;
+        let (sender, receiver) = std::sync::mpsc::channel();
+        window.with_webview(move |webview| {
+            unsafe extern "C" { fn semidone_set_zen_panel(webview: *mut std::ffi::c_void, json: *const std::ffi::c_char) -> bool; }
+            let ok = unsafe { semidone_set_zen_panel(webview.inner(), encoded.as_ref().map_or(std::ptr::null(), |s| s.as_ptr())) };
+            let _ = sender.send(ok);
+        }).map_err(|e| e.to_string())?;
+        return if receiver.recv_timeout(std::time::Duration::from_secs(2)).map_err(|e| e.to_string())? { Ok(()) } else { Err("原生 Zen 面板不可用".into()) };
+    }
+    #[cfg(not(all(target_os = "macos", feature = "app-store")))]
+    { let _ = (window, payload); Ok(()) }
+}
+
 #[tauri::command]
 pub async fn set_window_expansion_phase(
     window: tauri::WebviewWindow,
@@ -16,6 +38,7 @@ pub async fn set_window_expansion_phase(
         "reveal" => 1,
         "reset" => 2,
         "collapse" => 3,
+        "logo-reveal" => 4,
         _ => return Err("无效的窗口展开阶段".into()),
     };
     #[cfg(all(target_os = "macos", feature = "app-store"))]

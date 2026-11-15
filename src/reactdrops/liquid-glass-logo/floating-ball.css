@@ -1,0 +1,11 @@
+/* Force logo to fill the entire ball - no inner padding */
+.floating-ball-shell .liquid-glass-logo-fallback > img {
+  object-fit: contain;
+  border-radius: 18%;
+}
+
+/* Ensure the canvas fills the ball */
+.floating-ball-shell .liquid-glass-logo canvas {
+  width: 100% !important;
+  height: 100% !important;
+}

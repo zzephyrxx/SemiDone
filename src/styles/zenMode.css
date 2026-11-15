@@ -105,6 +105,7 @@ html[data-zen-mode='true'] #root {
 @keyframes zen-task-spin { to { transform: rotate(360deg); } }
 @keyframes zen-task-check { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 .zen-task-title { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: var(--zen-effective-font-size); line-height: var(--zen-line-height); }
+.zen-task-recurrence { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 14px; color: var(--zen-text); opacity: .7; }
 .zen-empty { padding: 20px 12px; text-align: center; font-size: calc(13px * var(--ui-font-scale, 1)); }
 
 /* The frame stays outside the scrolling content so its border never scrolls away. */
@@ -123,6 +124,15 @@ html[data-zen-mode='true'] #root {
   color: hsl(var(--foreground));
 }
 .zen-appearance-panel > .zen-appearance-heading { flex-shrink: 0; }
+.zen-toolbar-glyph > svg { display: block; width: 100%; height: 100%; }
+/* In the Store build the configuration occupies the native window itself;
+   there is no second Zen toolbar or task panel behind it. */
+.zen-mode--configuration { background: hsl(var(--card)); }
+.zen-mode--configuration .zen-appearance-panel.ui-surface {
+  position: relative; inset: auto; width: 100%; height: 100%; max-height: 100%;
+  border: 0; border-radius: 0; padding: 16px;
+}
+.zen-mode--configuration .zen-appearance-heading { margin-bottom: 12px; cursor: move; user-select: none; }
 .zen-appearance-scroll { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; }
 /* A 30% tint reduces backdrop transparency while leaving text fully opaque. */
 .zen-appearance-panel.ui-surface[data-material='glass']::before {

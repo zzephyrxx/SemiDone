@@ -199,6 +199,8 @@ export default function Other() {
             onThemeChange={(theme) => void handleThemeChange(theme)}
             onFontScaleChange={(fontScale) => void updateSettings({ fontScale })}
             onAnimationsChange={(animationsEnabled) => void updateSettings({ animationsEnabled })}
+            onFloatingBallAnimationChange={(floatingBallAnimationEnabled) => void updateSettings({ floatingBallAnimationEnabled })}
+            onWindowShadowChange={(windowShadowEnabled) => void updateSettings({ windowShadowEnabled })}
             onLiquidGlassChange={(updates) => void setLiquidGlass(updates)}
             onToggleAutoStart={() => void toggleAutoStart()}
             autoStartAvailable={isTauri() && !import.meta.env.DEV}

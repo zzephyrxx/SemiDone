@@ -20,6 +20,8 @@ export default function NumberStepper({ label, min, max, value, suffix = '', onC
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holding = useRef(false);
   const skipPointerClick = useRef(false);
+  const wheelControl = useRef<HTMLDivElement>(null);
+  const wheelStep = useRef<(steps: number) => boolean>(() => false);
   const clamp = (next: number) => Math.min(max, Math.max(min, Math.round(next)));
   const readDraft = () => draftRef.current.trim() !== '' && Number.isFinite(Number(draftRef.current))
     ? clamp(Number(draftRef.current)) : current.current;
@@ -34,6 +36,43 @@ export default function NumberStepper({ label, min, max, value, suffix = '', onC
     current.current = selected;
     change.current(selected);
   };
+  wheelStep.current = steps => {
+    const before = readDraft();
+    const next = clamp(before + steps);
+    select(next);
+    return steps > 0 ? next < max : next > min;
+  };
+  useEffect(() => {
+    const control = wheelControl.current;
+    if (!control) return;
+    let frame = 0, velocity = 0, remainder = 0;
+    const stop = () => { if (frame) cancelAnimationFrame(frame); frame = 0; velocity = 0; remainder = 0; };
+    const tick = () => {
+      frame = 0;
+      remainder += velocity;
+      const steps = Math.trunc(remainder);
+      if (steps) {
+        remainder -= steps;
+        if (!wheelStep.current(steps)) { stop(); return; }
+      }
+      velocity *= .78;
+      if (Math.abs(velocity) > .015) frame = requestAnimationFrame(tick);
+      else { velocity = 0; remainder = 0; }
+    };
+    const wheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || !event.deltaY) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 240 : 1);
+      if (velocity * delta > 0) { velocity = 0; remainder = 0; }
+      velocity = Math.max(-2, Math.min(2, velocity - delta / 160));
+      if (!frame) frame = requestAnimationFrame(tick);
+    };
+    control.addEventListener('wheel', wheel, { passive: false });
+    control.addEventListener('mouseleave', stop);
+    window.addEventListener('blur', stop);
+    return () => { stop(); control.removeEventListener('wheel', wheel); control.removeEventListener('mouseleave', stop); window.removeEventListener('blur', stop); };
+  }, []);
   const stopHold = useCallback(() => {
     holding.current = false;
     if (holdTimer.current !== null) clearTimeout(holdTimer.current);
@@ -77,7 +116,7 @@ export default function NumberStepper({ label, min, max, value, suffix = '', onC
 
   return <div className="zen-number-stepper">
     <label htmlFor={id} className="zen-stepper-label">{label}</label>
-    <div className="zen-stepper-control">
+    <div ref={wheelControl} className="zen-stepper-control">
       <div className="zen-stepper-value">
         <input id={id} className="zen-stepper-input" type="text" inputMode="numeric" role="spinbutton"
           autoComplete="off" spellCheck={false} aria-valuemin={min} aria-valuemax={max}

@@ -4,15 +4,44 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import FloatingBall from './FloatingBall';
 import { useSettingsStore } from '../store/settingsStore';
-const native = vi.hoisted(() => ({ desktop: false, drag: vi.fn() }));
+const native = vi.hoisted(() => ({ desktop: false, appStore: false, drag: vi.fn() }));
 vi.mock('../api/tauri', async original => ({
   ...await original<typeof import('../api/tauri')>(),
   get isDesktopRuntime() { return native.desktop; },
 }));
 vi.mock('../services/floatingWindowDrag', () => ({ dragFloatingWindow: native.drag }));
-beforeEach(() => { native.desktop = false; native.drag.mockReset().mockResolvedValue(null); });
+vi.mock('../platform/distribution', () => ({ get isAppStore() { return native.appStore; } }));
+beforeEach(() => {
+  native.desktop = false;
+  native.appStore = false;
+  native.drag.mockReset().mockResolvedValue(null);
+  useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: false, floatingBallAnimationEnabled: true } }));
+});
 
 afterEach(cleanup);
+it('sizes the Store logo reveal to the 60px floating window and the 30px snapped window', () => {
+  native.appStore = true;
+  useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: true, isEdgeSnapped: false } }));
+  const { container } = render(<FloatingBall onExpand={vi.fn()} />);
+  expect(container.querySelector('img[aria-hidden="true"]')).not.toBeInTheDocument();
+  expect(container.querySelector('.floating-ball-logo')).toHaveStyle({ width: '114px', left: '-27px' });
+  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, isEdgeSnapped: true } })));
+  expect(container.querySelector('.floating-ball-logo')).toHaveStyle({ width: '57px', left: '-13px' });
+});
+it('uses the liquid glass logo only when interface animations are enabled', () => {
+  useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: true } }));
+  const { container } = render(<FloatingBall onExpand={vi.fn()} />);
+  expect(container.querySelector('.liquid-glass-logo')).toBeInTheDocument();
+  act(() => useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: false } })));
+  expect(container.querySelector('.liquid-glass-logo')).not.toBeInTheDocument();
+  expect(screen.getByAltText('事半·SemiDone')).toBeInTheDocument();
+});
+it('allows floating-ball animation to be disabled independently of interface animations', () => {
+  useSettingsStore.setState(state => ({ settings: { ...state.settings, animationsEnabled: true, floatingBallAnimationEnabled: false } }));
+  const { container } = render(<FloatingBall onExpand={vi.fn()} />);
+  expect(container.querySelector('.liquid-glass-logo')).not.toBeInTheDocument();
+  expect(screen.getByAltText('事半·SemiDone')).toBeVisible();
+});
 it('blocks floating-ball context menus and right-button dragging while retaining left-click expansion', () => {
   useSettingsStore.setState(state => ({ settings: { ...state.settings, collapseMode: 'floating', isEdgeSnapped: false } }));
   const expand = vi.fn(), context = vi.fn();

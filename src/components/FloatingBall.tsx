@@ -6,6 +6,8 @@ import { useSettingsStore } from '../store/settingsStore';
 import { isDesktopRuntime } from '../api/tauri';
 import { dragFloatingWindow } from '../services/floatingWindowDrag';
 import { isAppStore } from '../platform/distribution';
+import { LiquidGlassLogo } from '../reactdrops/liquid-glass-logo';
+import '../reactdrops/liquid-glass-logo/floating-ball.css';
 
 interface FloatingBallProps {
   onExpand: () => void;
@@ -153,6 +155,12 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
   };
 
   const isSnapped = settings.isEdgeSnapped;
+  // The Store window is 60px, while the desktop ball is 55px. Match the
+  // renderer to the actual visible window so its white backing is not a rim.
+  const ballSize = isSnapped ? 30 : isAppStore ? 60 : 55;
+  const logoCanvas = Math.round(ballSize * 1.9);
+  const logoOffset = Math.round((ballSize - logoCanvas) / 2);
+  const animateLogo = settings.animationsEnabled !== false && settings.floatingBallAnimationEnabled !== false;
 
   return (
     <button
@@ -175,13 +183,17 @@ export default function FloatingBall({ onExpand }: FloatingBallProps) {
         WebkitAppRegion: 'no-drag',
       } as React.CSSProperties}
     >
-      <img
-        src="/Logo3D.png"
-        alt="事半·SemiDone"
-        // 核心修复：w-full h-full 铺满容器，object-cover 确保无边距填充
-        className="w-full h-full object-cover block p-0 m-0"
-        draggable={false}
-      />
+      {animateLogo ? <LiquidGlassLogo
+        key={ballSize}
+        className="floating-ball-logo"
+        logo="/Logo3D.png" ending="logo" text="" mark="" theme="light"
+        logoColor="original" logoSize={ballSize} logoScale={1} finalLogoScale={1} maxDpr={2} tile={false} speed={2.5}
+        aria-label="事半·SemiDone"
+        onRendererReady={() => window.dispatchEvent(new Event('semidone-floating-logo-ready'))}
+        style={{ background: 'transparent', minHeight: 0, position: 'absolute',
+          left: `${logoOffset}px`, top: `${logoOffset}px`, width: `${logoCanvas}px`, height: `${logoCanvas}px` }}
+      /> : <img src="/Logo3D.png" alt="事半·SemiDone"
+        className="w-full h-full object-cover block p-0 m-0" draggable={false} />}
     </button>
   );
 }

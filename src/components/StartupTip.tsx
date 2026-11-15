@@ -16,7 +16,7 @@ export default function StartupTip() {
   const zenWindow = useSettingsStore(state => state.settings.zenMode?.enabled === true
     && state.settings.zenMode.active && state.settings.collapseMode === 'expanded');
   const { root, present } = useDialogMotion(show, !zenWindow);
-  const drag = useDraggableDialog(present);
+  const drag = useDraggableDialog(present, { focusable: false });
 
   useEffect(() => {
     if (localStorage.getItem(WELCOME_STORAGE_KEY)) return;

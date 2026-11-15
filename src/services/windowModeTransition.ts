@@ -21,22 +21,40 @@ const frame = () => new Promise<void>(resolve => {
 export const canAnimateWindow = (enabled: boolean) => enabled
   && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-async function nativeExpansion(phase: 'prepare' | 'reveal' | 'reset' | 'collapse', durationMs = 0) {
+async function nativeExpansion(phase: 'prepare' | 'reveal' | 'reset' | 'collapse' | 'logo-reveal', durationMs = 0) {
   if (isAppStore && isTauri()) await invoke('set_window_expansion_phase', { phase, durationMs });
 }
 
-/** Floating mode gathers into its top-left anchor; the bar keeps a short fade. */
+/** Register before mounting the logo so even a cached image cannot race the listener. */
+export function waitForFloatingLogo() {
+  return new Promise<void>(resolve => {
+    const done = () => { clearTimeout(timeout); window.removeEventListener('semidone-floating-logo-ready', done); resolve(); };
+    const timeout = window.setTimeout(done, 2000);
+    window.addEventListener('semidone-floating-logo-ready', done, { once: true });
+  });
+}
+
+export async function revealFloatingLogo() {
+  await waitForWindowLayout();
+  document.documentElement.dataset.windowTransition = 'ready';
+  await nativeExpansion('logo-reveal', 64);
+  await wait(64);
+}
+
+/** Hide the native backing during a floating resize; the logo supplies its own reveal. */
 export async function leaveWindowMode(enabled: boolean, destination: CollapseMode = 'bar'): Promise<boolean> {
   if (!canAnimateWindow(enabled)) return false;
   const root = document.documentElement;
-  const duration = destination === 'floating' ? windowAppearance.floatingCollapseMs : windowAppearance.fadeOutMs;
   root.dataset.windowCollapse = destination;
+  if (destination === 'floating') {
+    root.dataset.windowTransition = 'switching';
+    await nativeExpansion('prepare');
+    return true;
+  }
+  const duration = windowAppearance.fadeOutMs;
   root.style.setProperty('--window-mode-out', `${duration}ms`);
-  root.style.setProperty('--window-collapse-scale-x', String(Math.min(1, 60 / window.innerWidth)));
-  root.style.setProperty('--window-collapse-scale-y', String(Math.min(1, 60 / window.innerHeight)));
   root.style.setProperty('--window-mode-in', `${windowAppearance.fadeInMs}ms`);
   root.dataset.windowTransition = 'leaving';
-  if (destination === 'floating') await nativeExpansion('collapse', duration);
   await wait(duration);
   root.dataset.windowTransition = 'switching';
   return true;

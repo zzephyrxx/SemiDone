@@ -1,4 +1,4 @@
-import { leaveWindowMode, enterWindowMode, prepareWindowExpansion, waitForWindowLayout, finishWindowTransition, canAnimateWindow } from '../services/windowModeTransition';
+import { leaveWindowMode, enterWindowMode, prepareWindowExpansion, waitForWindowLayout, finishWindowTransition, canAnimateWindow, waitForFloatingLogo, revealFloatingLogo } from '../services/windowModeTransition';
 import { isAppStore } from '../platform/distribution';
 import { FULL_WINDOW_SIZE, FULL_WINDOW_MINIMUM, isMacOS } from '../platform/runtime';
 import { create } from 'zustand';
@@ -39,6 +39,8 @@ const defaultSettings: Settings = {
   accentColor: undefined,
   fontScale: 100,
   animationsEnabled: true,
+  floatingBallAnimationEnabled: true,
+  windowShadowEnabled: isAppStore,
   liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
   zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS },
   notifications: true,
@@ -149,6 +151,8 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               closeToTray: storedSettings.closeToTray !== false,
               fontScale: normalizeFontScale(storedSettings.fontScale),
               animationsEnabled: storedSettings.animationsEnabled !== false,
+              floatingBallAnimationEnabled: storedSettings.floatingBallAnimationEnabled !== false,
+              windowShadowEnabled: storedSettings.windowShadowEnabled ?? isAppStore,
             };
             if (isDesktopRuntime) {
               try {
@@ -473,9 +477,20 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             collapseMode: newCollapseMode,
             isEdgeSnapped: false // 重置吸附状态
           };
+          const logoReady = isAppStore && transitioning && currentSettings.floatingBallAnimationEnabled !== false && newCollapsedState && newCollapseMode === 'floating'
+            ? waitForFloatingLogo() : null;
           set({ settings: newSettings });
           if (transitioning || !newCollapsedState) {
-            await enterWindowMode(newCollapsedState ? 'expanded' : currentSettings.collapseMode, transitioning);
+            if (newCollapsedState && newCollapseMode === 'floating') {
+              if (logoReady) {
+                await logoReady;
+                await revealFloatingLogo();
+              } else {
+                await enterWindowMode('floating', false);
+              }
+            } else {
+              await enterWindowMode(newCollapsedState ? 'expanded' : currentSettings.collapseMode, transitioning);
+            }
           }
           
           // 异步保存到后端

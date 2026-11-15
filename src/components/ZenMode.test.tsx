@@ -38,6 +38,31 @@ beforeEach(async () => {
 afterEach(() => { cleanup(); document.getElementById('zen-typography-styles')?.remove(); document.getElementById('zen-panel-material-css')?.remove(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('Zen mode', () => {
+  it('orders by creation newest first independently of full-mode sorting and marks recurring titles', async () => {
+    useTaskStore.setState({ sortConfig: { field: 'priority', order: 'asc' } });
+    localStorage.setItem('windows-todo-tasks', JSON.stringify([
+      { ...pending, id: 'older', title: '较早创建', isPinned: true, createdAt: '2026-01-01T00:00:00Z' },
+      { ...pending, id: 'newer', title: '最新周期待办', createdAt: '2026-02-01T00:00:00Z', dueDate: '2099-11-04', recurrence: { type: 'day', interval: 1 } },
+    ]));
+    render(<ZenMode onClose={vi.fn()} />);
+    await screen.findByText('最新周期待办');
+    expect(screen.getAllByRole('checkbox').map(input => input.getAttribute('aria-label'))).toEqual(['完成：最新周期待办', '完成：较早创建']);
+    expect(screen.getByRole('img', { name: '周期待办' }).closest('li')).toContainElement(screen.getByText('最新周期待办'));
+    expect(useTaskStore.getState().sortConfig).toEqual({ field: 'priority', order: 'asc' });
+  });
+  it('removes the completed recurring occurrence and shows its pending successor with a cycle marker', async () => {
+    localStorage.setItem('windows-todo-tasks', JSON.stringify([{ ...pending, dueDate: '2099-11-04', recurrence: { type: 'day', interval: 1 } }]));
+    const view = render(<ZenMode onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('checkbox', { name: `完成：${pending.title}` }));
+    await waitFor(() => expect(view.container.querySelector('.is-exiting')).toBeInTheDocument());
+    await waitFor(() => expect(view.container.querySelector('.is-exiting')).not.toBeInTheDocument());
+    expect(screen.getAllByText(pending.title)).toHaveLength(1);
+    expect(screen.getByRole('img', { name: '周期待办' })).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: `完成：${pending.title}` })).not.toBeChecked();
+    const saved = (await api.tasks.getTasks()).data!;
+    expect(saved.filter(task => task.completed)).toHaveLength(1);
+    expect(saved.filter(task => !task.completed && task.recurrence)).toHaveLength(1);
+  });
   it('adapts its configuration panel to glass live without changing the transparent task window', async () => {
     const css = document.createElement('style'); css.id = 'zen-panel-material-css';
     css.textContent = ['zenMode.css', 'workspace.css', 'ui.css', 'liquidGlassSurfaces.css'].map(file => readFileSync(resolve('src/styles', file), 'utf8')).join('\n');

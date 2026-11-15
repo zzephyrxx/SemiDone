@@ -15,6 +15,30 @@ function Control() {
   return <NumberStepper label="字体大小" min={12} max={28} value={value} suffix=" px" onChange={setValue} />;
 }
 
+it('adjusts from the wheel with a decaying tail, respects bounds, and cancels on leaving', () => {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => setTimeout(() => callback(0), 16));
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
+  render(<Control />);
+  const input = screen.getByRole('spinbutton');
+  const control = input.closest('.zen-stepper-control')!;
+  fireEvent.wheel(control, { deltaY: -160, cancelable: true });
+  act(() => vi.advanceTimersByTime(16));
+  expect(Number((input as HTMLInputElement).value)).toBeGreaterThan(15);
+  const first = Number((input as HTMLInputElement).value);
+  act(() => vi.advanceTimersByTime(400));
+  expect(Number((input as HTMLInputElement).value)).toBeGreaterThan(first);
+  fireEvent.wheel(control, { deltaY: -10000, cancelable: true });
+  fireEvent.mouseLeave(control);
+  const stopped = (input as HTMLInputElement).value;
+  act(() => vi.advanceTimersByTime(1000));
+  expect(input).toHaveValue(stopped);
+  fireEvent.keyDown(input, { key: 'End' });
+  fireEvent.wheel(control, { deltaY: -10000, cancelable: true });
+  act(() => vi.advanceTimersByTime(1000));
+  expect(input).toHaveValue('28');
+  expect(vi.getTimerCount()).toBe(0);
+});
+
 it('increments and decrements immediately, supports keyboard adjustment, and stops at both limits', () => {
   render(<Control />);
   const value = screen.getByRole('spinbutton', { name: '字体大小' });

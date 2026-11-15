@@ -16,7 +16,9 @@ describe('App Store settings', () => {
     const check = vi.fn();
     render(<AboutSettingsSection appVersion="7.0.0" checkForUpdate={check} />);
     expect(check).not.toHaveBeenCalled();
-    expect(screen.getByText('通过 App Store 更新')).toBeVisible();
+    expect(screen.getByText('7.0.0')).toBeVisible();
+    expect(screen.queryByText('作者')).not.toBeInTheDocument();
+    expect(screen.queryByText('博客')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '打赏' })).not.toBeInTheDocument();
     expect(screen.queryByAltText('微信打赏码')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '隐私政策' }));
@@ -45,5 +47,26 @@ describe('App Store settings', () => {
     expect(screen.queryByRole('switch', { name: '透明模式' })).not.toBeInTheDocument();
     expect(screen.getByRole('switch', { name: '液态玻璃' })).toBeVisible();
     expect(screen.getByRole('switch', { name: '悬浮球模式' })).toBeVisible();
+  });
+
+  it('places the separate animation control before the floating mode switch', () => {
+    const change = vi.fn();
+    const settings = { ...useSettingsStore.getState().settings, useCapsuleMode: true, animationsEnabled: true, floatingBallAnimationEnabled: true };
+    const { rerender } = render(<AppearanceSettingsSection settings={settings}
+      onThemeChange={vi.fn()} onLiquidGlassChange={vi.fn()} onToggleAutoStart={vi.fn()}
+      onTransparencyToggle={vi.fn()} onTransparencyLevelChange={vi.fn()} onToggleCapsuleMode={vi.fn()}
+      onFloatingBallAnimationChange={change} />);
+    const animation = screen.getByRole('button', { name: '悬浮球动效' });
+    expect(animation.compareDocumentPosition(screen.getByRole('switch', { name: '悬浮球模式' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(animation);
+    expect(change).toHaveBeenCalledWith(false);
+    rerender(<AppearanceSettingsSection settings={{ ...settings, animationsEnabled: false }}
+      onThemeChange={vi.fn()} onLiquidGlassChange={vi.fn()} onToggleAutoStart={vi.fn()}
+      onTransparencyToggle={vi.fn()} onTransparencyLevelChange={vi.fn()} onToggleCapsuleMode={vi.fn()} />);
+    expect(screen.getByRole('button', { name: '悬浮球动效' })).toBeDisabled();
+    rerender(<AppearanceSettingsSection settings={{ ...settings, useCapsuleMode: false }}
+      onThemeChange={vi.fn()} onLiquidGlassChange={vi.fn()} onToggleAutoStart={vi.fn()}
+      onTransparencyToggle={vi.fn()} onTransparencyLevelChange={vi.fn()} onToggleCapsuleMode={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: '悬浮球动效' })).not.toBeInTheDocument();
   });
 });

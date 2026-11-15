@@ -39,6 +39,7 @@ fn main() {
             .include(output)
             .file("macos/LoginItem.m")
             .file("macos/WindowAppearance.m")
+            .file("macos/ZenPanel.m")
             .flag("-fobjc-arc")
             .flag("-mmacosx-version-min=26.0")
             .compile("semidone_login");
@@ -46,8 +47,10 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=AppKit");
         println!("cargo:rustc-link-lib=framework=QuartzCore");
+        println!("cargo:rustc-link-lib=framework=WebKit");
         println!("cargo:rerun-if-changed=macos/LoginItem.m");
         println!("cargo:rerun-if-changed=macos/WindowAppearance.m");
+        println!("cargo:rerun-if-changed=macos/ZenPanel.m");
     } else {
         assert!(
             desktop,

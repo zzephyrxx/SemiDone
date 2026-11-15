@@ -57,6 +57,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::set_window_expansion_phase,
+            commands::set_native_zen_panel,
             commands::set_window_topmost,
             commands::set_window_pin_mode,
             commands::is_primary_mouse_down,

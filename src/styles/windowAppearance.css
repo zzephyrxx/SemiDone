@@ -43,16 +43,6 @@ html[data-window-transition='leaving'] :is(.workspace-shell, .workspace-bar, .ze
   transform-origin: top left;
 }
 html[data-window-transition='switching'] :is(.workspace-shell, .workspace-bar, .zen-mode, .floating-ball-shell) { opacity: 0 !important; }
-html[data-window-transition='leaving'][data-window-collapse='floating'] :is(.workspace-shell, .zen-mode) {
-  animation: window-floating-collapse var(--window-mode-out, 200ms) cubic-bezier(.55, .05, .85, .4) both !important;
-  transform-origin: top left;
-}
-@keyframes window-floating-collapse {
-  0% { opacity: 1; transform: scale(1); filter: blur(0); }
-  30% { opacity: .9; filter: blur(2px); }
-  75% { opacity: .45; filter: blur(8px); }
-  100% { opacity: 0; transform: scale(var(--window-collapse-scale-x), var(--window-collapse-scale-y)); filter: blur(14px); }
-}
 html[data-window-transition='entering'] :is(.workspace-shell, .workspace-bar, .zen-mode, .floating-ball-shell) {
   animation: window-mode-enter var(--window-mode-in, 100ms) ease-out both !important;
   transform-origin: top left;

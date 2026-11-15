@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const native = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ isTauri: () => true, invoke: native.invoke }));
 vi.mock('../platform/distribution', () => ({ isAppStore: true }));
-import { enterWindowMode, finishWindowTransition, leaveWindowMode, prepareWindowExpansion } from './windowModeTransition';
+import { enterWindowMode, finishWindowTransition, leaveWindowMode, prepareWindowExpansion, revealFloatingLogo, waitForFloatingLogo } from './windowModeTransition';
 import { windowAppearance } from '../platform/windowAppearance';
 
 beforeEach(() => {
@@ -17,13 +17,11 @@ afterEach(() => {
   vi.useRealTimers(); vi.unstubAllGlobals();
 });
 
-it('shrinks the native backing toward the floating block before changing window size', async () => {
-  vi.useFakeTimers();
+it('hides the native backing before resizing to the floating logo', async () => {
   vi.stubGlobal('matchMedia', () => ({ matches: false }));
   const leave = leaveWindowMode(true, 'floating');
   expect(document.documentElement.dataset.windowCollapse).toBe('floating');
-  expect(native.invoke).toHaveBeenCalledWith('set_window_expansion_phase', { phase: 'collapse', durationMs: windowAppearance.floatingCollapseMs });
-  await vi.advanceTimersByTimeAsync(windowAppearance.floatingCollapseMs);
+  expect(native.invoke).toHaveBeenCalledWith('set_window_expansion_phase', { phase: 'prepare', durationMs: 0 });
   expect(await leave).toBe(true);
   expect(document.documentElement.dataset.windowTransition).toBe('switching');
   await finishWindowTransition();
@@ -31,10 +29,37 @@ it('shrinks the native backing toward the floating block before changing window 
   expect(document.documentElement.dataset.windowCollapse).toBeUndefined();
 });
 
+it('reveals the floating window without a second scale or delayed native mask animation', async () => {
+  vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  await leaveWindowMode(true, 'floating');
+  await enterWindowMode('floating', false);
+  expect(native.invoke).toHaveBeenLastCalledWith('set_window_expansion_phase', { phase: 'reveal', durationMs: 0 });
+  expect(document.documentElement.dataset.windowTransition).toBe('ready');
+  expect(native.invoke).not.toHaveBeenCalledWith('set_window_expansion_phase', expect.objectContaining({ phase: 'collapse' }));
+  await finishWindowTransition();
+});
+
+it('waits for the logo renderer and reveals only its growing silhouette', async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1; });
+  const ready = waitForFloatingLogo();
+  let resolved = false;
+  void ready.then(() => { resolved = true; });
+  await Promise.resolve();
+  expect(resolved).toBe(false);
+  window.dispatchEvent(new Event('semidone-floating-logo-ready'));
+  await ready;
+  const reveal = revealFloatingLogo();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(native.invoke).toHaveBeenLastCalledWith('set_window_expansion_phase', { phase: 'logo-reveal', durationMs: 64 });
+  await vi.advanceTimersByTimeAsync(64);
+  await reveal;
+});
+
 it('restores the mask when a native collapse fails', async () => {
   vi.stubGlobal('matchMedia', () => ({ matches: false }));
-  native.invoke.mockRejectedValueOnce(new Error('collapse failed'));
-  await expect(leaveWindowMode(true, 'floating')).rejects.toThrow('collapse failed');
+  native.invoke.mockRejectedValueOnce(new Error('prepare failed'));
+  await expect(leaveWindowMode(true, 'floating')).rejects.toThrow('prepare failed');
   await finishWindowTransition();
   expect(native.invoke).toHaveBeenLastCalledWith('set_window_expansion_phase', { phase: 'reset', durationMs: 0 });
   expect(document.documentElement.dataset.windowTransition).toBeUndefined();

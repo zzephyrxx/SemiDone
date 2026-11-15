@@ -43,6 +43,8 @@ static void updateWindowShape(NSWindow *window) {
 @interface SemiDoneWindowShape : NSObject
 @property(nonatomic, strong) id resizeObserver;
 @property(nonatomic) NSSize expansionSourceSize;
+@property(nonatomic) CGFloat expansionSourceAlpha;
+@property(nonatomic) BOOL expansionHidden;
 @end
 
 @implementation SemiDoneWindowShape
@@ -80,6 +82,11 @@ void semidone_window_expansion(void *pointer, unsigned int phase, double duratio
     if (!content || !shape) return;
     if (phase == 0) {
         shape.expansionSourceSize = content.bounds.size;
+        if (!shape.expansionHidden) shape.expansionSourceAlpha = window.alphaValue;
+        shape.expansionHidden = YES;
+        // Hide the complete window, including the WebView's opaque backing and
+        // native shadow, while the destination renderer is being prepared.
+        window.alphaValue = 0;
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         content.layer.opacity = 0;
@@ -112,7 +119,20 @@ void semidone_window_expansion(void *pointer, unsigned int phase, double duratio
     CAShapeLayer *mask = (CAShapeLayer *)content.layer.mask;
     [mask removeAnimationForKey:@"SemiDoneExpand"];
     [mask removeAnimationForKey:@"SemiDoneCollapse"];
-    if (phase == 1 && durationMs > 0) {
+    if (phase == 4 && durationMs > 0) {
+        // Track the opening logo instead of exposing the opaque WebView as a
+        // full white rectangle before the first glass frame has grown.
+        CGRect bounds = content.layer.bounds;
+        CGRect from = CGRectMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds), 0.01, 0.01);
+        CGPathRef path = CGPathCreateWithEllipseInRect(from, NULL);
+        CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"path"];
+        animation.fromValue = (__bridge id)path;
+        animation.toValue = (__bridge id)mask.path;
+        animation.duration = MIN(durationMs, 400) / 1000;
+        animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+        [mask addAnimation:animation forKey:@"SemiDoneExpand"];
+        CGPathRelease(path);
+    } else if (phase == 1 && durationMs > 0) {
         CGRect bounds = content.layer.bounds;
         CGFloat inset = SD_CLIP_INSET;
         NSSize source = shape.expansionSourceSize;
@@ -134,5 +154,9 @@ void semidone_window_expansion(void *pointer, unsigned int phase, double duratio
     [CATransaction setDisableActions:YES];
     content.layer.opacity = 1;
     [CATransaction commit];
+    if (shape.expansionHidden) {
+        window.alphaValue = shape.expansionSourceAlpha;
+        shape.expansionHidden = NO;
+    }
     [window invalidateShadow];
 }
