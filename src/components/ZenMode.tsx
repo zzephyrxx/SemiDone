@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Palette, Pin, PinOff, X } from '../ui/icons';
+import { Repeat, X } from '../ui/icons';
+import ZenToolbarIcon, { ZEN_TOOLBAR_ICONS } from './icons/ZenToolbarIcon';
+import { isAppStore } from '../platform/distribution';
+import { isDesktopRuntime } from '../api/tauri';
 import { useShallow } from 'zustand/react/shallow';
 import { useSettingsStore } from '../store/settingsStore';
-import { getFilteredTasks, useTaskStore } from '../store/taskStore';
+import { useTaskStore } from '../store/taskStore';
 import type { Task } from '../types';
 import { zenModeStyle, normalizeZenModeSettings } from '../utils/zenModeSettings';
 import { startWindowDragging } from '../utils/windowDragging';
@@ -10,6 +13,9 @@ import ZenModeAppearance from './settings/ZenModeAppearance';
 import ZenIcon from './icons/ZenIcon';
 import { MOTION, useReducedMotion } from '../ui/motion';
 import { Surface } from '../ui/Surface';
+import { useNativeZenPanel } from './useNativeZenPanel';
+import zenOffSvg from '../assets/icons/zen-off.svg?raw';
+import { isZenTaskAvailable } from '../utils/zenTaskAvailability';
 
 interface Props { onClose: () => void }
 interface Completion { task: Task; index: number; phase: 'saving' | 'exiting'; saved: boolean }
@@ -18,9 +24,9 @@ export default function ZenMode({ onClose }: Props) {
   const { settings, setZenMode, toggleIsPinned } = useSettingsStore();
   const reducedMotion = useReducedMotion();
   const appearance = normalizeZenModeSettings(settings.zenMode);
-  const { tasks, sortConfig, loading, loadTasks, toggleTaskComplete, hideCelebration } = useTaskStore(
+  const { tasks, loading, loadTasks, toggleTaskComplete, hideCelebration } = useTaskStore(
     useShallow((state) => ({
-      tasks: state.tasks, sortConfig: state.sortConfig, loading: state.loading,
+      tasks: state.tasks, loading: state.loading,
       loadTasks: state.loadTasks, toggleTaskComplete: state.toggleTaskComplete,
       hideCelebration: state.hideCelebration,
     })),
@@ -29,7 +35,8 @@ export default function ZenMode({ onClose }: Props) {
   const [completion, setCompletion] = useState<Completion | null>(null);
   const completing = useRef(false);
   const appearanceButton = useRef<HTMLButtonElement>(null);
-  const pendingTasks = useMemo(() => getFilteredTasks(tasks, 'pending', '', sortConfig), [tasks, sortConfig]);
+  const pendingTasks = useMemo(() => tasks.filter(isZenTaskAvailable)
+    .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)), [tasks]);
   const displayedTasks = useMemo(() => {
     if (!completion || pendingTasks.some((task) => task.id === completion.task.id)) return pendingTasks;
     // Keep the saved row in place until its strike-through and exit animation finish.
@@ -93,25 +100,49 @@ export default function ZenMode({ onClose }: Props) {
     }
   };
 
+  useNativeZenPanel({
+    appearance: { ...appearance, fontSize: appearance.fontSize * (settings.fontScale ?? 100) / 100 },
+    pinned: settings.isPinned,
+    exitIcon: zenOffSvg,
+    toolbarIcons: ZEN_TOOLBAR_ICONS,
+    motion: !reducedMotion,
+    loading,
+    tasks: displayedTasks.map(task => ({ id: task.id, title: task.title, recurring: !!task.recurrence, busy: completion !== null, done: completion?.task.id === task.id && completion.phase === 'exiting' })),
+  }, showAppearance, (event) => {
+    if (event.action === 'settings') setShowAppearance(true);
+    else if (event.action === 'pin') void toggleIsPinned();
+    else if (event.action === 'exit') void setZenMode({ active: false });
+    else if (event.action === 'close') onClose();
+    else if (event.action === 'task') {
+      const index = displayedTasks.findIndex(task => task.id === event.taskId);
+      if (index >= 0 && !completion && useTaskStore.getState().tasks.some(task => task.id === event.taskId && isZenTaskAvailable(task))) {
+        void completeTask(displayedTasks[index], index);
+      }
+    }
+  });
+
+  const standaloneConfiguration = isAppStore && isDesktopRuntime && showAppearance;
   return (
-    <div className="zen-mode" style={zenModeStyle(appearance)}>
+    <div className={`zen-mode${standaloneConfiguration ? ' zen-mode--configuration' : ''}`} style={zenModeStyle(appearance)}>
+      {!standaloneConfiguration && <>
       <header className="zen-toolbar" onMouseDown={startWindowDragging}>
         <span className="zen-drag-label">SemiDone</span>
         <div className="zen-toolbar-actions">
           <button type="button" ref={appearanceButton} title="Zen 模式配置" aria-label="Zen 模式配置"
             aria-expanded={showAppearance} aria-controls="zen-appearance-panel"
-            onClick={() => setShowAppearance((show) => !show)}><Palette size={15} /></button>
+            onClick={() => setShowAppearance((show) => !show)}><ZenToolbarIcon name="settings" /></button>
           <button type="button" className="zen-icon-only" title={settings.isPinned ? '取消置顶' : '置顶窗口'}
             aria-label={settings.isPinned ? '取消置顶' : '置顶窗口'} aria-pressed={settings.isPinned}
-            onClick={() => void toggleIsPinned()}>{settings.isPinned ? <Pin size={15} /> : <PinOff size={15} />}</button>
+            onClick={() => void toggleIsPinned()}><ZenToolbarIcon name={settings.isPinned ? 'pin' : 'pinOff'} /></button>
           <button type="button" className="zen-icon-only" title="退出 Zen 模式（Esc）" aria-label="返回完整模式" aria-pressed={true}
             onClick={() => void setZenMode({ active: false })}><ZenIcon variant="off" size={20} /></button>
           <button type="button" title="关闭应用" aria-label="关闭应用" onClick={onClose}><X size={15} /></button>
         </div>
       </header>
+      </>}
       {showAppearance && (
         <Surface role="dialog" htmlRole="region" id="zen-appearance-panel" aria-label="Zen 模式配置" className="zen-appearance-panel">
-          <div className="zen-appearance-heading"><h2>Zen 模式配置</h2>
+          <div className="zen-appearance-heading" onMouseDown={startWindowDragging}><h2>Zen 模式配置</h2>
             <button type="button" aria-label="收起配置" onClick={() => {
               setShowAppearance(false);
               appearanceButton.current?.focus();
@@ -122,7 +153,7 @@ export default function ZenMode({ onClose }: Props) {
           </div>
         </Surface>
       )}
-      <main className="zen-task-list" aria-label="未完成待办" aria-busy={loading}>
+      {!standaloneConfiguration && <main className="zen-task-list" aria-label="未完成待办" aria-busy={loading}>
         {loading ? <p className="zen-empty" role="status">正在加载待办…</p>
           : displayedTasks.length === 0 ? <p className="zen-empty" role="status">没有未完成的待办</p>
           : <ul>
@@ -149,13 +180,14 @@ export default function ZenMode({ onClose }: Props) {
                         {current.phase === 'saving' ? '正在完成任务' : '任务已完成'}
                       </span>}
                     </span>
+                    {task.recurrence && <span className="zen-task-recurrence" role="img" aria-label="周期待办" title="周期待办"><Repeat size={13} /></span>}
                     <span className="zen-task-title">{task.title}</span>
                   </div>
                 </li>
               );
             })}
           </ul>}
-      </main>
+      </main>}
     </div>
   );
 }

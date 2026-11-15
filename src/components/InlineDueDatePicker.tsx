@@ -1,4 +1,5 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import NumberInput from './NumberInput';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isBefore, isSameDay, isSameMonth, isValid, parseISO, startOfDay, startOfMonth, startOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight } from '../ui/icons';
 
@@ -12,7 +13,6 @@ export default function InlineDueDatePicker({ id, value, onConfirm, onCancel, on
   const [hour, setHour] = useState(value ? format(initial, 'HH') : '09');
   const [minute, setMinute] = useState(value ? format(initial, 'mm') : '00');
   const root = useRef<HTMLElement>(null);
-  const timeId = useId();
   const today = startOfDay(new Date());
   const validTime = /^\d{1,2}$/.test(hour) && Number(hour) <= 23 && /^\d{1,2}$/.test(minute) && Number(minute) <= 59;
   const valid = validTime && !isBefore(startOfDay(selected), today);
@@ -43,13 +43,9 @@ export default function InlineDueDatePicker({ id, value, onConfirm, onCancel, on
     </div>
     <div className="flex items-center gap-2">
       <span className="mr-auto text-xs text-muted-foreground">时间</span>
-      <label htmlFor={`${timeId}-hour`} className="sr-only">小时</label>
-      <input id={`${timeId}-hour`} type="number" inputMode="numeric" min={0} max={23} value={hour} onChange={event => setHour(event.target.value)}
-        className="w-16 px-2 py-1 text-sm text-center bg-background border border-border rounded" />
+      <NumberInput label="小时" min={0} max={23} value={hour} onValueChange={setHour} />
       <span aria-hidden="true">:</span>
-      <label htmlFor={`${timeId}-minute`} className="sr-only">分钟</label>
-      <input id={`${timeId}-minute`} type="number" inputMode="numeric" min={0} max={59} value={minute} onChange={event => setMinute(event.target.value)}
-        className="w-16 px-2 py-1 text-sm text-center bg-background border border-border rounded" />
+      <NumberInput label="分钟" min={0} max={59} value={minute} onValueChange={setMinute} />
     </div>
     <div className="flex justify-end gap-2 border-t border-border pt-2">
       <button type="button" className="px-3 py-1.5 text-sm rounded hover:bg-muted" onClick={onCancel}>取消</button>

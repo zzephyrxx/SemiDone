@@ -1,0 +1,12 @@
+{
+  "expandedRadius": 22,
+  "barRadius": 14,
+  "floatingRadius": 12,
+  "snappedRadius": 6,
+  "clipInset": 0.75,
+  "fadeOutMs": 80,
+  "fadeInMs": 100,
+  "floatingCollapseMs": 200,
+  "floatingExpandMs": 180,
+  "barExpandMs": 220
+}

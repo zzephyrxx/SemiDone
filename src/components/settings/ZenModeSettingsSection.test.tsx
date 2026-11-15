@@ -18,6 +18,17 @@ beforeEach(() => {
 afterEach(() => { cleanup(); document.getElementById('zen-settings-material-css')?.remove(); delete document.documentElement.dataset.liquidGlassDialogs; });
 
 describe('Zen mode settings', () => {
+  it('saves transparency in the correct direction when the compact arrow buttons are clicked', () => {
+    useSettingsStore.setState(state => ({ settings: { ...state.settings, zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS, enabled: true, backgroundOpacity: 65, rowOpacity: 8 } } }));
+    render(<ZenModeSettingsSection />);
+    fireEvent.click(screen.getByText('Zen 模式配置'));
+    fireEvent.click(screen.getByRole('button', { name: '增加面板透明度' }));
+    expect(useSettingsStore.getState().settings.zenMode?.backgroundOpacity).toBe(64);
+    expect(screen.getByRole('spinbutton', { name: '面板透明度' })).toHaveAttribute('aria-valuetext', '36%');
+    fireEvent.click(screen.getByRole('button', { name: '减少行底色透明度' }));
+    expect(useSettingsStore.getState().settings.zenMode?.rowOpacity).toBe(9);
+    expect(screen.getByRole('spinbutton', { name: '行底色透明度' })).toHaveAttribute('aria-valuetext', '91%');
+  });
   it('switches the expanded settings panel between both glass presets and solid without resetting its controls', () => {
     const css = document.createElement('style'); css.id = 'zen-settings-material-css';
     css.textContent = ['zenMode.css', 'workspace.css', 'ui.css', 'liquidGlassSurfaces.css'].map(file => readFileSync(resolve('src/styles', file), 'utf8')).join('\n');

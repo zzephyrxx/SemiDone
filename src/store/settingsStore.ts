@@ -1,3 +1,5 @@
+import { leaveWindowMode, enterWindowMode, prepareWindowExpansion, waitForWindowLayout, finishWindowTransition, canAnimateWindow, waitForFloatingLogo, revealFloatingLogo } from '../services/windowModeTransition';
+import { isAppStore } from '../platform/distribution';
 import { FULL_WINDOW_SIZE, FULL_WINDOW_MINIMUM, isMacOS } from '../platform/runtime';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
@@ -37,6 +39,8 @@ const defaultSettings: Settings = {
   accentColor: undefined,
   fontScale: 100,
   animationsEnabled: true,
+  floatingBallAnimationEnabled: true,
+  windowShadowEnabled: isAppStore,
   liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
   zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS },
   notifications: true,
@@ -139,6 +143,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             const loadedSettings: Settings = {
               ...defaultSettings,
               ...storedSettings,
+              ...(isAppStore ? { transparentEnabled: false, transparentLevel: 100, dataDir: undefined } : {}),
               theme: storedSettings.theme === 'dark' ? 'dark' : 'light',
               accentColor: normalizeAccentColor(storedSettings.accentColor),
               liquidGlass: normalizeGlassPresetSettings(response.data?.liquidGlass),
@@ -146,6 +151,8 @@ export const useSettingsStore = create<SettingsState>()(devtools(
               closeToTray: storedSettings.closeToTray !== false,
               fontScale: normalizeFontScale(storedSettings.fontScale),
               animationsEnabled: storedSettings.animationsEnabled !== false,
+              floatingBallAnimationEnabled: storedSettings.floatingBallAnimationEnabled !== false,
+              windowShadowEnabled: storedSettings.windowShadowEnabled ?? isAppStore,
             };
             if (isDesktopRuntime) {
               try {
@@ -382,10 +389,13 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           
           const animated = isMacOS && currentSettings.animationsEnabled !== false;
           const resize = (width: number, height: number) => appWindow.setSize(new LogicalSize(width, height));
-          // A short content fade on collapse only; expansion resizes immediately.
-          if (animated && newCollapsedState) {
-            document.documentElement.dataset.windowTransition = 'collapsing';
-            await new Promise(resolve => setTimeout(resolve, 45));
+          const transitioning = newCollapsedState ? await leaveWindowMode(animated, currentSettings.useCapsuleMode ? 'floating' : 'bar') : canAnimateWindow(animated);
+          if (!newCollapsedState) {
+            await prepareWindowExpansion(currentSettings.collapseMode);
+            // Publish the destination before enlarging the WebView: the floating
+            // component must release its white backing while still hidden.
+            set({ settings: { ...currentSettings, isCollapsed: false, collapseMode: 'expanded', isEdgeSnapped: false } });
+            await waitForWindowLayout();
           }
           let newCollapseMode: import('../types').CollapseMode;
           
@@ -467,7 +477,21 @@ export const useSettingsStore = create<SettingsState>()(devtools(
             collapseMode: newCollapseMode,
             isEdgeSnapped: false // 重置吸附状态
           };
+          const logoReady = isAppStore && transitioning && currentSettings.floatingBallAnimationEnabled !== false && newCollapsedState && newCollapseMode === 'floating'
+            ? waitForFloatingLogo() : null;
           set({ settings: newSettings });
+          if (transitioning || !newCollapsedState) {
+            if (newCollapsedState && newCollapseMode === 'floating') {
+              if (logoReady) {
+                await logoReady;
+                await revealFloatingLogo();
+              } else {
+                await enterWindowMode('floating', false);
+              }
+            } else {
+              await enterWindowMode(newCollapsedState ? 'expanded' : currentSettings.collapseMode, transitioning);
+            }
+          }
           
           // 异步保存到后端
           try {
@@ -479,8 +503,9 @@ export const useSettingsStore = create<SettingsState>()(devtools(
           console.error('Failed to toggle collapsed state:', error);
           toast.error('切换折叠状态失败');
         } finally {
+          try { await finishWindowTransition(); }
+          catch (error) { console.warn('Failed to restore window after transition:', error); }
           collapseTransitionPending = false;
-          delete document.documentElement.dataset.windowTransition;
         }
       },
       
@@ -571,6 +596,7 @@ export const useSettingsStore = create<SettingsState>()(devtools(
       },
       
       setTransparency: async (enabled: boolean, level?: number) => {
+        if (isAppStore) return;
         const currentSettings = get().settings;
         // 关闭时强制设为 100%，开启时使用传入的 level 或 100%
         const newLevel = enabled ? (level ?? 100) : 100;
@@ -595,6 +621,11 @@ export const useSettingsStore = create<SettingsState>()(devtools(
       },
       
       applyTransparency: async () => {
+        if (isAppStore) {
+          document.documentElement.style.setProperty('--window-opacity', '1');
+          document.body.classList.remove('transparent-mode');
+          return;
+        }
         const settings = get().settings;
         try {
           if (settings.transparentEnabled && settings.theme === 'dark') {

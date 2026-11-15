@@ -29,7 +29,7 @@ describe('StartupTip welcome dialog', () => {
     renderWelcome();
     expect(screen.getByRole('dialog', { name: '欢迎使用 SemiDone' })).toBeVisible();
   });
-  it('renders the approved 7.0.0 release overview', () => {
+  it('presents a user-focused release overview with local data guidance', () => {
     renderWelcome();
 
     const dialog = screen.getByRole('dialog', { name: '欢迎使用 SemiDone' });
@@ -42,14 +42,13 @@ describe('StartupTip welcome dialog', () => {
     expect(screen.getByText('V7.0.0 · 2026.11')).toBeVisible();
     expect(screen.getByText('V7.0.0 更新内容')).toBeVisible();
     expect(screen.queryByText(/5\.0.*主要更新/)).not.toBeInTheDocument();
-    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      '全新 V7 界面：窄窗顶部悬浮导航，宽屏左侧悬浮导航。',
-      '液态玻璃提供标准、极致两档预设，导航文字与图标保持清晰。',
-      '保留任务完成飞出和导航、部分设置图标动效，支持全局字号与动效开关。',
-      '关闭窗口默认收起到托盘，可从托盘恢复窗口或明确退出应用。',
-      '关闭与公告弹窗支持拖动，条状和悬浮球模式下不再显示遮挡弹窗。',
-      '修复完成任务时出现横向滚动条的问题，移除全部完成浮动提示。',
-    ]);
+    expect(screen.getByRole('heading', { name: '少一点忙乱，多一点从容。' })).toBeVisible();
+    expect(screen.getAllByRole('listitem')).toHaveLength(4);
+    expect(screen.getByRole('heading', { name: '把计划理清，让行动更轻松' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '需要时在眼前，专注时退到一旁' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '看见时间，也记得休息' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '熟悉的日常，焕新的模样' })).toBeVisible();
+    expect(screen.getByLabelText('数据与使用提示')).toHaveTextContent('待办保存在本机');
     expect(screen.getByRole('button', { name: '开始体验' })).toBeVisible();
   });
 

@@ -1,14 +1,12 @@
 //! Bind the actual status button: a permanently attached NSMenu can intercept
 //! clicks before tray-icon's child view receives them on newer macOS versions.
-use std::cell::RefCell;
-use tauri::tray::TrayIcon;
-use tauri_nspanel::objc2::{
+use objc2::{
     define_class, msg_send, rc::Retained, sel, DefinedClass, MainThreadMarker, MainThreadOnly,
 };
-use tauri_nspanel::objc2_app_kit::{
-    NSApplication, NSEventMask, NSEventType, NSMenu, NSStatusBarButton,
-};
-use tauri_nspanel::objc2_foundation::{NSObject, NSPoint};
+use objc2_app_kit::{NSApplication, NSEventMask, NSEventType, NSMenu, NSStatusBarButton};
+use objc2_foundation::{NSObject, NSPoint};
+use std::cell::RefCell;
+use tauri::tray::TrayIcon;
 
 struct TrayState {
     app: tauri::AppHandle,

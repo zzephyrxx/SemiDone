@@ -4,6 +4,7 @@ import { DEFAULT_LIQUID_GLASS_SETTINGS, normalizeGlassPresetSettings } from '../
 import { DEFAULT_ZEN_MODE_SETTINGS, normalizeZenModeSettings } from '../utils/zenModeSettings';
 import { normalizeAccentColor } from '../utils/accentColor';
 import { normalizeFontScale } from '../utils/interfaceSettings';
+import { isAppStore } from '../platform/distribution';
 
 // localStorage键名常量
 const STORAGE_KEYS = {
@@ -17,6 +18,8 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'light' as Theme,
   fontScale: 100,
   animationsEnabled: true,
+  floatingBallAnimationEnabled: true,
+  windowShadowEnabled: isAppStore,
   liquidGlass: { ...DEFAULT_LIQUID_GLASS_SETTINGS },
   zenMode: { ...DEFAULT_ZEN_MODE_SETTINGS },
   notifications: true,
@@ -200,6 +203,7 @@ export const settingsApi = {
         closeToTray: currentSettings.closeToTray !== false,
         fontScale: normalizeFontScale(currentSettings.fontScale),
         animationsEnabled: currentSettings.animationsEnabled !== false,
+        floatingBallAnimationEnabled: currentSettings.floatingBallAnimationEnabled !== false,
       };
       return createResponse(settings);
     } catch (error) {

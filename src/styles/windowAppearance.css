@@ -1,0 +1,71 @@
+/* Values are assigned from src/config/windowAppearance.json before first render. */
+html[data-window-shape='bar'] { --window-radius: var(--window-bar-radius, 14px) !important; }
+html[data-window-shape='floating'] { --window-radius: var(--window-floating-radius, 12px) !important; }
+.floating-ball-shell { border-radius: var(--window-floating-radius, 12px); }
+
+/* App Store: the native mask owns the outer silhouette. A second CSS clip
+   exposes the opaque WebView's white backing along mismatched corner curves. */
+html[data-distribution='app-store'],
+html[data-distribution='app-store'] body,
+html[data-distribution='app-store'] #root {
+  clip-path: none !important;
+  border-radius: 0 !important;
+  background: hsl(var(--background)) !important;
+}
+html[data-distribution='app-store'] :is(.workspace-shell, .workspace-bar, .zen-mode, .floating-ball-shell) {
+  border-radius: 0 !important;
+}
+
+/* The icon has a white tile with transparent corners. Match its backing so a
+   smaller, user-adjustable native radius cannot reveal dark corner slivers. */
+html[data-distribution='app-store'][data-window-shape='floating'],
+html[data-distribution='app-store'][data-window-shape='floating'] :is(body, #root, .floating-ball-shell) {
+  background: #fff !important;
+}
+
+/* Explicit arrow colors follow the document theme without altering other
+   platform controls or the rendering of existing glass surfaces. */
+.number-input { display: flex; align-items: stretch; min-width: 0; height: 30px; overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: 7px; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+.number-input:focus-within { outline: 2px solid hsl(var(--ring) / .6); outline-offset: 1px; }
+.number-input > input { width: 100%; min-width: 0; padding: 3px 5px; border: 0; background: transparent; color: inherit; font: inherit; font-size: calc(12px * var(--ui-font-scale, 1)); text-align: center; outline: none !important; }
+.number-input-buttons { display: grid; grid-template-rows: 1fr 1fr; flex: 0 0 20px; border-left: 1px solid hsl(var(--border)); background: hsl(var(--muted)); }
+.number-input-buttons > button { display: flex; align-items: center; justify-content: center; min-height: 0; padding: 0; color: hsl(var(--foreground)); background: transparent; border: 0; }
+.number-input-buttons > button + button { border-top: 1px solid hsl(var(--border)); }
+.number-input-buttons > button:hover:not(:disabled) { background: hsl(var(--accent)); color: hsl(var(--primary)); }
+.number-input-buttons > button:disabled { opacity: .35; }
+.number-input-buttons svg { stroke: currentColor; stroke-width: 2; }
+.ui-overlay-dialog--date .number-input { width: 62px; }
+.ui-overlay-dialog--date .number-input > input { width: 100%; padding: 3px 4px; }
+.ui-overlay-dialog--date .number-input svg { width: 12px; height: 12px; }
+
+html[data-window-transition='leaving'] :is(.workspace-shell, .workspace-bar, .zen-mode, .floating-ball-shell) {
+  animation: window-mode-leave var(--window-mode-out, 80ms) ease-out both !important;
+  transform-origin: top left;
+}
+html[data-window-transition='switching'] :is(.workspace-shell, .workspace-bar, .zen-mode, .floating-ball-shell) { opacity: 0 !important; }
+html[data-window-transition='entering'] :is(.workspace-shell, .workspace-bar, .zen-mode, .floating-ball-shell) {
+  animation: window-mode-enter var(--window-mode-in, 100ms) ease-out both !important;
+  transform-origin: top left;
+}
+html[data-window-transition='entering'][data-window-expansion='floating'] :is(.workspace-shell, .zen-mode) {
+  animation-name: window-floating-expand !important;
+}
+html[data-window-transition='entering'][data-window-expansion='bar'] :is(.workspace-shell, .zen-mode) {
+  animation-name: window-bar-expand !important;
+}
+@keyframes window-mode-leave { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.985); } }
+@keyframes window-mode-enter { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: scale(1); } }
+@keyframes window-floating-expand {
+  from { opacity: .15; transform: scale(.92); filter: blur(7px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+@keyframes window-bar-expand {
+  from { clip-path: inset(0 0 calc(100% - var(--window-expand-start-height, 60px)) 0); opacity: .85; transform: translateY(-3px); }
+  to { clip-path: inset(0); opacity: 1; transform: translateY(0); }
+}
+html[data-ui-motion='false'] :is(.workspace-shell, .workspace-bar, .zen-mode, .floating-ball-shell) { animation: none !important; }
+
+/* Detail fields grow with their labels but retain a usable click target. */
+.task-detail-field-row { flex-wrap: wrap; }
+.task-detail-field-control { flex: 0 1 auto; width: max-content; min-width: min(144px, 100%); max-width: 100%; margin-left: auto; }
+.task-detail-field-control .task-detail-field-trigger { width: max-content; min-width: min(144px, 100%); max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

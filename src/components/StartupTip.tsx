@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, X } from '../ui/icons';
-import { APP_VERSION, RELEASE_HIGHLIGHTS, RELEASE_MONTH } from '../data/release';
+import { Sparkles, X, ListTodo, Minimize2, Timer, Palette } from '../ui/icons';
+import { APP_VERSION, RELEASE_FEATURES, RELEASE_MONTH } from '../data/release';
 import { useDialogMotion } from '../ui/useDialogMotion';
 import { Surface } from '../ui/Surface';
 import { useDraggableDialog } from '../ui/useDraggableDialog';
 import { useSettingsStore } from '../store/settingsStore';
 
 const WELCOME_STORAGE_KEY = `welcome_shown_${APP_VERSION}`;
-
-const HIGHLIGHTS: { text: string; icon?: string }[] = RELEASE_HIGHLIGHTS.map(text => ({ text }));
+const FEATURE_ICONS = [ListTodo, Minimize2, Timer, Palette];
 
 export default function StartupTip() {
   const [show, setShow] = useState(false);
@@ -17,7 +16,7 @@ export default function StartupTip() {
   const zenWindow = useSettingsStore(state => state.settings.zenMode?.enabled === true
     && state.settings.zenMode.active && state.settings.collapseMode === 'expanded');
   const { root, present } = useDialogMotion(show, !zenWindow);
-  const drag = useDraggableDialog(present);
+  const drag = useDraggableDialog(present, { focusable: false });
 
   useEffect(() => {
     if (localStorage.getItem(WELCOME_STORAGE_KEY)) return;
@@ -27,12 +26,10 @@ export default function StartupTip() {
 
   useEffect(() => {
     if (!show || !present) return;
-
     primaryActionRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setShow(false);
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [show, present]);
@@ -41,109 +38,52 @@ export default function StartupTip() {
     if (dontShowAgain) localStorage.setItem(WELCOME_STORAGE_KEY, 'true');
     setShow(false);
   };
-
   if (!present) return null;
 
   return (
-    <div
-      ref={root}
-      data-no-overlay
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5"
-    >
-      <Surface role="dialog" elementRef={drag.surface}
-        htmlRole="dialog"
-        aria-modal="true"
-        aria-labelledby="welcome-dialog-title"
+    <div ref={root} data-no-overlay className="welcome-dialog-overlay fixed inset-0 z-50 flex items-center justify-center p-3">
+      <Surface role="dialog" elementRef={drag.surface} htmlRole="dialog"
+        aria-modal="true" aria-labelledby="welcome-dialog-title" aria-describedby="welcome-dialog-intro"
         data-glass-layout="unified"
-        className="welcome-dialog liquid-glass-modal-surface relative flex max-h-[92vh] w-[min(440px,calc(100vw-20px))] flex-col overflow-hidden rounded-[26px] border border-border/70 bg-card p-5 text-foreground shadow-[0_18px_48px_rgba(15,23,42,0.16)]"
-
+        className="welcome-dialog liquid-glass-modal-surface release-dialog"
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent dark:via-white/30"
-        />
-
-        <button
-          type="button"
-          onClick={() => setShow(false)}
-          aria-label="关闭欢迎弹窗"
-          className="welcome-dialog-dismiss absolute right-3.5 top-3.5 z-20 grid h-9 w-9 place-items-center rounded-full border border-border/60 bg-background/30 text-muted-foreground transition-colors hover:bg-background/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-        >
-          <X className="h-[17px] w-[17px]" />
+        <button type="button" onClick={() => setShow(false)} aria-label="关闭欢迎弹窗" className="welcome-dialog-dismiss release-dismiss">
+          <X size={17} />
         </button>
-
-        <header {...drag.handle} aria-label="拖动公告弹窗" className="dialog-drag-handle welcome-dialog-header flex shrink-0 items-start gap-3.5 pr-10">
-          <div className="welcome-dialog-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 shadow-[inset_0_1px_0_rgba(255,255,255,.55)]">
-            <Sparkles className="h-6 w-6 text-primary" strokeWidth={1.8} />
+        <header {...drag.handle} aria-label="拖动公告弹窗" className="dialog-drag-handle welcome-dialog-header release-header">
+          <div className="welcome-dialog-icon release-mark"><Sparkles size={22} /></div>
+          <div>
+            <h2 id="welcome-dialog-title">欢迎使用 SemiDone</h2>
+            <p>V{APP_VERSION} · {RELEASE_MONTH}</p>
           </div>
-          <div className="min-w-0">
-            <h2
-              id="welcome-dialog-title"
-              className="text-[22px] font-bold leading-tight tracking-tight text-foreground max-[430px]:text-[20px]"
-
-            >
-              欢迎使用 SemiDone
-            </h2>
-            <p className="mt-1 text-xs tracking-wide text-muted-foreground">
-              V{APP_VERSION} · {RELEASE_MONTH}
-            </p>
-          </div>
-
         </header>
-
-        <main className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,rgba(202,240,248,.72),transparent_44%),#FFFFFF] px-4 pb-4 pt-2.5">
-          <section
-            aria-labelledby="welcome-release-highlights"
-            className="overflow-hidden rounded-[14px] border border-[#90E0EF] bg-[linear-gradient(135deg,rgba(255,255,255,.98),rgba(202,240,248,.5))] px-4 py-3.5 shadow-[0_7px_20px_rgba(0,180,216,.1)]"
-          >
-            <h3 id="welcome-release-highlights" className="text-[15px] font-bold text-[#0077B6]">
-              V{APP_VERSION} 更新内容
-            </h3>
-
-            <ul className="mt-2.5 divide-y divide-[#CAF0F8] border-t border-[#CAF0F8]">
-              {HIGHLIGHTS.map((item) => (
-                <li key={item.text} className="flex items-start gap-2.5 py-2.5 text-[12px] leading-[18px] text-slate-700">
-                  {item.icon ? (
-                    <img
-                      data-testid="welcome-easter-egg-icon"
-                      src={item.icon}
-                      alt=""
-                      aria-hidden="true"
-                      className="-mt-0.5 h-[20px] w-[20px] shrink-0 object-contain"
-                    />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="mt-[6px] h-[7px] w-[7px] shrink-0 rounded-full bg-[#00B4D8]"
-                    />
-                  )}
-                  <span>{item.text}</span>
-                </li>
-              ))}
-            </ul>
+        <main className="welcome-dialog-body release-body">
+          <section className="release-intro" aria-labelledby="welcome-release-highlights">
+            <span className="release-eyebrow">V{APP_VERSION} 更新内容</span>
+            <h3 id="welcome-release-highlights">少一点忙乱，多一点从容。</h3>
+            <p id="welcome-dialog-intro">从记下一件小事，到安排一天的节奏，事半陪你把注意力留给重要的事。</p>
+            <div className="release-orbit" aria-hidden="true"><span /><span /><span /></div>
           </section>
+          <ul className="release-features" aria-label="版本亮点">
+            {RELEASE_FEATURES.map((feature, index) => {
+              const Icon = FEATURE_ICONS[index];
+              return <li key={feature.title}>
+                <span className="release-feature-icon" aria-hidden="true"><Icon size={19} /></span>
+                <div><h4>{feature.title}</h4><p>{feature.description}</p></div>
+              </li>;
+            })}
+          </ul>
+          <aside className="release-note" aria-label="数据与使用提示">
+            <strong>安心记录，定期留存</strong>
+            <p>待办保存在本机，重要记录可在「设置 → 数据」中导出留存。关闭窗口默认收起到托盘，需要时随时唤回。</p>
+          </aside>
         </main>
-
-        <footer className="flex shrink-0 items-center justify-between gap-2.5 border-t border-[#CAF0F8] bg-white/95 px-5 py-3.5 max-[430px]:px-3.5">
-          <label className="group flex min-w-0 cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={dontShowAgain}
-              onChange={(event) => setDontShowAgain(event.target.checked)}
-              className="h-[15px] w-[15px] shrink-0 rounded border-[#90E0EF] accent-[#0077B6] focus:ring-[#00B4D8]"
-            />
-            <span className="truncate text-[11.5px] text-slate-500 transition-colors group-hover:text-[#0077B6]">
-              本版本不再显示
-            </span>
+        <footer className="welcome-dialog-footer release-footer">
+          <label>
+            <input type="checkbox" checked={dontShowAgain} onChange={event => setDontShowAgain(event.target.checked)} />
+            <span>本版本不再显示</span>
           </label>
-          <button
-            ref={primaryActionRef}
-            type="button"
-            onClick={handleClose}
-            className="inline-flex min-w-[119px] shrink-0 items-center justify-center rounded-[10px] border border-[#90E0EF] bg-[linear-gradient(110deg,#0077B6_0%,#00B4D8_100%)] px-4 py-2 text-[11.5px] font-semibold text-white shadow-[0_7px_17px_rgba(0,119,182,.25)] ring-2 ring-[#CAF0F8] transition-all hover:-translate-y-0.5 hover:shadow-[0_9px_22px_rgba(0,119,182,.34)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00B4D8] motion-reduce:transform-none"
-          >
-            开始体验
-          </button>
+          <button ref={primaryActionRef} type="button" onClick={handleClose}>开始体验</button>
         </footer>
       </Surface>
     </div>

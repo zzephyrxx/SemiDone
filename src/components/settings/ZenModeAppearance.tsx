@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { RotateCcw } from '../../ui/icons';
-import NumberWheel from './NumberWheel';
+import NumberStepper from './NumberStepper';
 import ZenColorPicker from './ZenColorPicker';
 import type { ZenModeSettings } from '../../types';
 import { DEFAULT_ZEN_MODE_SETTINGS, zenModeStyle } from '../../utils/zenModeSettings';
@@ -27,11 +27,11 @@ export default function ZenModeAppearance({ settings, onChange }: Props) {
   return (
     <div className="zen-appearance">
       <div className="zen-number-grid">
-        <NumberWheel label="字体大小" min={12} max={28} value={settings.fontSize} suffix=" px"
+        <NumberStepper label="字体大小" min={12} max={28} value={settings.fontSize} suffix=" px"
           onChange={(fontSize) => onChange({ fontSize })} />
-        <NumberWheel label="面板透明度" min={0} max={100} value={100 - settings.backgroundOpacity} suffix="%"
+        <NumberStepper label="面板透明度" min={0} max={100} value={100 - settings.backgroundOpacity} suffix="%"
           onChange={(transparency) => onChange({ backgroundOpacity: 100 - transparency })} />
-        <NumberWheel label="行底色透明度" min={0} max={100} value={100 - settings.rowOpacity} suffix="%"
+        <NumberStepper label="行底色透明度" min={0} max={100} value={100 - settings.rowOpacity} suffix="%"
           onChange={(transparency) => onChange({ rowOpacity: 100 - transparency })} />
       </div>
       <div className="zen-color-grid">

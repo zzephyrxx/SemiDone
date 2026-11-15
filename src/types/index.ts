@@ -88,6 +88,8 @@ export interface Settings {
   accentColor?: string;
   fontScale?: number;
   animationsEnabled?: boolean;
+  floatingBallAnimationEnabled?: boolean;
+  windowShadowEnabled?: boolean;
   liquidGlass: LiquidGlassSettings;
   zenMode?: ZenModeSettings;
   // Read-only migration source for settings saved before the Zen rename.

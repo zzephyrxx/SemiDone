@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+/target/
 
 # Tauri specific
 src-tauri/target/

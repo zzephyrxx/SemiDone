@@ -1,3 +1,4 @@
+import { isAppStore } from '../../platform/distribution';
 import { GlassButton } from '../../ui/GlassButton';
 import { Surface } from '../../ui/Surface';
 import { Database, FileDown, Folder, FolderLock, ExternalLink } from '../../ui/icons';
@@ -77,7 +78,7 @@ export default function DataSettingsSection({
           icon={<Folder className="h-5 w-5 text-orange-600 dark:text-orange-400" />}
           iconClass="bg-orange-500/10"
           title="数据目录"
-          description={<span title={dataDir}>{dataDir || '正在读取数据目录…'}</span>}
+          description={<span title={dataDir}>{isAppStore ? '数据保存在本机应用容器中' : (dataDir || '正在读取数据目录…')}</span>}
           actions={(
             <>
               <GlassButton
@@ -89,14 +90,14 @@ export default function DataSettingsSection({
               >
                 <ExternalLink className="h-4 w-4" />
               </GlassButton>
-              <GlassButton
+              {!isAppStore && <GlassButton
                 type="button"
                 onClick={onChangeDirectory}
                 className={`${baseButtonClass} text-primary hover:text-primary/80`}
                 title="更改数据目录"
               >
                 更改
-              </GlassButton>
+              </GlassButton>}
             </>
           )}
         />

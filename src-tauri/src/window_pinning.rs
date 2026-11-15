@@ -197,7 +197,7 @@ pub fn show_main_window(app: &tauri::AppHandle) {
 #[path = "platform/windows.rs"]
 mod native;
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(feature = "app-store")))]
 #[path = "platform/macos.rs"]
 mod native;
 
@@ -268,3 +268,7 @@ mod tests {
         assert!(!policy.tool_window());
     }
 }
+
+#[cfg(all(target_os = "macos", feature = "app-store"))]
+#[path = "platform/macos_store.rs"]
+mod native;

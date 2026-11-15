@@ -1,5 +1,9 @@
 import { accentTokens } from '../utils/accentColor';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { isDesktopRuntime } from '../api/tauri';
+import { isMacOS } from '../platform/runtime';
+import { isAppStore } from '../platform/distribution';
 import { useSettingsStore } from '../store/settingsStore';
 import type { LiquidGlassSettings } from '../types';
 import { glassOpticalMaps, type GlassGeometry } from '../ui/glassGeometry';
@@ -31,6 +35,13 @@ function VectorField({ href, result, geometry }: { href: string; result: string;
 }
 
 export default function LiquidGlassRuntime() {
+  const shadowEnabled = useSettingsStore(state => state.settings.windowShadowEnabled ?? isAppStore);
+  const shadowQueue = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    if (!isDesktopRuntime || !isMacOS) return;
+    shadowQueue.current = shadowQueue.current.then(() => getCurrentWindow().setShadow(shadowEnabled))
+      .catch(error => { console.warn('设置窗口阴影失败:', error); });
+  }, [shadowEnabled]);
   const accentColor = useSettingsStore(state => state.settings.accentColor);
   const theme = useSettingsStore(state => state.settings.theme);
   useEffect(() => {

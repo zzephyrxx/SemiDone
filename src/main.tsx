@@ -1,3 +1,4 @@
+import { applyWindowAppearance } from './platform/windowAppearance';
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
@@ -9,6 +10,8 @@ import "./styles/workspace.css";
 import "./styles/ui.css";
 import "./styles/liquidGlassSurfaces.css";
 
+applyWindowAppearance();
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
@@ -16,3 +19,6 @@ createRoot(document.getElementById("root")!).render(
 );
 
 import './styles/macosRefresh.css';
+
+import './styles/windowAppearance.css';
+import './styles/announcements.css';

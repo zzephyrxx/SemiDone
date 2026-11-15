@@ -3,7 +3,7 @@ import { scheduleFrame } from './motion';
 type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
 
 /** Move the DOM surface, without React renders or changing the optical map per frame. */
-export function useDraggableDialog(present: boolean) {
+export function useDraggableDialog(present: boolean, options: { focusable?: boolean } = {}) {
   const surface = useRef<HTMLDivElement>(null);
   const position = useRef({ x: 0, y: 0 });
   const drag = useRef<{ id: number; x: number; y: number; startX: number; startY: number; handle: HTMLElement; bounds: Bounds } | null>(null);
@@ -45,12 +45,12 @@ export function useDraggableDialog(present: boolean) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [present]);
   return { surface, handle: {
-    tabIndex: 0,
+    tabIndex: options.focusable === false ? undefined : 0,
     onPointerDown: (event: PointerEvent<HTMLElement>) => {
       if (event.button !== 0 || drag.current || (event.target as Element).closest('button,input,a,select,textarea')) return;
       event.preventDefault(); event.stopPropagation();
       const handle = event.currentTarget;
-      handle.focus({ preventScroll: true });
+      if (options.focusable !== false) handle.focus({ preventScroll: true });
       drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: position.current.x, startY: position.current.y, handle, bounds: measureBounds() };
       handle.setPointerCapture?.(event.pointerId);
       if (surface.current) surface.current.dataset.dragging = 'true';

@@ -1,6 +1,6 @@
 import { ChevronsDownUpIcon } from './vendor/chevrons-down-up';
 import { FolderLockIcon } from './vendor/folder-lock';
-import { PinGlyph, PinOffGlyph, TrashGlyph, ImageGlyph, FlagGlyph, TrophyGlyph, TypeGlyph, QrGlyph, CircleGlyph, InfoGlyph, PowerGlyph, EyeDashedGlyph, PanelBottomCloseGlyph, DropletsGlyph, DatabaseGlyph, ChevronsUpGlyph, ChevronsDownGlyph, CircleArrowCollapseGlyph } from './supplemental';
+import { PinGlyph, PinOffGlyph, TrashGlyph, ImageGlyph, FlagGlyph, TrophyGlyph, TypeGlyph, QrGlyph, CircleGlyph, InfoGlyph, PowerGlyph, SquareDashedGlyph, EyeDashedGlyph, PanelBottomCloseGlyph, DropletsGlyph, DatabaseGlyph, ChevronsUpGlyph, ChevronsDownGlyph, CircleArrowCollapseGlyph } from './supplemental';
 import { useEffect, useRef, type CSSProperties, type ComponentType, type SVGProps } from 'react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { BadgeAlertIcon } from './vendor/badge-alert';
@@ -139,6 +139,7 @@ export const PinOff = animated(PinOffGlyph, 'pin-off');
 export const Play = animated(PlayIcon, 'play');
 export const Plus = animated(PlusIcon, 'plus');
 export const Power = animated(PowerGlyph, 'power');
+export const SquareDashed = animated(SquareDashedGlyph, 'square-dashed');
 export const QrCode = animated(QrGlyph, 'qrcode');
 export const RefreshCw = animated(RefreshCWIcon, 'refresh-cw');
 export const Repeat = animated(RefreshCWIcon, 'refresh-cw');
